@@ -1,4 +1,6 @@
 ﻿using BookPricesWatcher.ConsultaBase;
+using BookPricesWatcher.Model;
+using BookPricesWatcher.SearchTypes;
 
-ConsultaBase consulta = new ConsultaBase();
-consulta.Execute();
+ConsultaBase consulta = new CedetSingleSearch();
+consulta.Execute(new Requestor(new ));
