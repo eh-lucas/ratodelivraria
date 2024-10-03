@@ -1,16 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using BookPricesWatcher.ConsultaBase;
-using BookPricesWatcher.Model;
-using BookPricesWatcher.Utils;
+﻿using API.Business.BaseLogic;
+using API.Domain;
+using API.Utils;
 using OpenQA.Selenium;
 
-namespace BookPricesWatcher.SearchTypes
+namespace API.Business.SearchTypes
 {
-    public class CedetSingleSearch : ConsultaBase.ConsultaBase
+    public class CedetSingleSearch : ConsultaBase
     {
         private const string GridXPath = "//*[@id=\"column-right\"]/div[5]";
         private const string SearchBoxXPath = "//*[@id=\"input-search\"]";
@@ -31,7 +26,7 @@ namespace BookPricesWatcher.SearchTypes
 
         public override Book? CreateBook(IWebElement grid, string bookTitle)
         {
-            Book book = null;
+            Book? book = null;
             IReadOnlyList<IWebElement> itemProductElement = grid.FindElements(By.ClassName("item-product"));
             foreach (var element in itemProductElement)
             {
@@ -47,7 +42,7 @@ namespace BookPricesWatcher.SearchTypes
                         var auxText = element.FindElement(By.ClassName("price-old")).Text;
                         auxText = auxText.CleanPrice();
                         var oldPrice = Convert.ToDouble(auxText);
-                        discount = (int)Math.Abs((priceNew * 100) / oldPrice) - 100;
+                        discount = (int)Math.Abs(priceNew * 100 / oldPrice) - 100;
                     }
                     catch
                     {
@@ -55,7 +50,7 @@ namespace BookPricesWatcher.SearchTypes
                         discount = 0;
                     }
 
-                    book = new Book(bookTitle, author, priceNew, discount);
+                    book = new Book(bookTitle, author, priceNew, discount, "");
                 }
                 else continue;
             }
