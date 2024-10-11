@@ -26,12 +26,12 @@ namespace API.Business.SearchTypes
 
         public override Book? CreateBook(IWebElement grid, string bookTitle)
         {
-            Book? book = null;
+            List<Book?> books = new List<Book?>();
             IReadOnlyList<IWebElement> itemProductElement = grid.FindElements(By.ClassName("item-product"));
             foreach (var element in itemProductElement)
             {
                 var elementName = element.FindElement(By.ClassName("name"));
-                if (elementName.Text.Contains(bookTitle))
+                if (elementName.Text.Equals(bookTitle))
                 {
 
                     string author = element.FindElement(By.ClassName("author")).Text;
@@ -50,11 +50,19 @@ namespace API.Business.SearchTypes
                         discount = 0;
                     }
 
-                    book = new Book(bookTitle, author, priceNew, discount, "");
+                    books.Add(new Book(bookTitle, author, priceNew, discount, ""));
                 }
                 else continue;
             }
-            return book;
+
+            if (books.Count > 1)
+            {
+                var minPrice = books.Min(book => book.Price);
+                var cheapestBook = books.Find(book => book.Price == minPrice);
+                return cheapestBook;
+            }
+
+            return books[0];
         }
     }
 }

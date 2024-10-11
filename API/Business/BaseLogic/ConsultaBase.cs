@@ -19,41 +19,38 @@ public abstract class ConsultaBase
         List<Book> books = new List<Book>();
         var websites = Websites.CedetSites;
 
-        List<Task> tasks = new List<Task>();
         foreach (string website in websites)
         {
-            Task task = Task.Run(async () =>
+            ChromeOptions options = new ChromeOptions();
+            options.AddArgument("--start-maximized");
+            IWebDriver driver = new ChromeDriver();
+
+            var bookTitle = requestor.InputParameters.Titles[0];
+            driver.Navigate().GoToUrl(website);
+
+            SearchBookInBox(driver, bookTitle);
+
+            try
             {
-                ChromeOptions options = new ChromeOptions();
-                options.AddArgument("--start-maximized");
-                IWebDriver driver = new ChromeDriver();
-
-                var bookTitle = requestor.InputParameters.Titles[0];
-                driver.Navigate().GoToUrl(website);
-
-                SearchBookInBox(driver, bookTitle);
-
-                try
-                {
-                    IWebElement grid = driver.FindElement(By.XPath("//*[@id=\"column-right\"]/div[5]"));
-                    Book book = CreateBook(grid, bookTitle);
-                    book.WebSite = website;
-                    books.Add(book);
-                }
-                catch
-                {
-                    Console.WriteLine($"erro ao consultar no site {website}");
-                }
-            });
-            tasks.Add(task);
+                IWebElement grid = driver.FindElement(By.XPath("//*[@id=\"column-right\"]/div[5]"));
+                Book book = CreateBook(grid, bookTitle);
+                book.WebSite = website;
+                books.Add(book);
+                driver.Quit();
+            }
+            catch
+            {
+                Console.WriteLine($"erro ao consultar no site {website}");
+            }
         }
-
-        await Task.WhenAll();
 
         var minimalPrice = 0.0;
         var resultWebsite = "";
         foreach (var book in books)
         {
+            if(minimalPrice == 0.0)
+                minimalPrice = book.Price;
+
             if (book.Price >= minimalPrice)
                 continue;
             else

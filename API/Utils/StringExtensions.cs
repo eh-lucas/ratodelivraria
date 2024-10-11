@@ -8,7 +8,10 @@ public static class StringExtensions
     {
         text = text.Trim();
         if (text.Contains("R$"))
-            text.Replace("R$", "");
+            text = text.Replace("R$", "");
+
+        if (text.Contains(","))
+            text = text.Replace(",", ".");
 
         return text.Trim();
     }
