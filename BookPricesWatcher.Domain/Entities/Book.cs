@@ -1,6 +1,4 @@
-﻿using OpenQA.Selenium.DevTools.V127.Runtime;
-
-namespace API.Domain;
+﻿namespace Sherlock.Domain.Entities;
 
 public class Book
 {

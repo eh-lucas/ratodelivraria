@@ -1,6 +1,5 @@
-using API.Business.BaseLogic;
-using API.Business.SearchTypes;
-using API.Interfaces;
+using Sherlock.Business.SearchBase.Base;
+using Sherlock.Business.SearchBase.SearchTypes;
 
 var builder = WebApplication.CreateBuilder(args);
 

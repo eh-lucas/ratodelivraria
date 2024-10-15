@@ -1,9 +1,9 @@
-﻿using API.Business.BaseLogic;
-using API.Domain;
-using API.Utils;
+﻿using API.Utils;
 using OpenQA.Selenium;
+using Sherlock.Business.SearchBase.Base;
+using Sherlock.Domain.Entities;
 
-namespace API.Business.SearchTypes
+namespace Sherlock.Business.SearchBase.SearchTypes
 {
     public class CedetSingleSearch : ConsultaBase
     {

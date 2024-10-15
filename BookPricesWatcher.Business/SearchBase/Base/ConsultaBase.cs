@@ -1,17 +1,8 @@
 ﻿using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using API.Domain;
-using API.Model;
-using OpenQA.Selenium.DevTools.V127.Page;
-using OpenQA.Selenium.Remote;
-using OpenQA.Selenium.Support.UI;
+using Sherlock.Domain.Entities;
 
-namespace API.Business.BaseLogic;
+namespace Sherlock.Business.SearchBase.Base;
 public abstract class ConsultaBase
 {
     public async Task<List<Book>> Execute(Requestor requestor)
@@ -25,7 +16,7 @@ public abstract class ConsultaBase
             options.AddArgument("--start-maximized");
             IWebDriver driver = new ChromeDriver();
 
-            var bookTitle = requestor.InputParameters.Titles[0];
+            var bookTitle = requestor.InputParameters.BookTitle;
             driver.Navigate().GoToUrl(website);
 
             SearchBookInBox(driver, bookTitle);
@@ -48,7 +39,7 @@ public abstract class ConsultaBase
         var resultWebsite = "";
         foreach (var book in books)
         {
-            if(minimalPrice == 0.0)
+            if (minimalPrice == 0.0)
                 minimalPrice = book.Price;
 
             if (book.Price >= minimalPrice)
@@ -56,7 +47,7 @@ public abstract class ConsultaBase
             else
                 minimalPrice = book.Price;
         }
-        
+
         List<Book> resultBooks = new List<Book>();
         foreach (var book in books)
         {

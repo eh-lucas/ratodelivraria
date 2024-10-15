@@ -1,4 +1,4 @@
-﻿namespace API.Domain
+﻿namespace Sherlock.Domain.Entities
 {
     public class BookPriceResult
     {
