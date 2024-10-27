@@ -2,35 +2,37 @@
 using Sherlock.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Sherlock.Business.SearchBase.Base;
+using Sherlock.Business.SearchBase.SearchTypes.Cedet;
 using Sherlock.Domain.Enums;
 
 namespace SherlockAPI.Controllers
 {
-    [Authorize]
+    //[Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class CedetSearchController : Controller
     {
-        private readonly ConsultaBase _bookPriceScraper;
+        //private readonly ConsultaBase _bookPriceScraper;
 
-        public CedetSearchController(ConsultaBase bookPriceScraper)
-        {
-            _bookPriceScraper = bookPriceScraper;
-        }
+        //public CedetSearchController(ConsultaBase bookPriceScraper)
+        //{
+        //    _bookPriceScraper = bookPriceScraper;
+        //}
 
         // Endpoint para pesquisar preços de um livro
         [HttpGet("search")]
-        public async Task<IActionResult> SearchBookPrice([FromQuery] InputParameters input)
+        public async Task<IActionResult> SearchBookPrice([FromQuery] CedetSingleSearchParams search)
         {
-            if (string.IsNullOrEmpty(input.BookTitle))
+            if (string.IsNullOrEmpty(search.BookTitle))
             {
                 return BadRequest("Book name is required.");
             }
 
             try
             {
-                var requestor = new Requestor(input, SearchTypeEnum.CedetSingleSearch);
-                var result = TransactionExecutor.ExecuteTransaction(requestor);
+                var requestor = new Requestor(search, SearchTypeEnum.CedetSingleSearch);
+                var coreExecutor = new CoreExecutor();
+                var result = await coreExecutor.ExecuteTransaction(requestor);
 
                 return Ok(result);
             }

@@ -1,8 +1,6 @@
-﻿using System;
+﻿namespace Sherlock.Domain.Entities;
 
-namespace Sherlock.Domain.Entities;
-
-public class Websites
+public static class Websites
 {
     public const string LivrariaSeminario = "https://livraria.seminariodefilosofia.org/";
     public const string LivrariaDoBernardo = "https://livrariadobernardo.com/";

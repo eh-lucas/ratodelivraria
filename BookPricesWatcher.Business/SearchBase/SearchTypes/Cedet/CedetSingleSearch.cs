@@ -6,15 +6,17 @@ using Sherlock.Domain.Enums;
 
 namespace Sherlock.Business.SearchBase.SearchTypes.Cedet
 {
-    public class CedetSingleSearch : ConsultaBase
+    public class CedetSingleSearch : ConsultaBase<CedetSingleSearchParams, CedetSingleSearchResult>
     {
         public SearchTypeEnum SearchTypeEnum = SearchTypeEnum.CedetSingleSearch;
         private const string GridXPath = "//*[@id=\"column-right\"]/div[5]";
         private const string SearchBoxXPath = "//*[@id=\"input-search\"]";
         private const string SearchButtonXPath = "//*[@id=\"doSearch\"]";
 
-        public override void SearchBookInBox(IWebDriver driver, string bookTitle)
+        public override void SearchBookInBox(IWebDriver driver, string website, string bookTitle)
         {
+            driver.Navigate().GoToUrl(website);
+
             IWebElement searchBox = driver.FindElement(By.XPath(SearchBoxXPath));
             if (searchBox.Displayed)
                 searchBox.Click();
@@ -62,6 +64,16 @@ namespace Sherlock.Business.SearchBase.SearchTypes.Cedet
             //    return cheapestBook;
             //}
             return null;
+        }
+
+        public override string GetWebsiteToSearch(CedetSingleSearchParams parameters)
+        {
+            return parameters.Website;
+        }
+
+        public override string GetBookToSearch(CedetSingleSearchParams parameters)
+        {
+            return parameters.BookTitle;
         }
     }
 }

@@ -7,16 +7,17 @@ namespace Sherlock.Domain.Entities;
 /// Deve conter todas as informações para poder executar uma consulta bem-sucedida.
 /// </summary>
 public class Requestor
+//public class Requestor<TParams> where TParams : SearchParameters
 {
-    public InputParameters InputParameters { get; set; }
+    public SearchParameters SearchParameters { get; set; }
     public SearchTypeEnum SearchTypeId { get; set; }
     //public ConsultaBase ConsultaBase { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
 
-    public Requestor(InputParameters inputParameters, SearchTypeEnum searchTypeId)
+    public Requestor(SearchParameters searchParameters, SearchTypeEnum searchTypeId)
     {
-        InputParameters = inputParameters;
+        SearchParameters = searchParameters;
         SearchTypeId = searchTypeId;
     }
 

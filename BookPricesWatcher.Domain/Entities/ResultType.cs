@@ -1,5 +1,5 @@
 ﻿namespace Sherlock.Domain.Entities;
-public class Result
+public class ResultType
 {
     public int Id { get; set; }
     public string Name { get; set; }
