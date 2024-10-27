@@ -1,21 +1,20 @@
-﻿using OpenQA.Selenium.Chrome;
+﻿using API.Enums;
+using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium;
 using Sherlock.Domain.Entities;
 
 namespace Sherlock.Business.SearchBase.Base;
 public abstract class ConsultaBase
 {
-    public async Task<List<Book>> Execute(Requestor requestor)
+    public async Task<List<Book>> Execute(Requestor requestor, ConsultaBase consulta)
     {
         List<Book> books = new List<Book>();
-        var websites = Websites.CedetSites;
+        var dataSource = requestor.SearchTypeId;
+
+        var driver = InitiateWebDriver();
 
         foreach (string website in websites)
         {
-            ChromeOptions options = new ChromeOptions();
-            options.AddArgument("--start-maximized");
-            IWebDriver driver = new ChromeDriver();
-
             var bookTitle = requestor.InputParameters.BookTitle;
             driver.Navigate().GoToUrl(website);
 
@@ -56,6 +55,14 @@ public abstract class ConsultaBase
         }
 
         return resultBooks;
+    }
+
+    private IWebDriver InitiateWebDriver()
+    {
+        ChromeOptions options = new ChromeOptions();
+        options.AddArgument("--start-maximized");
+        IWebDriver driver = new ChromeDriver();
+        return driver;
     }
     public abstract void SearchBookInBox(IWebDriver driver, string bookTitle);
     public abstract Book? CreateBook(IWebElement grid, string bookTitle);

@@ -2,11 +2,13 @@
 using OpenQA.Selenium;
 using Sherlock.Business.SearchBase.Base;
 using Sherlock.Domain.Entities;
+using Sherlock.Domain.Enums;
 
-namespace Sherlock.Business.SearchBase.SearchTypes
+namespace Sherlock.Business.SearchBase.SearchTypes.Cedet
 {
     public class CedetSingleSearch : ConsultaBase
     {
+        public SearchTypeEnum SearchTypeEnum = SearchTypeEnum.CedetSingleSearch;
         private const string GridXPath = "//*[@id=\"column-right\"]/div[5]";
         private const string SearchBoxXPath = "//*[@id=\"input-search\"]";
         private const string SearchButtonXPath = "//*[@id=\"doSearch\"]";
@@ -26,12 +28,11 @@ namespace Sherlock.Business.SearchBase.SearchTypes
 
         public override Book? CreateBook(IWebElement grid, string bookTitle)
         {
-            List<Book?> books = new List<Book?>();
             IReadOnlyList<IWebElement> itemProductElement = grid.FindElements(By.ClassName("item-product"));
             foreach (var element in itemProductElement)
             {
                 var elementName = element.FindElement(By.ClassName("name"));
-                if (elementName.Text.Equals(bookTitle))
+                if (elementName.Text.Equals(bookTitle)) // Equals porque sempre há apenas um livro com o mesmo nome nos sites da Cedet.
                 {
 
                     string author = element.FindElement(By.ClassName("author")).Text;
@@ -50,19 +51,17 @@ namespace Sherlock.Business.SearchBase.SearchTypes
                         discount = 0;
                     }
 
-                    books.Add(new Book(bookTitle, author, priceNew, discount, ""));
+                    return new Book(bookTitle, author, priceNew, discount, "");
                 }
-                else continue;
             }
 
-            if (books.Count > 1)
-            {
-                var minPrice = books.Min(book => book.Price);
-                var cheapestBook = books.Find(book => book.Price == minPrice);
-                return cheapestBook;
-            }
-
-            return books[0];
+            //if (books.Count > 1)
+            //{
+            //    var minPrice = books.Min(book => book.Price);
+            //    var cheapestBook = books.Find(book => book.Price == minPrice);
+            //    return cheapestBook;
+            //}
+            return null;
         }
     }
 }
