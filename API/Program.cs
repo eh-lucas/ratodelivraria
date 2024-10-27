@@ -1,7 +1,12 @@
 using Sherlock.Business.SearchBase.Base;
-using Sherlock.Business.SearchBase.SearchTypes;
+using Sherlock.Business.SearchBase.SearchTypes.Cedet;
+using SherlockAPI.Configurations;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// JWT
+var authenticationConfig = new AuthenticationConfig();
+authenticationConfig.ConfigureServices(builder.Services);
 
 // Add services to the container.
 builder.Services.AddControllers();

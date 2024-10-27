@@ -1,10 +1,12 @@
-﻿using API.Enums;
+﻿using Microsoft.AspNetCore.Authorization;
 using Sherlock.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Sherlock.Business.SearchBase.Base;
+using Sherlock.Domain.Enums;
 
 namespace SherlockAPI.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class CedetSearchController : Controller
