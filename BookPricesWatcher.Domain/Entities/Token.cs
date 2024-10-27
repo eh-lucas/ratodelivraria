@@ -1,12 +1,9 @@
 ﻿namespace Sherlock.Domain.Entities;
-public class User
+public class Token
 {
     public int Id { get; set; }
-    public string Name { get; set; }
-    public string Email { get; set; }
-    public long Cpf { get; set; }
-    public string Password { get; set; }
-    public bool Active { get; set; }
+    public string TokenUid { get; set; }
+    public int UserId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public DateTime DeletedAt { get; set; }
