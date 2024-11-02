@@ -13,6 +13,8 @@ public static class StringExtensions
         if (text.Contains(","))
             text = text.Replace(",", ".");
 
-        return text.Trim();
+        text = new string(text.Where(c => char.IsDigit(c) || c == '.').ToArray());
+
+        return text;
     }
 }

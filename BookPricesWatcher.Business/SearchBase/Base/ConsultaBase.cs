@@ -8,8 +8,6 @@ namespace Sherlock.Business.SearchBase.Base;
 // deve receber um objeto parametro e somente com isso deve ser capaz de executar a busca
 // deve 1 fazer a chamada, 2 tratar o dado, 3 devolver o resultado
 public abstract class ConsultaBase<TParam, TResult>
-    where TParam : SearchParameters
-    where TResult : SearchResult
 {
     //public async Task<List<Book>> ExecuteMainLoop(Requestor requestor, ConsultaBase consulta)
     public async Task<SearchResult> ExecuteMainLoop(TParam parameters)

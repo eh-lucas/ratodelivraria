@@ -32,7 +32,7 @@ namespace SherlockAPI.Controllers
             {
                 var requestor = new Requestor(search, SearchTypeEnum.CedetSingleSearch);
                 var coreExecutor = new CoreExecutor();
-                var result = await coreExecutor.ExecuteTransaction(requestor);
+                var result = await coreExecutor.ExecuteTransaction<CedetSingleSearch, CedetSingleSearchParams, CedetSingleSearchResult>(requestor);
 
                 return Ok(result);
             }

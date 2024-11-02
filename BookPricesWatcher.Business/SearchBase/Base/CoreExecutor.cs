@@ -1,5 +1,6 @@
 ﻿using Sherlock.Business.SearchBase.SearchTypes.Cedet;
 using Sherlock.Domain.Entities;
+using Sherlock.Domain.Enums;
 
 namespace Sherlock.Business.SearchBase.Base;
 // essa classe deve:
@@ -9,13 +10,15 @@ namespace Sherlock.Business.SearchBase.Base;
 // - atualizar registros no banco
 public class CoreExecutor
 {
-    public async Task<SearchResult> ExecuteTransaction(Requestor requestor)
+    public async Task<SearchResult> ExecuteTransaction<TConsulta, TParam, TResult>(Requestor requestor)
+        where TConsulta : ConsultaBase<TParam, TResult>, new()
+        where TParam : SearchParameters
+        where TResult : SearchResult
     {
-        // todo 
-        var consulta = new CedetSingleSearch();
-
-        var result = await consulta.ExecuteMainLoop((CedetSingleSearchParams)requestor.SearchParameters);
+        var consulta = new TConsulta();
         
+        var result = await consulta.ExecuteMainLoop((TParam)requestor.SearchParameters);
+
         return result;
     }
 }
