@@ -1,11 +1,16 @@
 ﻿using API.Utils;
 using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
 using Sherlock.Business.SearchBase.Base;
 using Sherlock.Domain.Entities;
 using Sherlock.Domain.Enums;
 
 namespace Sherlock.Business.SearchBase.SearchTypes.Cedet
 {
+    // etapas que tem numa busca
+    // 1 fazer a busca no site
+    // 2 coletar todos os resultados
+    // 3 interpretar dados
     public class CedetSingleSearch : ConsultaBase<CedetSingleSearchParams, CedetSingleSearchResult>
     {
         public SearchTypeEnum SearchTypeEnum = SearchTypeEnum.CedetSingleSearch;
@@ -13,7 +18,40 @@ namespace Sherlock.Business.SearchBase.SearchTypes.Cedet
         private const string SearchBoxXPath = "//*[@id=\"input-search\"]";
         private const string SearchButtonXPath = "//*[@id=\"doSearch\"]";
 
-        public override void SearchBookInBox(IWebDriver driver, string website, string bookTitle)
+        public async override Task<CedetSingleSearchResult> ExecuteSearch(CedetSingleSearchParams parameters)
+        {
+            List<Book> books = new List<Book>();
+
+            var driver = InitiateWebDriver();
+            var website = GetWebsiteToSearch(parameters);
+            var bookTitle = GetBookToSearch(parameters);
+
+            SearchBookInBox(driver, website, bookTitle);
+
+            Book book = null;
+            try
+            {
+                IWebElement grid = driver.FindElement(By.XPath("//*[@id=\"column-right\"]/div[5]"));
+
+                book = CreateBook(grid, bookTitle);
+                book.WebSite = website;
+                books.Add(book);
+                driver.Quit();
+            }
+            catch
+            {
+                Console.WriteLine($"erro ao consultar no site {website}");
+            }
+
+            return new CedetSingleSearchResult(book);
+        }
+
+        //public override Task<CedetSingleSearchResult> TreatReturnedData(CedetSingleSearchResult result)
+        //{
+        //    throw new NotImplementedException();
+        //}
+
+        private void SearchBookInBox(IWebDriver driver, string website, string bookTitle)
         {
             driver.Navigate().GoToUrl(website);
 
@@ -28,7 +66,7 @@ namespace Sherlock.Business.SearchBase.SearchTypes.Cedet
                 searchButtonElem.Click();
         }
 
-        public override Book? CreateBook(IWebElement grid, string bookTitle)
+        private Book? CreateBook(IWebElement grid, string bookTitle)
         {
             IReadOnlyList<IWebElement> itemProductElement = grid.FindElements(By.ClassName("item-product"));
             foreach (var element in itemProductElement)
@@ -66,14 +104,23 @@ namespace Sherlock.Business.SearchBase.SearchTypes.Cedet
             return null;
         }
 
-        public override string GetWebsiteToSearch(CedetSingleSearchParams parameters)
+        private string GetWebsiteToSearch(CedetSingleSearchParams parameters)
         {
             return parameters.Website;
         }
 
-        public override string GetBookToSearch(CedetSingleSearchParams parameters)
+        private string GetBookToSearch(CedetSingleSearchParams parameters)
         {
             return parameters.BookTitle;
         }
+
+        private IWebDriver InitiateWebDriver()
+        {
+            ChromeOptions options = new ChromeOptions();
+            options.AddArgument("--start-maximized");
+            IWebDriver driver = new ChromeDriver();
+            return driver;
+        }
+
     }
 }

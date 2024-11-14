@@ -7,4 +7,5 @@ public class CedetSingleSearchParams : SearchParameters
     public string Website { get; set; }
     public string AuthorName { get; set; }
     public string Isbn { get; set; }
+    public bool IsExactSearch { get; set; }
 }

@@ -2,39 +2,25 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using API.Utils;
 using HtmlAgilityPack;
 using OpenQA.Selenium;
+using Sherlock.Business.SearchBase.Base;
 using Sherlock.Domain.Entities;
 
 namespace Sherlock.Business.SearchBase.SearchTypes.Cedet
 {
-    public class CedetSingleAgility
+    public class CedetSingleAgility : ConsultaBase<CedetSingleSearchParams, CedetSingleSearchResult>
     {
         private const string GridXPath = "//*[@id=\"column-right\"]/div[5]";
         private const string SearchBoxXPath = "//*[@id=\"input-search\"]";
         private const string SearchButtonXPath = "//*[@id=\"doSearch\"]";
 
-        public Book Start()
-        {
-            var url = "https://livraria.seminariodefilosofia.org/index.php?route=product/search&search=O%20idiota";
-            var web = new HtmlWeb();
-            var doc = web.Load(url);
-            var inputNode = doc.DocumentNode.SelectSingleNode(GridXPath);
-            var products = inputNode.SelectNodes("//div[contains(@class, 'item-product')]");
-            if (products != null)
-            {
-                CreateBook(products, "O idiota");
-
-            }
-
-            return new Book();
-        }
-
-        public Book? CreateBook(HtmlNodeCollection products, string bookTitle)
+        public List<Book?> GetReturnedBooksByTitle(HtmlNodeCollection products, string bookTitle)
         {
             var possibleBooks = new List<Book>();
             foreach (var product in products)
@@ -52,40 +38,71 @@ namespace Sherlock.Business.SearchBase.SearchTypes.Cedet
                 possibleBooks.Add(book);
             }
 
-            //    }
-
-
-            //    var priceNode = product.SelectSingleNode(".//div[contains(@class, 'price-new')]");
-            //    var price = priceNode?.InnerText.Trim();
-
-            //    Console.WriteLine($"Preço: {price}");
-            return new Book();
-
-            //return new Book();
+            return possibleBooks;
         }
-        //private string[]    
+
+        public async override Task<CedetSingleSearchResult> ExecuteSearch(CedetSingleSearchParams parameters)
+        {
+            var url = "https://livraria.seminariodefilosofia.org/index.php?route=product/search&search=O%20idiota";
+            var web = new HtmlWeb();
+            var doc = web.Load(url);
+            var inputNode = doc.DocumentNode.SelectSingleNode(GridXPath);
+            var products = inputNode.SelectNodes("//div[contains(@class, 'item-product')]");
+
+            if (products != null)
+            {
+                //var result = GetReturnedBooksByTitle(products, parameters.BookTitle);
+                var possibleBooks = GetReturnedBooksByTitle(products, "O idiota");
+
+                var result = ChooseBestBookOption(possibleBooks, parameters.BookTitle, parameters.IsExactSearch);
+               
+                return new CedetSingleSearchResult(result);
+            }
+
+            return new CedetSingleSearchResult(new Book());
+
+        }
+
+        private Book ChooseBestBookOption(List<Book?> possibleBooks, string bookTitle, bool isExactSearch)
+        {
+            if (possibleBooks.Count < 1)
+                throw new NotImplementedException();
+
+            if (isExactSearch)
+                return possibleBooks.Find(b => b.Title == bookTitle);
+
+            var bestPrice = possibleBooks.Min(b => b.Price);
+            var bestBook = possibleBooks.Find(b => b.Price == bestPrice);
+
+            if (bestBook is List<Book>)
+                throw new NetworkInformationException();
+            if (bestBook is null)
+                throw new NetworkInformationException();
+
+            return new Book();
+        }
     }
 }
 //{
 
-    //    string author = element.FindElement(By.ClassName("author")).Text;
-    //    double priceNew = Convert.ToDouble(element.FindElement(By.ClassName("price-new")).Text);
-    //    int discount;
-    //    try
-    //    {
-    //        var auxText = element.FindElement(By.ClassName("price-old")).Text;
-    //        auxText = auxText.CleanPrice();
-    //        var oldPrice = Convert.ToDouble(auxText);
-    //        discount = (int)Math.Abs(priceNew * 100 / oldPrice) - 100;
-    //    }
-    //    catch
-    //    {
-    //        double oldPrice = priceNew;
-    //        discount = 0;
-    //    }
+//    string author = element.FindElement(By.ClassName("author")).Text;
+//    double priceNew = Convert.ToDouble(element.FindElement(By.ClassName("price-new")).Text);
+//    int discount;
+//    try
+//    {
+//        var auxText = element.FindElement(By.ClassName("price-old")).Text;
+//        auxText = auxText.CleanPrice();
+//        var oldPrice = Convert.ToDouble(auxText);
+//        discount = (int)Math.Abs(priceNew * 100 / oldPrice) - 100;
+//    }
+//    catch
+//    {
+//        double oldPrice = priceNew;
+//        discount = 0;
+//    }
 
-    //    return new Book(bookTitle, author, priceNew, discount, "");
-    //}
+//    return new Book(bookTitle, author, priceNew, discount, "");
+//}
 
 
 //if (books.Count > 1)

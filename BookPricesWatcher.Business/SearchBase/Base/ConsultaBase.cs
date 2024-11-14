@@ -9,56 +9,10 @@ namespace Sherlock.Business.SearchBase.Base;
 // deve 1 fazer a chamada, 2 tratar o dado, 3 devolver o resultado
 public abstract class ConsultaBase<TParam, TResult>
 {
-    //public async Task<List<Book>> ExecuteMainLoop(Requestor requestor, ConsultaBase consulta)
-    public async Task<SearchResult> ExecuteMainLoop(TParam parameters)
-    {
-        List<Book> books = new List<Book>();
-        //var dataSource = requestor.SearchTypeId;
+    //public async Task<List<Book>> ExecuteSearch(Requestor requestor, ConsultaBase consulta)
+    public abstract Task<TResult> ExecuteSearch(TParam parameters);
+    //public abstract Task<TResult> TreatReturnedData(TResult result);
 
-        var driver = InitiateWebDriver();
-        var website = GetWebsiteToSearch(parameters);
-        var bookTitle = GetBookToSearch(parameters);
-
-        SearchBookInBox(driver, website, bookTitle);
-        Book book = null;
-        try
-        {
-            IWebElement grid = driver.FindElement(By.XPath("//*[@id=\"column-right\"]/div[5]"));
-            book = CreateBook(grid, bookTitle);
-            book.WebSite = website;
-            books.Add(book);
-            driver.Quit();
-        }
-        catch
-        {
-            Console.WriteLine($"erro ao consultar no site {website}");
-        }
-
-        var minimalPrice = 0.0;
-        var resultWebsite = "";
-
-
-        if (book.Price >= minimalPrice)
-            minimalPrice = book.Price;
-        else
-            minimalPrice = book.Price;
-
-        var resultBooks = new CedetSingleSearchResult(book);
-
-        return resultBooks;
-    }
-
-    private IWebDriver InitiateWebDriver()
-    {
-        ChromeOptions options = new ChromeOptions();
-        options.AddArgument("--start-maximized");
-        IWebDriver driver = new ChromeDriver();
-        return driver;
-    }
-    public abstract void SearchBookInBox(IWebDriver driver, string website, string bookTitle);
-    public abstract Book? CreateBook(IWebElement grid, string bookTitle);
-    public abstract string GetWebsiteToSearch(TParam parameters);
-    public abstract string GetBookToSearch(TParam parameters);
     private async Task LoadPageAsync(IWebDriver driver, string url)
     {
         // Navegar para a URL sem Task.Run

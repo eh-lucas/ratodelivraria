@@ -17,7 +17,7 @@ public class CoreExecutor
     {
         var consulta = new TConsulta();
         
-        var result = await consulta.ExecuteMainLoop((TParam)requestor.SearchParameters);
+        var result = await consulta.ExecuteSearch((TParam)requestor.SearchParameters);
 
         return result;
     }
