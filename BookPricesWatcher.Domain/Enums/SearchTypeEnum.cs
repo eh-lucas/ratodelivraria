@@ -3,4 +3,5 @@ public enum SearchTypeEnum
 {
     CedetSingleSearch = 1,
     CedetSingleAgility = 2,
+    CedetSingleAgilityHttpClient = 3,
 }

@@ -13,7 +13,8 @@ namespace Sherlock.Business.SearchBase.SearchTypes.Cedet
     // 3 interpretar dados
     public class CedetSingleSearch : ConsultaBase<CedetSingleSearchParams, CedetSingleSearchResult>
     {
-        public SearchTypeEnum SearchTypeEnum = SearchTypeEnum.CedetSingleSearch;
+        public override SearchTypeEnum SearchType => SearchTypeEnum.CedetSingleSearch;
+
         private const string GridXPath = "//*[@id=\"column-right\"]/div[5]";
         private const string SearchBoxXPath = "//*[@id=\"input-search\"]";
         private const string SearchButtonXPath = "//*[@id=\"doSearch\"]";
@@ -43,7 +44,7 @@ namespace Sherlock.Business.SearchBase.SearchTypes.Cedet
                 Console.WriteLine($"erro ao consultar no site {website}");
             }
 
-            return new CedetSingleSearchResult(book);
+            return new CedetSingleSearchResult() { Book = book};
         }
 
         //public override Task<CedetSingleSearchResult> TreatReturnedData(CedetSingleSearchResult result)

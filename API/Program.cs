@@ -10,7 +10,7 @@ authenticationConfig.ConfigureServices(builder.Services);
 
 // Add services to the container.
 builder.Services.AddControllers();
-builder.Services.AddScoped<ConsultaBase<CedetSingleSearchParams, CedetSingleSearchResult>, CedetSingleSearch>();
+//builder.Services.AddScoped<ConsultaBase<CedetSingleSearchParams, CedetSingleSearchResult>, CedetSingleSearch>();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();

@@ -11,11 +11,14 @@ using HtmlAgilityPack;
 using OpenQA.Selenium;
 using Sherlock.Business.SearchBase.Base;
 using Sherlock.Domain.Entities;
+using Sherlock.Domain.Enums;
 
-namespace Sherlock.Business.SearchBase.SearchTypes.Cedet
+namespace Sherlock.Business.SearchBase.SearchTypes.Cedet.Agility
 {
     public class CedetSingleAgility : ConsultaBase<CedetSingleSearchParams, CedetSingleSearchResult>
     {
+        public override SearchTypeEnum SearchType => SearchTypeEnum.CedetSingleAgility;
+
         private const string GridXPath = "//*[@id=\"column-right\"]/div[5]";
         private const string SearchBoxXPath = "//*[@id=\"input-search\"]";
         private const string SearchButtonXPath = "//*[@id=\"doSearch\"]";
@@ -56,20 +59,20 @@ namespace Sherlock.Business.SearchBase.SearchTypes.Cedet
 
                 var result = ChooseBestBookOption(possibleBooks, parameters.BookTitle, parameters.IsExactSearch);
                
-                return new CedetSingleSearchResult(result);
+                return new CedetSingleSearchResult() { Book = result};
             }
 
-            return new CedetSingleSearchResult(new Book());
-
+            return new CedetSingleSearchResult();
         }
 
         private Book ChooseBestBookOption(List<Book?> possibleBooks, string bookTitle, bool isExactSearch)
         {
+            bookTitle = bookTitle.ToUpper().Trim();
             if (possibleBooks.Count < 1)
                 throw new NotImplementedException();
 
             if (isExactSearch)
-                return possibleBooks.Find(b => b.Title == bookTitle);
+                return possibleBooks.FirstOrDefault(b => b.Title.ToUpper() == bookTitle);
 
             var bestPrice = possibleBooks.Min(b => b.Price);
             var bestBook = possibleBooks.Find(b => b.Price == bestPrice);

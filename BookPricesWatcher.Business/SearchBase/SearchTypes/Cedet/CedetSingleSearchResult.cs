@@ -1,13 +1,10 @@
-﻿using Sherlock.Domain.Entities;
+﻿using System.ComponentModel;
+using Sherlock.Domain.Entities;
 
 namespace Sherlock.Business.SearchBase.SearchTypes.Cedet;
-public class CedetSingleSearchResult : SearchResult
+public sealed class CedetSingleSearchResult : SearchResult
 {
+    [DisplayName("Livro")]
     public Book Book { get; set; }
-
-    public CedetSingleSearchResult(Book book)
-    {
-        Book = book;
-    }
 }
 

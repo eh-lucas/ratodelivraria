@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Sherlock.Business.SearchBase.Base;
 using Sherlock.Business.SearchBase.SearchTypes.Cedet;
+using Sherlock.Business.SearchBase.SearchTypes.Cedet.Agility;
 using Sherlock.Domain.Entities;
 using Sherlock.Domain.Enums;
+using System.Diagnostics;
 
 namespace SherlockAPI.Controllers
 {
@@ -11,6 +13,8 @@ namespace SherlockAPI.Controllers
         [HttpGet("search")]
         public async Task<IActionResult> SearchBookPrice([FromQuery] CedetSingleSearchParams search)
         {
+            var stopwatch = Stopwatch.StartNew(); // inicia o cronômetro
+
             if (string.IsNullOrEmpty(search.BookTitle))
             {
                 return BadRequest("Book name is required.");
@@ -21,6 +25,9 @@ namespace SherlockAPI.Controllers
                 var requestor = new Requestor(search, SearchTypeEnum.CedetSingleAgility);
                 var coreExecutor = new CoreExecutor();
                 var result = await coreExecutor.ExecuteTransaction<CedetSingleAgility, CedetSingleSearchParams, CedetSingleSearchResult>(requestor);
+
+                stopwatch.Stop(); // para o cronômetro mesmo se ocorrer exceção
+                Console.WriteLine($"⏱ Tempo total de execução: {stopwatch.ElapsedMilliseconds} ms");
 
                 return Ok(result);
             }
