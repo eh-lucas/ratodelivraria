@@ -1,17 +1,16 @@
 ﻿using API.Utils;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
-using Sherlock.Business.SearchBase.Base;
 using Sherlock.Domain.Entities;
 using Sherlock.Domain.Enums;
 
-namespace Sherlock.Business.SearchBase.SearchTypes.Cedet
+namespace Sherlock.Business.SearchBase.Runners.Cedet
 {
     // etapas que tem numa busca
     // 1 fazer a busca no site
     // 2 coletar todos os resultados
     // 3 interpretar dados
-    public class CedetSingleSearch : ConsultaBase<CedetSingleSearchParams, CedetSingleSearchResult>
+    public class CedetSingleSearch : RunnerBase<CedetSingleSearchParams>
     {
         public override SearchTypeEnum SearchType => SearchTypeEnum.CedetSingleSearch;
 

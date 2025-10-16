@@ -1,47 +1,55 @@
 ﻿using HtmlAgilityPack;
-using Sherlock.Business.SearchBase.Base;
 using Sherlock.Domain.Entities;
 using System.Globalization;
 using API.Utils;
 using Sherlock.Domain.Enums;
 
-namespace Sherlock.Business.SearchBase.SearchTypes.Cedet.HttpClient
+namespace Sherlock.Business.SearchBase.Runners.Cedet.HttpClient
 {
-    public class CedetSingleSearchHttpClient : ConsultaBase<CedetSingleSearchParams, CedetSingleSearchResult>
+    public class CedetSingleSearchHttpClient : RunnerBase<CedetSingleSearchParams>
     {
 
         private const string GridXPath = "//*[@id=\"column-right\"]/div[5]";
 
         public override SearchTypeEnum SearchType => SearchTypeEnum.CedetSingleAgilityHttpClient;
-        public async override Task<CedetSingleSearchResult> ExecuteSearch(CedetSingleSearchParams parameters)
+        public override async Task<CedetSingleSearchResult> ExecuteSearch(CedetSingleSearchParams parameters)
         {
-            string searchTerm = Uri.EscapeDataString(parameters.BookTitle);
-            string url = $"https://livraria.seminariodefilosofia.org/index.php?route=product/search&search={searchTerm}";
+            try
+            {
+                Console.WriteLine($"Consultando livro: {parameters.BookTitle} em {parameters.Source.Url}");
+                string searchTerm = Uri.EscapeDataString(parameters.BookTitle);
+                string url = $"{parameters.Source.Url}index.php?route=product/search&search={searchTerm}";
 
-            using var http = new System.Net.Http.HttpClient();
-            http.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0");
+                using var http = new System.Net.Http.HttpClient();
+                http.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0");
 
-            var response = await http.GetAsync(url);
-            if (!response.IsSuccessStatusCode)
-                throw new Exception($"Erro ao buscar página: {response.StatusCode}");
+                var response = await http.GetAsync(url);
+                if (!response.IsSuccessStatusCode)
+                    throw new Exception($"Erro ao buscar página: {response.StatusCode}");
 
-            var html = await response.Content.ReadAsStringAsync();
+                var html = await response.Content.ReadAsStringAsync();
 
-            var doc = new HtmlDocument();
-            doc.LoadHtml(html);
+                var doc = new HtmlDocument();
+                doc.LoadHtml(html);
 
-            var inputNode = doc.DocumentNode.SelectSingleNode(GridXPath);
-            if (inputNode == null)
+                var inputNode = doc.DocumentNode.SelectSingleNode(GridXPath);
+                if (inputNode == null)
+                    return new CedetSingleSearchResult();
+
+                var products = inputNode.SelectNodes(".//div[contains(@class, 'item-product')]");
+                if (products == null || products.Count == 0)
+                    return new CedetSingleSearchResult();
+
+                var possibleBooks = GetReturnedBooksByTitle(products, parameters.BookTitle);
+                var result = ChooseBestBookOption(possibleBooks, parameters.BookTitle, parameters.IsExactSearch);
+
+                return new CedetSingleSearchResult() { Book = result, Source = parameters.Source };
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"erro ao consultar {parameters.Source.Url}");
                 return new CedetSingleSearchResult();
-
-            var products = inputNode.SelectNodes(".//div[contains(@class, 'item-product')]");
-            if (products == null || products.Count == 0)
-                return new CedetSingleSearchResult();
-
-            var possibleBooks = GetReturnedBooksByTitle(products, parameters.BookTitle);
-            var result = ChooseBestBookOption(possibleBooks, parameters.BookTitle, parameters.IsExactSearch);
-
-            return new CedetSingleSearchResult() { Book = result };
+            }
         }
 
         private List<Book> GetReturnedBooksByTitle(HtmlNodeCollection products, string bookTitle)

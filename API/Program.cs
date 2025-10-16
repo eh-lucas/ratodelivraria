@@ -1,5 +1,3 @@
-using Sherlock.Business.SearchBase.Base;
-using Sherlock.Business.SearchBase.SearchTypes.Cedet;
 using SherlockAPI.Configurations;
 
 var builder = WebApplication.CreateBuilder(args);

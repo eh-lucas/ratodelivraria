@@ -1,10 +1,8 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Sherlock.Business.SearchBase.Base;
-using Sherlock.Business.SearchBase.SearchTypes.Cedet;
-using Sherlock.Business.SearchBase.SearchTypes.Cedet.HttpClient;
+using Sherlock.Business.SearchBase.Runners.Cedet;
+using Sherlock.Business.SearchBase.Runners.Cedet.HttpClient;
 using Sherlock.Domain.Entities;
-using Sherlock.Domain.Enums;
 using System.Diagnostics;
 
 namespace SherlockAPI.Controllers
@@ -27,9 +25,9 @@ namespace SherlockAPI.Controllers
 
             try
             {
-                var requestor = new Requestor(search, SearchTypeEnum.CedetSingleSearch);
-                var coreExecutor = new CoreExecutor();
-                var result = await coreExecutor.ExecuteTransaction<CedetSingleSearch, CedetSingleSearchParams, CedetSingleSearchResult>(requestor);
+                var requestor = new Requestor(search);
+                var coreExecutor = new Engine();
+                var result = await coreExecutor.ExecuteTransaction<CedetSingleSearch, CedetSingleSearchParams>(requestor);
 
                 stopwatch.Stop(); // para o cronômetro mesmo se ocorrer exceção
                 Console.WriteLine($"⏱ Tempo total de execução: {stopwatch.ElapsedMilliseconds} ms");
@@ -54,9 +52,9 @@ namespace SherlockAPI.Controllers
 
             try
             {
-                var requestor = new Requestor(search, SearchTypeEnum.CedetSingleAgilityHttpClient);
-                var coreExecutor = new CoreExecutor();
-                var result = await coreExecutor.ExecuteTransaction<CedetSingleSearchHttpClient, CedetSingleSearchParams, CedetSingleSearchResult>(requestor);
+                var requestor = new Requestor(search);
+                var coreExecutor = new Engine();
+                var result = await coreExecutor.ExecuteTransaction<CedetSingleSearchHttpClient, CedetSingleSearchParams>(requestor);
 
                 stopwatch.Stop(); // para o cronômetro mesmo se ocorrer exceção
                 Console.WriteLine($"⏱ Tempo total de execução: {stopwatch.ElapsedMilliseconds} ms");

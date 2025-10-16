@@ -1,5 +1,4 @@
-﻿using Sherlock.Domain.Enums;
-
+﻿
 namespace Sherlock.Domain.Entities;
 
 /// <summary>
@@ -10,15 +9,23 @@ public class Requestor
 //public class Requestor<TParams> where TParams : SearchParameters
 {
     public SearchParameters SearchParameters { get; set; }
-    public SearchTypeEnum SearchTypeId { get; set; }
-    //public ConsultaBase ConsultaBase { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
+    public TimeSpan CacheTimeSpan { get; set; }
+    public List<Source> SourcesToSearch { get; set; }
 
-    public Requestor(SearchParameters searchParameters, SearchTypeEnum searchTypeId)
+    public Requestor(SearchParameters searchParameters, List<Source> sourcesToSearch, TimeSpan cacheTimeSpan)
     {
         SearchParameters = searchParameters;
-        SearchTypeId = searchTypeId;
+        SourcesToSearch = sourcesToSearch;
+        CacheTimeSpan = cacheTimeSpan;
+    }
+
+    public Requestor(SearchParameters searchParameters)
+    {
+        SearchParameters = searchParameters;
+        SourcesToSearch = Source.AllSources.Where(s => s.SourceCategory == SourceCategory.Cedet).ToList();
+        CacheTimeSpan = TimeSpan.FromDays(1);
     }
 
     public Requestor()

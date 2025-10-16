@@ -8,14 +8,12 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using API.Utils;
 using HtmlAgilityPack;
-using OpenQA.Selenium;
-using Sherlock.Business.SearchBase.Base;
 using Sherlock.Domain.Entities;
 using Sherlock.Domain.Enums;
 
-namespace Sherlock.Business.SearchBase.SearchTypes.Cedet.Agility
+namespace Sherlock.Business.SearchBase.Runners.Cedet.Agility
 {
-    public class CedetSingleAgility : ConsultaBase<CedetSingleSearchParams, CedetSingleSearchResult>
+    public class CedetSingleAgility : RunnerBase<CedetSingleSearchParams>
     {
         public override SearchTypeEnum SearchType => SearchTypeEnum.CedetSingleAgility;
 

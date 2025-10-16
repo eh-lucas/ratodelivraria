@@ -6,4 +6,5 @@
 public abstract class SearchParameters
 {
     public string Token { get; set; }
+    public Source Source { get; set; }
 }

@@ -1,6 +1,6 @@
 ﻿using Sherlock.Domain.Entities;
 
-namespace Sherlock.Business.SearchBase.SearchTypes.Cedet;
+namespace Sherlock.Business.SearchBase.Runners.Cedet;
 public class CedetSingleSearchParams : SearchParameters
 {
     public string BookTitle { get; set; }
