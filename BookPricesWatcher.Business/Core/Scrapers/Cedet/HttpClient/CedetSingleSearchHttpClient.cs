@@ -3,16 +3,18 @@ using Sherlock.Domain.Entities;
 using System.Globalization;
 using API.Utils;
 using Sherlock.Domain.Enums;
+using Sherlock.Business.Interfaces;
 
-namespace Sherlock.Business.SearchBase.Runners.Cedet.HttpClient
+namespace Sherlock.Business.Core.Scrapers.Cedet.HttpClient
 {
-    public class CedetSingleSearchHttpClient : RunnerBase<CedetSingleSearchParams>
+    public class CedetSingleSearchHttpClient : IScraper
     {
 
         private const string GridXPath = "//*[@id=\"column-right\"]/div[5]";
 
-        public override SearchTypeEnum SearchType => SearchTypeEnum.CedetSingleAgilityHttpClient;
-        public override async Task<CedetSingleSearchResult> ExecuteSearch(CedetSingleSearchParams parameters)
+        public ScraperTypeEnum ScraperType => ScraperTypeEnum.CedetSingleAgilityHttpClient;
+
+        public async Task<SearchResult> ExecuteSearch(SearchParameter parameters)
         {
             try
             {
@@ -34,21 +36,21 @@ namespace Sherlock.Business.SearchBase.Runners.Cedet.HttpClient
 
                 var inputNode = doc.DocumentNode.SelectSingleNode(GridXPath);
                 if (inputNode == null)
-                    return new CedetSingleSearchResult();
+                    return new SearchResult();
 
                 var products = inputNode.SelectNodes(".//div[contains(@class, 'item-product')]");
                 if (products == null || products.Count == 0)
-                    return new CedetSingleSearchResult();
+                    return new SearchResult();
 
                 var possibleBooks = GetReturnedBooksByTitle(products, parameters.BookTitle);
                 var result = ChooseBestBookOption(possibleBooks, parameters.BookTitle, parameters.IsExactSearch);
 
-                return new CedetSingleSearchResult() { Book = result, Source = parameters.Source };
+                return new SearchResult() { Book = result, Source = parameters.Source };
             }
             catch (Exception e)
             {
                 Console.WriteLine($"erro ao consultar {parameters.Source.Url}");
-                return new CedetSingleSearchResult();
+                return new SearchResult();
             }
         }
 

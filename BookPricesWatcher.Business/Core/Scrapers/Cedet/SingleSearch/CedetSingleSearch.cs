@@ -1,24 +1,25 @@
 ﻿using API.Utils;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using Sherlock.Business.Interfaces;
 using Sherlock.Domain.Entities;
 using Sherlock.Domain.Enums;
 
-namespace Sherlock.Business.SearchBase.Runners.Cedet
+namespace Sherlock.Business.Core.Scrapers.Cedet.SingleSearch
 {
     // etapas que tem numa busca
     // 1 fazer a busca no site
     // 2 coletar todos os resultados
     // 3 interpretar dados
-    public class CedetSingleSearch : RunnerBase<CedetSingleSearchParams>
+    public class CedetSingleSearch : IScraper
     {
-        public override SearchTypeEnum SearchType => SearchTypeEnum.CedetSingleSearch;
+        public ScraperTypeEnum ScraperType => ScraperTypeEnum.CedetSingleSearch;
 
         private const string GridXPath = "//*[@id=\"column-right\"]/div[5]";
         private const string SearchBoxXPath = "//*[@id=\"input-search\"]";
         private const string SearchButtonXPath = "//*[@id=\"doSearch\"]";
 
-        public async override Task<CedetSingleSearchResult> ExecuteSearch(CedetSingleSearchParams parameters)
+        public async Task<SearchResult> ExecuteSearch(SearchParameter parameters)
         {
             List<Book> books = new List<Book>();
 
@@ -43,7 +44,7 @@ namespace Sherlock.Business.SearchBase.Runners.Cedet
                 Console.WriteLine($"erro ao consultar no site {website}");
             }
 
-            return new CedetSingleSearchResult() { Book = book};
+            return new SearchResult() { Book = book};
         }
 
         //public override Task<CedetSingleSearchResult> TreatReturnedData(CedetSingleSearchResult result)
@@ -104,12 +105,12 @@ namespace Sherlock.Business.SearchBase.Runners.Cedet
             return null;
         }
 
-        private string GetWebsiteToSearch(CedetSingleSearchParams parameters)
+        private string GetWebsiteToSearch(SearchParameter parameters)
         {
             return parameters.Website;
         }
 
-        private string GetBookToSearch(CedetSingleSearchParams parameters)
+        private string GetBookToSearch(SearchParameter parameters)
         {
             return parameters.BookTitle;
         }

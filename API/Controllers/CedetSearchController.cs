@@ -1,9 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Sherlock.Business.SearchBase.Base;
-using Sherlock.Business.SearchBase.Runners.Cedet;
-using Sherlock.Business.SearchBase.Runners.Cedet.HttpClient;
-using Sherlock.Domain.Entities;
+using Sherlock.Business.Core.Scrapers;
 using System.Diagnostics;
+using Sherlock.Business.Core.Base;
 
 namespace SherlockAPI.Controllers
 {
@@ -14,7 +12,7 @@ namespace SherlockAPI.Controllers
     {
         // Endpoint para pesquisar preços de um livro
         [HttpGet("search")]
-        public async Task<IActionResult> SearchBookPrice([FromQuery] CedetSingleSearchParams search)
+        public async Task<IActionResult> SearchBookPrice([FromQuery] SearchParameter search)
         {
             var stopwatch = Stopwatch.StartNew(); // inicia o cronômetro
 
@@ -26,8 +24,8 @@ namespace SherlockAPI.Controllers
             try
             {
                 var requestor = new Requestor(search);
-                var coreExecutor = new Engine();
-                var result = await coreExecutor.ExecuteTransaction<CedetSingleSearch, CedetSingleSearchParams>(requestor);
+                var coreExecutor = new W16Engine();
+                var result = await coreExecutor.ExecuteTransaction(requestor);
 
                 stopwatch.Stop(); // para o cronômetro mesmo se ocorrer exceção
                 Console.WriteLine($"⏱ Tempo total de execução: {stopwatch.ElapsedMilliseconds} ms");
@@ -41,7 +39,7 @@ namespace SherlockAPI.Controllers
             }
         }
         [HttpGet("httpclient")]
-        public async Task<IActionResult> SearchBookPriceHttp([FromQuery] CedetSingleSearchParams search)
+        public async Task<IActionResult> SearchBookPriceHttp([FromQuery] SearchParameter search)
         {
             var stopwatch = Stopwatch.StartNew(); // inicia o cronômetro
 
@@ -53,8 +51,8 @@ namespace SherlockAPI.Controllers
             try
             {
                 var requestor = new Requestor(search);
-                var coreExecutor = new Engine();
-                var result = await coreExecutor.ExecuteTransaction<CedetSingleSearchHttpClient, CedetSingleSearchParams>(requestor);
+                var coreExecutor = new W16Engine();
+                var result = await coreExecutor.ExecuteTransaction(requestor);
 
                 stopwatch.Stop(); // para o cronômetro mesmo se ocorrer exceção
                 Console.WriteLine($"⏱ Tempo total de execução: {stopwatch.ElapsedMilliseconds} ms");

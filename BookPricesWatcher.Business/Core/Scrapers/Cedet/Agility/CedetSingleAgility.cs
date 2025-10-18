@@ -1,21 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
+﻿using System.Globalization;
 using System.Net.NetworkInformation;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 using API.Utils;
 using HtmlAgilityPack;
+using Sherlock.Business.Interfaces;
 using Sherlock.Domain.Entities;
 using Sherlock.Domain.Enums;
 
-namespace Sherlock.Business.SearchBase.Runners.Cedet.Agility
+namespace Sherlock.Business.Core.Scrapers.Cedet.Agility
 {
-    public class CedetSingleAgility : RunnerBase<CedetSingleSearchParams>
+    public class CedetSingleAgility : IScraper
     {
-        public override SearchTypeEnum SearchType => SearchTypeEnum.CedetSingleAgility;
+        public ScraperTypeEnum ScraperType => ScraperTypeEnum.CedetSingleAgility;
 
         private const string GridXPath = "//*[@id=\"column-right\"]/div[5]";
         private const string SearchBoxXPath = "//*[@id=\"input-search\"]";
@@ -42,7 +37,7 @@ namespace Sherlock.Business.SearchBase.Runners.Cedet.Agility
             return possibleBooks;
         }
 
-        public async override Task<CedetSingleSearchResult> ExecuteSearch(CedetSingleSearchParams parameters)
+        public async Task<SearchResult> ExecuteSearch(SearchParameter parameters)
         {
             var url = "https://livraria.seminariodefilosofia.org/index.php?route=product/search&search=O%20idiota";
             var web = new HtmlWeb();
@@ -57,10 +52,10 @@ namespace Sherlock.Business.SearchBase.Runners.Cedet.Agility
 
                 var result = ChooseBestBookOption(possibleBooks, parameters.BookTitle, parameters.IsExactSearch);
                
-                return new CedetSingleSearchResult() { Book = result};
+                return new SearchResult() { Book = result};
             }
 
-            return new CedetSingleSearchResult();
+            return new SearchResult();
         }
 
         private Book ChooseBestBookOption(List<Book?> possibleBooks, string bookTitle, bool isExactSearch)
@@ -82,6 +77,7 @@ namespace Sherlock.Business.SearchBase.Runners.Cedet.Agility
 
             return new Book();
         }
+
     }
 }
 //{
