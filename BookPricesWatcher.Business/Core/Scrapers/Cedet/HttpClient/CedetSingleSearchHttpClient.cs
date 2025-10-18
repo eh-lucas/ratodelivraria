@@ -14,11 +14,14 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.HttpClient
 
         public ScraperTypeEnum ScraperType => ScraperTypeEnum.CedetSingleAgilityHttpClient;
 
-        public async Task<SearchResult> ExecuteSearch(SearchParameter parameters)
+        public async Task<BookPriceResult> ExecuteSearch(SearchParameter parameters)
         {
             try
             {
-                Console.WriteLine($"Consultando livro: {parameters.BookTitle} em {parameters.Source.Url}");
+                var website = parameters.Source.Url;
+                var bookTitle = parameters.BookTitle;
+
+                Console.WriteLine($"Consultando livro: {bookTitle} em {website}");
                 string searchTerm = Uri.EscapeDataString(parameters.BookTitle);
                 string url = $"{parameters.Source.Url}index.php?route=product/search&search={searchTerm}";
 
@@ -36,21 +39,27 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.HttpClient
 
                 var inputNode = doc.DocumentNode.SelectSingleNode(GridXPath);
                 if (inputNode == null)
-                    return new SearchResult();
+                    return new BookPriceResult();
 
                 var products = inputNode.SelectNodes(".//div[contains(@class, 'item-product')]");
                 if (products == null || products.Count == 0)
-                    return new SearchResult();
+                    return new BookPriceResult();
 
                 var possibleBooks = GetReturnedBooksByTitle(products, parameters.BookTitle);
                 var result = ChooseBestBookOption(possibleBooks, parameters.BookTitle, parameters.IsExactSearch);
 
-                return new SearchResult() { Book = result, Source = parameters.Source };
+                return new BookPriceResult
+                {
+                    Price = result.Price,
+                    Name = result.Title,
+                    Author = result.Author,
+                    Website = website
+                };
             }
             catch (Exception e)
             {
                 Console.WriteLine($"erro ao consultar {parameters.Source.Url}");
-                return new SearchResult();
+                return new BookPriceResult();
             }
         }
 
@@ -68,11 +77,11 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.HttpClient
                     var discountNode = childnode[11].InnerText.Trim();
                     var priceNodes = childnode[13].ChildNodes;
 
-                    double oldPrice = Convert.ToDouble(priceNodes[1].InnerText.CleanPrice(), CultureInfo.InvariantCulture);
-                    double newPrice = Convert.ToDouble(priceNodes[4].InnerText.CleanPrice(), CultureInfo.InvariantCulture);
+                    var oldPrice = Convert.ToDecimal(priceNodes[1].InnerText.CleanPrice(), CultureInfo.InvariantCulture);
+                    var newPrice = Convert.ToDecimal(priceNodes[4].InnerText.CleanPrice(), CultureInfo.InvariantCulture);
                     int discount = (int)Math.Abs(newPrice * 100 / oldPrice) - 100;
 
-                    var book = new Book(titleNode, authorNode, newPrice, discount, null);
+                    var book = new Book(titleNode, authorNode, newPrice, discount);
                     possibleBooks.Add(book);
                 }
                 catch

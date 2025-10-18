@@ -1,5 +1,6 @@
-﻿using System.Diagnostics;
-using Sherlock.Business.Core.Scrapers;
+﻿using Sherlock.Business.Core.Scrapers;
+using Sherlock.Domain.Entities;
+using System.Diagnostics;
 
 namespace Sherlock.Business.Core.Base;
 
@@ -27,40 +28,52 @@ public class W16Engine
     {
         var stopwatch = Stopwatch.StartNew(); // inicia o cronômetro
 
-        var preResults = new List<SearchResult>();
+        var preResults = new List<BookPriceResult>();
+        SearchResult result = new()
+        {
+            InicioConsulta = DateTime.Now
+        };
 
         Console.WriteLine("Verifica resultados cacheados");
 
         Console.WriteLine("Se os dados vindos do cache nao supriram tudo, prepara para rodar os runners.");
 
-        // factory para criar instancias do RunnerBase
-        Console.WriteLine("Cria instancias do RunnerBase");
-        var runners = _scraperFactory.CreateScrapers(requestor);
+        Console.WriteLine("Cria instancias de scrapers");
+        var scrapers = _scraperFactory.CreateScrapers(requestor);
 
-        foreach (var runner in runners)
+        Console.WriteLine("Roda o(s) scraper(s) consultando todas as fontes solicitadas");
+        foreach (var scraper in scrapers)
         {
             foreach (var source in requestor.SourcesToSearch)
             {
                 var parameters = requestor.SearchParameters;
                 parameters.Source = source;
 
-                var singleResult = await runner.ExecuteSearch(parameters);
+                var singleResult = await scraper.ExecuteSearch(parameters);
                 preResults.Add(singleResult);
             }
         }
 
-        Console.WriteLine("Roda o(s) Runner(s) consultando todas as fontes solicitadas");
 
-        return _comparator.Compare(preResults);
+        Console.WriteLine("Retorna o melhor preço");
+        result.BookPriceResult = _comparator.Compare(preResults);
 
 
         Console.WriteLine("Salva resultados das consultas no banco, se configurado para tal");
 
-        Console.WriteLine("Calcula custo da transação e desconta saldo do cliente");
 
+        Console.WriteLine("Calcula custo da transação e desconta saldo do cliente");
+        result.CustoCreditos = 10;
+
+        
         Console.WriteLine("");
+
 
         stopwatch.Stop(); // para o cronômetro mesmo se ocorrer exceção
         Console.WriteLine($"⏱ Tempo total de execução: {stopwatch.ElapsedMilliseconds} ms");
+        result.TempoDecorrido = stopwatch.ElapsedMilliseconds;
+        result.FimConsulta = DateTime.Now;
+
+        return result;
     }
 }

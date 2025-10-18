@@ -16,9 +16,10 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.Agility
         private const string SearchBoxXPath = "//*[@id=\"input-search\"]";
         private const string SearchButtonXPath = "//*[@id=\"doSearch\"]";
 
-        public List<Book?> GetReturnedBooksByTitle(HtmlNodeCollection products, string bookTitle)
+        public List<Book> GetReturnedBooksByTitle(HtmlNodeCollection products, string bookTitle)
         {
-            var possibleBooks = new List<Book>();
+            List<Book> possibleBooks = new();
+
             foreach (var product in products)
             {
                 var childnode = product.ChildNodes;
@@ -26,36 +27,44 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.Agility
                 var titleNode = childnode[9].InnerText.Trim();
                 var discountNode = childnode[11].InnerText.Trim();
                 var childnodes = childnode[13].ChildNodes;
-                var oldPrice = Convert.ToDouble(childnodes[1].InnerText.CleanPrice(), CultureInfo.InvariantCulture);
-                var newPrice = Convert.ToDouble(childnodes[4].InnerText.CleanPrice(), CultureInfo.InvariantCulture);
+                var oldPrice = Convert.ToDecimal(childnodes[1].InnerText.CleanPrice(), CultureInfo.InvariantCulture);
+                var newPrice = Convert.ToDecimal(childnodes[4].InnerText.CleanPrice(), CultureInfo.InvariantCulture);
                 var discount = (int)Math.Abs(newPrice * 100 / oldPrice) - 100;
 
-                Book book = new Book(titleNode, authorNode, newPrice, discount, null);
+                Book book = new Book(titleNode, authorNode, newPrice, discount);
                 possibleBooks.Add(book);
             }
 
             return possibleBooks;
         }
 
-        public async Task<SearchResult> ExecuteSearch(SearchParameter parameters)
+        public async Task<BookPriceResult> ExecuteSearch(SearchParameter parameters)
         {
-            var url = "https://livraria.seminariodefilosofia.org/index.php?route=product/search&search=O%20idiota";
+            var website = parameters.Source.Url;
+            var bookTitle = parameters.BookTitle;
+
             var web = new HtmlWeb();
-            var doc = web.Load(url);
+            var doc = web.Load(website);
+
             var inputNode = doc.DocumentNode.SelectSingleNode(GridXPath);
             var products = inputNode.SelectNodes("//div[contains(@class, 'item-product')]");
 
             if (products != null)
             {
-                //var result = GetReturnedBooksByTitle(products, parameters.BookTitle);
-                var possibleBooks = GetReturnedBooksByTitle(products, "O idiota");
+                var possibleBooks = GetReturnedBooksByTitle(products, bookTitle);
 
-                var result = ChooseBestBookOption(possibleBooks, parameters.BookTitle, parameters.IsExactSearch);
+                var result = ChooseBestBookOption(possibleBooks, bookTitle, parameters.IsExactSearch);
                
-                return new SearchResult() { Book = result};
+                return new BookPriceResult
+                {
+                    Price = result.Price,
+                    Name = result.Title,
+                    Author = result.Author,
+                    Website = website
+                };
             }
 
-            return new SearchResult();
+            return new BookPriceResult();
         }
 
         private Book ChooseBestBookOption(List<Book?> possibleBooks, string bookTitle, bool isExactSearch)
