@@ -1,4 +1,5 @@
-﻿using Sherlock.Business.Core.Scrapers;
+﻿using System.Diagnostics;
+using Sherlock.Business.Core.Scrapers;
 
 namespace Sherlock.Business.Core.Base;
 
@@ -24,8 +25,9 @@ public class W16Engine
 
     public async Task<SearchResult> ExecuteTransaction(Requestor requestor)
     {
+        var stopwatch = Stopwatch.StartNew(); // inicia o cronômetro
+
         var preResults = new List<SearchResult>();
-        var semaphore = new SemaphoreSlim(5); // máximo de 5 tarefas simultâneas
 
         Console.WriteLine("Verifica resultados cacheados");
 
@@ -57,5 +59,8 @@ public class W16Engine
         Console.WriteLine("Calcula custo da transação e desconta saldo do cliente");
 
         Console.WriteLine("");
+
+        stopwatch.Stop(); // para o cronômetro mesmo se ocorrer exceção
+        Console.WriteLine($"⏱ Tempo total de execução: {stopwatch.ElapsedMilliseconds} ms");
     }
 }

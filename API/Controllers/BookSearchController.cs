@@ -5,12 +5,11 @@ using Sherlock.Business.Core.Base;
 
 namespace SherlockAPI.Controllers
 {
-    public class CedetSingleAgilityController : Controller
+    public class BookSearchController : Controller
     {
-        [HttpGet("search")]
-        public async Task<IActionResult> SearchBookPrice([FromQuery] SearchParameter search)
+        [HttpGet("book-search")]
+        public async Task<IActionResult> BookSearch([FromQuery] SearchParameter search)
         {
-            var stopwatch = Stopwatch.StartNew(); // inicia o cronômetro
 
             if (string.IsNullOrEmpty(search.BookTitle))
             {
@@ -22,9 +21,6 @@ namespace SherlockAPI.Controllers
                 var requestor = new Requestor(search);
                 var coreExecutor = new W16Engine();
                 var result = await coreExecutor.ExecuteTransaction(requestor);
-
-                stopwatch.Stop(); // para o cronômetro mesmo se ocorrer exceção
-                Console.WriteLine($"⏱ Tempo total de execução: {stopwatch.ElapsedMilliseconds} ms");
 
                 return Ok(result);
             }
