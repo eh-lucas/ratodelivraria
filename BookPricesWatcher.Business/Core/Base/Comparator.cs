@@ -1,5 +1,4 @@
 ﻿using Sherlock.Business.Core.Scrapers;
-using Sherlock.Domain.Entities;
 
 namespace Sherlock.Business.Core.Base;
 public class Comparator

@@ -11,9 +11,9 @@ public class Requestor
 {
     public SearchParameter SearchParameters { get; set; }
     public TimeSpan CacheTimeSpan { get; set; }
-    public List<Source> SourcesToSearch { get; set; }
+    public List<Provider> SourcesToSearch { get; set; }
 
-    public Requestor(SearchParameter searchParameters, List<Source> sourcesToSearch, TimeSpan cacheTimeSpan)
+    public Requestor(SearchParameter searchParameters, List<Provider> sourcesToSearch, TimeSpan cacheTimeSpan)
     {
         SearchParameters = searchParameters;
         SourcesToSearch = sourcesToSearch;
@@ -23,7 +23,7 @@ public class Requestor
     public Requestor(SearchParameter searchParameters)
     {
         SearchParameters = searchParameters;
-        SourcesToSearch = Source.AllSources.Where(s => s.SourceCategory == SourceCategory.Cedet).ToList();
+        SourcesToSearch = Provider.AllSources.Where(s => s.ProviderCategoryEnum == ProviderCategoryEnum.Cedet).ToList();
         CacheTimeSpan = TimeSpan.FromDays(1);
     }
 

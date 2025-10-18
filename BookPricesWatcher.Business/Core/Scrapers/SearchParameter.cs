@@ -7,5 +7,5 @@ public class SearchParameter
     public string? AuthorName { get; set; }
     public string? Isbn { get; set; }
     public bool IsExactSearch { get; set; } = true;
-    public Source? Source { get; set; }
+    public Provider? Source { get; set; }
 }

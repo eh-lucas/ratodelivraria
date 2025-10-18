@@ -1,5 +1,4 @@
 ﻿using Sherlock.Business.Core.Scrapers;
-using Sherlock.Domain.Entities;
 using System.Diagnostics;
 
 namespace Sherlock.Business.Core.Base;

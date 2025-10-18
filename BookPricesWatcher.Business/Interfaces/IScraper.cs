@@ -1,5 +1,4 @@
 ﻿using Sherlock.Business.Core.Scrapers;
-using Sherlock.Domain.Entities;
 using Sherlock.Domain.Enums;
 
 namespace Sherlock.Business.Interfaces;

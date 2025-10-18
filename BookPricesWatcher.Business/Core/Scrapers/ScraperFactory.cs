@@ -9,8 +9,8 @@ public class ScraperFactory
     public List<IScraper> CreateScrapers(Requestor requestor)
     {
         var distinctScrapingCategories = requestor.SourcesToSearch
-            .DistinctBy(s => s.SourceCategory)
-            .Select(s => s.SourceCategory);
+            .DistinctBy(s => s.ProviderCategoryEnum)
+            .Select(s => s.ProviderCategoryEnum);
 
         var scrapers = new List<IScraper>();
 
@@ -25,11 +25,11 @@ public class ScraperFactory
         return scrapers;
     }
 
-    public IScraper? CreateScraper(SourceCategory sourceCategory)
+    public IScraper? CreateScraper(ProviderCategoryEnum providerCategoryEnum)
     {
-        return sourceCategory switch
+        return providerCategoryEnum switch
         {
-            SourceCategory.Cedet => new CedetSingleSearchHttpClient(),
+            ProviderCategoryEnum.Cedet => new CedetSingleSearchHttpClient(),
             _ => null,
         };
     }
