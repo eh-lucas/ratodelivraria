@@ -11,7 +11,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="SearchBase\Runners\Cedet\SingleSearch\" />
     <Folder Include="Services\" />
   </ItemGroup>
 

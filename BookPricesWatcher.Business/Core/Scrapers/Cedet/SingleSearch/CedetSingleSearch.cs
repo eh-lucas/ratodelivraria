@@ -1,55 +1,54 @@
 ﻿using API.Utils;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using Sherlock.Business.Interfaces;
 using Sherlock.Domain.Entities;
 using Sherlock.Domain.Enums;
 
-namespace Sherlock.Business.SearchBase.Runners.Cedet
+namespace Sherlock.Business.Core.Scrapers.Cedet.SingleSearch
 {
     // etapas que tem numa busca
     // 1 fazer a busca no site
     // 2 coletar todos os resultados
     // 3 interpretar dados
-    public class CedetSingleSearch : RunnerBase<CedetSingleSearchParams>
+    public class CedetSingleSearch : IScraper
     {
-        public override SearchTypeEnum SearchType => SearchTypeEnum.CedetSingleSearch;
+        public ScraperTypeEnum ScraperType => ScraperTypeEnum.CedetSingleSearch;
 
         private const string GridXPath = "//*[@id=\"column-right\"]/div[5]";
         private const string SearchBoxXPath = "//*[@id=\"input-search\"]";
         private const string SearchButtonXPath = "//*[@id=\"doSearch\"]";
 
-        public async override Task<CedetSingleSearchResult> ExecuteSearch(CedetSingleSearchParams parameters)
+        public async Task<BookPriceResult> ExecuteSearch(SearchParameter parameters)
         {
-            List<Book> books = new List<Book>();
-
             var driver = InitiateWebDriver();
-            var website = GetWebsiteToSearch(parameters);
-            var bookTitle = GetBookToSearch(parameters);
+            var website = parameters.Source.Url;
+            var bookTitle = parameters.BookTitle;
 
             SearchBookInBox(driver, website, bookTitle);
 
-            Book book = null;
             try
             {
-                IWebElement grid = driver.FindElement(By.XPath("//*[@id=\"column-right\"]/div[5]"));
+                var grid = driver.FindElement(By.XPath(GridXPath));
 
-                book = CreateBook(grid, bookTitle);
-                book.WebSite = website;
-                books.Add(book);
+                var book = CreateBook(grid, bookTitle);
+
                 driver.Quit();
+
+                return new BookPriceResult
+                {
+                    Price = book.Price,
+                    Name = book.Title,
+                    Author = book.Author,
+                    Website = website
+                };
             }
             catch
             {
                 Console.WriteLine($"erro ao consultar no site {website}");
+                return new BookPriceResult();
             }
-
-            return new CedetSingleSearchResult() { Book = book};
         }
-
-        //public override Task<CedetSingleSearchResult> TreatReturnedData(CedetSingleSearchResult result)
-        //{
-        //    throw new NotImplementedException();
-        //}
 
         private void SearchBookInBox(IWebDriver driver, string website, string bookTitle)
         {
@@ -66,7 +65,7 @@ namespace Sherlock.Business.SearchBase.Runners.Cedet
                 searchButtonElem.Click();
         }
 
-        private Book? CreateBook(IWebElement grid, string bookTitle)
+        private Book CreateBook(IWebElement grid, string bookTitle)
         {
             IReadOnlyList<IWebElement> itemProductElement = grid.FindElements(By.ClassName("item-product"));
             foreach (var element in itemProductElement)
@@ -75,43 +74,27 @@ namespace Sherlock.Business.SearchBase.Runners.Cedet
                 if (elementName.Text.Equals(bookTitle)) // Equals porque sempre há apenas um livro com o mesmo nome nos sites da Cedet.
                 {
 
-                    string author = element.FindElement(By.ClassName("author")).Text;
-                    double priceNew = Convert.ToDouble(element.FindElement(By.ClassName("price-new")).Text);
+                    var author = element.FindElement(By.ClassName("author")).Text;
+                    var priceNew = Convert.ToDecimal(element.FindElement(By.ClassName("price-new")).Text);
                     int discount;
                     try
                     {
                         var auxText = element.FindElement(By.ClassName("price-old")).Text;
                         auxText = auxText.CleanPrice();
-                        var oldPrice = Convert.ToDouble(auxText);
+                        var oldPrice = Convert.ToDecimal(auxText);
                         discount = (int)Math.Abs(priceNew * 100 / oldPrice) - 100;
                     }
                     catch
                     {
-                        double oldPrice = priceNew;
+                        var oldPrice = priceNew;
                         discount = 0;
                     }
 
-                    return new Book(bookTitle, author, priceNew, discount, "");
+                    return new Book(bookTitle, author, priceNew, discount);
                 }
             }
 
-            //if (books.Count > 1)
-            //{
-            //    var minPrice = books.Min(book => book.Price);
-            //    var cheapestBook = books.Find(book => book.Price == minPrice);
-            //    return cheapestBook;
-            //}
-            return null;
-        }
-
-        private string GetWebsiteToSearch(CedetSingleSearchParams parameters)
-        {
-            return parameters.Website;
-        }
-
-        private string GetBookToSearch(CedetSingleSearchParams parameters)
-        {
-            return parameters.BookTitle;
+            return new Book();
         }
 
         private IWebDriver InitiateWebDriver()
@@ -121,6 +104,5 @@ namespace Sherlock.Business.SearchBase.Runners.Cedet
             IWebDriver driver = new ChromeDriver();
             return driver;
         }
-
     }
 }

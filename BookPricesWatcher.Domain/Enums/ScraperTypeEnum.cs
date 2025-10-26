@@ -1,5 +1,5 @@
 ﻿namespace Sherlock.Domain.Enums;
-public enum SearchTypeEnum
+public enum ScraperTypeEnum
 {
     CedetSingleSearch = 1,
     CedetSingleAgility = 2,

@@ -1,4 +1,4 @@
-﻿namespace Sherlock.Domain.Entities
+﻿namespace Sherlock.Business.Core.Scrapers
 {
     public class BookPriceResult
     {

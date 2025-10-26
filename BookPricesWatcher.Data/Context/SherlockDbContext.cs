@@ -10,6 +10,6 @@ public class SherlockDbContext : DbContext
     public DbSet<User>? Users { get; set; }
     public DbSet<ResultType>? Results { get; set; }
     public DbSet<Token>? Tokens { get; set; }
-    public DbSet<SearchType>? SearchTypes { get; set; }
-    public DbSet<Search>? Searches { get; set; }
+    public DbSet<Scraper>? SearchTypes { get; set; }
+    public DbSet<Query>? Searches { get; set; }
 }
