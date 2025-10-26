@@ -1,0 +1,46 @@
+:host {
+    display: flex;
+    height: 100%;
+
+    .left-side {
+        flex: 1;
+        background-color:rgb(48, 48, 133);
+    }
+
+    .right-side {
+        flex: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgb(143, 78, 78);
+        flex-direction: column;
+    }
+
+    h1 {
+        color: white;
+        font-weight: 400;
+        font-size: 45px;
+    }
+
+    form {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 35px;
+        width: 100%;
+        max-width: 75%;
+
+        .wrapper-input-field{
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        label {
+            color: white;
+            font-size: 13px;
+        }
+    }
+    
+}
+
