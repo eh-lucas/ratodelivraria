@@ -2,7 +2,7 @@ import { Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 @Component({
-  selector: 'input[custom-input]',
+  selector: 'custom-input',
   standalone: true,
   imports: [FormsModule],
   template: `
