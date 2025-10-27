@@ -5,6 +5,7 @@
     .left-side {
         flex: 1;
         background-color:rgb(48, 48, 133);
+        padding: 1vh;
     }
 
     .right-side {
@@ -12,7 +13,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: rgb(143, 78, 78);
+        background-color: rgb(51, 51, 79);
         flex-direction: column;
     }
 
@@ -26,9 +27,9 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 35px;
+        gap: 2vh;
+        margin-top: 50%;
         width: 100%;
-        max-width: 75%;
 
         .wrapper-input-field{
             display: flex;
