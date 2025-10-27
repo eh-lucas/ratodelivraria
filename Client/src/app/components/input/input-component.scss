@@ -1,23 +1,23 @@
 :host {
   height: 6vh;
   border: hidden;
-  border-radius: 2px;
   background-color: #dfdfdf;
+
 }
 .custom-input-wrapper {
   position: relative;
   display: flex;
   align-items: center;
   width: 100%;
+
 }
 
 .input-icon-img {
-  width: 20px;
-  height: 20px;
-  margin-left: 4px;
+  width: 1.5em;
+  height: 1.5em;
+  margin-left: 3%;
   pointer-events: none;
   position: absolute;
-  left: 8px;
   top: 50%;
   transform: translateY(-50%);
 }
