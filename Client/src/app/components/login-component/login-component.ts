@@ -19,19 +19,20 @@ import { LinkButtonComponent } from '../link-button-component/link-button-compon
 export class LoginComponent {
   username: string = '';
   password: string = '';
-
-  constructor(private authService: AuthService, private router: Router) { }
-
-  onLogin(): void {
-
-    this.authService.login(this.username, this.password).subscribe({
-      next: (response) => {
-        this.authService.setToken(response.token);
-        this.router.navigate(['/home']); // não temos essa rota, AINDA
-      },
-      error: (err) => {
-        console.error('Login failed.', err);
-      }
-    });
-  }
+  //constructor(private authService: AuthService, private router: Router) { }
+  
+  //onLogin(): void {
+  
+  //  this.authService.login(this.username, this.password).subscribe({
+  //    next: (response: any) => {
+  //      if (response && response.token) {
+  //        this.authService.setToken(response.token);
+  //      }
+  //    this.router.navigate(['/home']);
+  //    },
+  //    error: (err: any) => {
+  //      console.error('Login failed.', err);
+  //    }
+  //  });
+  //}
 }

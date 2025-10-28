@@ -18,7 +18,7 @@ export class AuthService {
   logout(): void {
     this.token = null;
     localStorage.removeItem('access_token');
-    this.router.navigate(['/login']) //ir para a página de login -> não temos essa rota, AINDA
+    this.router.navigate(['/login']) 
   }
 
   setToken(token: string): void {
