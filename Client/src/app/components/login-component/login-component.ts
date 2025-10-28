@@ -1,0 +1,37 @@
+//Angular
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+//Services
+import { AuthService } from '../../services/auth-service';
+//Components
+import { InputComponent } from '../input/input-component'
+import { LinkButtonComponent } from '../link-button-component/link-button-component'
+
+@Component({
+  selector: 'login-component',
+  standalone: true,
+  imports: [CommonModule, FormsModule, InputComponent, LinkButtonComponent],
+  templateUrl: './login-component.html',
+  styleUrl: './login-component.scss'
+})
+export class LoginComponent {
+  //username: string = '';
+  //password: string = '';
+
+  //constructor(private authService: AuthService, private router: Router) { }
+
+  //onLogin(): void {
+
+  //  this.authService.login(this.username, this.password).subscribe({
+  //    next: (response) => {
+  //      this.authService.setToken(response.token);
+  //      this.router.navigate(['/home']); // não temos essa rota, AINDA
+  //    },
+  //    error: (err) => {
+  //      console.error('Login failed.', err);
+  //    }
+  //  });
+  //}
+}
