@@ -12,13 +12,29 @@ export class AuthService {
   constructor(private http: HttpClient, private router: Router) { }
 
   login(username: string, password: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/login`, { username, password });
+    //return this.http.post(`${this.apiUrl}/login`, { username, password });
+
+
+      console.log('Simulando login com', username, password);
+
+      // Simula um pequeno atraso de rede
+      return new Observable(observer => {
+        setTimeout(() => {
+          if (username === 'admin' && password === '123') {
+            observer.next({ token: 'fake-jwt-token-123' });
+          } else {
+            observer.error({ message: 'Usuário ou senha inválidos' });
+          }
+          observer.complete();
+        }, 800); // atraso de 800ms pra parecer real
+      });
+
   }
 
   logout(): void {
     this.token = null;
     localStorage.removeItem('access_token');
-    this.router.navigate(['/login']) 
+    this.router.navigate(['/login'])
   }
 
   setToken(token: string): void {
