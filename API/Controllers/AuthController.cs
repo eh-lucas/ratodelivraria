@@ -1,10 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using SherlockAPI.Configurations;
 using SherlockAPI.Services;
 using Sherlock.Data.Context;
-using Microsoft.EntityFrameworkCore;
-using System.Text;
-using System.Security.Cryptography;
+using Sherlock.Domain.Entities;
 
 namespace SherlockAPI.Controllers;
 
@@ -12,49 +9,40 @@ namespace SherlockAPI.Controllers;
 [ApiController]
 public class AuthController : ControllerBase
 {
-    private readonly TokenService _tokenService;
     private readonly SherlockDbContext _context;
 
-    public AuthController(TokenService tokenService, SherlockDbContext context)
+    public AuthController(SherlockDbContext context)
     {
-        _tokenService = tokenService;
         _context = context;
     }
 
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] User request)
+    {
+        if (_context.Users.Any(u => u.Username == request.Username))
+            return BadRequest("Usuário já existe.");
+
+        var user = new User()
+        {
+            Username = request.Username,
+            Email = request.Email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.PasswordHash)
+        };
+
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+
+        return Ok("Usuario registrado com sucesso.");
+    }
+
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
+    public IActionResult Login([FromBody] User request)
     {
-        var user = await _context.Users.SingleOrDefaultAsync(u => u.Name == loginRequest.Username);
+        var user = _context.Users.FirstOrDefault(u => u.Username == request.Username);
 
-        if (user == null || !VerifyPasswordHash(loginRequest.Password, user.Password))
-        {
-            return Unauthorized("Usuário ou senha inválidos");
-        }
+        if (user == null || !BCrypt.Net.BCrypt.Verify(request.PasswordHash, user.PasswordHash))
+            return Unauthorized("Usuario ou senha inválidos.");
 
-
-        // Exemplo de verificação de credenciais
-        //if (user.Name == "user" && user.Password == "password")
-        //{
-        //    var token = _tokenService.GenerateToken("user-id");
-        //    return Ok(new { Token = token });
-        //}
-
-        return Unauthorized();
-    }
-
-    // Método para verificar a senha com o hash armazenado
-    private bool VerifyPasswordHash(string password, string storedHash)
-    {
-        using (var sha256 = SHA256.Create())
-        {
-            var computedHash = Convert.ToBase64String(sha256.ComputeHash(Encoding.UTF8.GetBytes(password)));
-            return computedHash == storedHash;
-        }
-    }
-
-    public class LoginRequest
-    {
-        public string Username { get; set; }
-        public string Password { get; set; }
+        return Ok("Login efetuado com sucesso.");
     }
 }

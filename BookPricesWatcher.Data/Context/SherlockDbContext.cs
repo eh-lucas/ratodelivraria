@@ -7,9 +7,10 @@ public class SherlockDbContext : DbContext
     public SherlockDbContext(DbContextOptions<SherlockDbContext> options) : base( options )
     {
     }
-    public DbSet<User>? Users { get; set; }
-    public DbSet<ResultType>? Results { get; set; }
-    public DbSet<Token>? Tokens { get; set; }
-    public DbSet<Scraper>? SearchTypes { get; set; }
-    public DbSet<Query>? Searches { get; set; }
+
+    public DbSet<User> Users => Set<User>();
+    public DbSet<ResultType> Results => Set<ResultType>();
+    public DbSet<Token> Tokens => Set<Token>();
+    public DbSet<Scraper> SearchTypes => Set<Scraper>();
+    public DbSet<Query> Searches => Set<Query>();
 }
