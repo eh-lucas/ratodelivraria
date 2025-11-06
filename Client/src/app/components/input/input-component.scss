@@ -1,0 +1,30 @@
+:host {
+  height: 6vh;
+}
+
+.custom-input-wrapper {
+  display: flex;
+  position: relative;
+  align-items: center;
+  width: 100%;
+}
+
+.input-icon-img {
+  width: 1.2em;
+  height: 1.2em;
+  margin-left: 5%;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.input-box {
+  width: 100%;
+  padding-left: 17%;
+  height: 7vh;
+  box-sizing: border-box;
+  border: hidden;
+  border-radius: 20px;
+}
+
