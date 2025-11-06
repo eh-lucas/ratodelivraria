@@ -51,7 +51,7 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.HttpClient
                 return new BookPriceResult
                 {
                     Price = result.Price,
-                    Name = result.Title,
+                    Title = result.Title,
                     Author = result.Author,
                     Website = website
                 };
@@ -63,9 +63,9 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.HttpClient
             }
         }
 
-        private List<Book> GetReturnedBooksByTitle(HtmlNodeCollection products, string bookTitle)
+        private List<BookPriceResult> GetReturnedBooksByTitle(HtmlNodeCollection products, string bookTitle)
         {
-            var possibleBooks = new List<Book>();
+            var possibleBooks = new List<BookPriceResult>();
             foreach (var product in products)
             {
                 var childnode = product.ChildNodes;
@@ -81,7 +81,13 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.HttpClient
                     var newPrice = Convert.ToDecimal(priceNodes[4].InnerText.CleanPrice(), CultureInfo.InvariantCulture);
                     int discount = (int)Math.Abs(newPrice * 100 / oldPrice) - 100;
 
-                    var book = new Book(titleNode, authorNode, newPrice, discount);
+                    var book = new BookPriceResult
+                    {
+                        Title = titleNode,
+                        Author = authorNode,
+                        Price = newPrice,
+                        Discount = discount
+                    };
                     possibleBooks.Add(book);
                 }
                 catch
@@ -93,18 +99,18 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.HttpClient
             return possibleBooks;
         }
 
-        private Book ChooseBestBookOption(List<Book> possibleBooks, string bookTitle, bool isExactSearch)
+        private BookPriceResult ChooseBestBookOption(List<BookPriceResult> possibleBooks, string bookTitle, bool isExactSearch)
         {
             bookTitle = bookTitle.ToUpper().Trim();
             if (possibleBooks.Count == 0)
-                return new Book();
+                return new BookPriceResult();
 
             if (isExactSearch)
-                return possibleBooks.FirstOrDefault(b => b.Title.ToUpper() == bookTitle) ?? new Book();
+                return possibleBooks.FirstOrDefault(b => b.Title.ToUpper() == bookTitle) ?? new BookPriceResult();
 
             var bestPrice = possibleBooks.Min(b => b.Price);
             var bestBook = possibleBooks.FirstOrDefault(b => b.Price == bestPrice);
-            return bestBook ?? new Book();
+            return bestBook ?? new BookPriceResult();
         }
 
     }

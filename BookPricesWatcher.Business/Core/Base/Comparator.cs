@@ -13,7 +13,7 @@ public class Comparator
         if (preResults.Count == 0)
             return new BookPriceResult();
 
-        preResults = preResults.Where(r => !string.IsNullOrEmpty(r.Name)).ToList();
+        preResults = preResults.Where(r => !string.IsNullOrEmpty(r.Title)).ToList();
         return preResults.OrderBy(r => r.Price).First();
     }
 }

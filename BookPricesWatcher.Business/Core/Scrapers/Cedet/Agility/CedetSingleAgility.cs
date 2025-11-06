@@ -16,9 +16,9 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.Agility
         private const string SearchBoxXPath = "//*[@id=\"input-search\"]";
         private const string SearchButtonXPath = "//*[@id=\"doSearch\"]";
 
-        public List<Book> GetReturnedBooksByTitle(HtmlNodeCollection products, string bookTitle)
+        public List<BookPriceResult> GetReturnedBooksByTitle(HtmlNodeCollection products, string bookTitle)
         {
-            List<Book> possibleBooks = new();
+            List<BookPriceResult> possibleBooks = new();
 
             foreach (var product in products)
             {
@@ -31,7 +31,13 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.Agility
                 var newPrice = Convert.ToDecimal(childnodes[4].InnerText.CleanPrice(), CultureInfo.InvariantCulture);
                 var discount = (int)Math.Abs(newPrice * 100 / oldPrice) - 100;
 
-                Book book = new Book(titleNode, authorNode, newPrice, discount);
+                BookPriceResult book = new()
+                {
+                    Title = titleNode,
+                    Author = authorNode,
+                    Price = newPrice,
+                    Discount = discount,
+                };
                 possibleBooks.Add(book);
             }
 
@@ -54,11 +60,11 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.Agility
                 var possibleBooks = GetReturnedBooksByTitle(products, bookTitle);
 
                 var result = ChooseBestBookOption(possibleBooks, bookTitle, parameters.IsExactSearch);
-               
+
                 return new BookPriceResult
                 {
                     Price = result.Price,
-                    Name = result.Title,
+                    Title = result.Title,
                     Author = result.Author,
                     Website = website
                 };
@@ -67,7 +73,7 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.Agility
             return new BookPriceResult();
         }
 
-        private Book ChooseBestBookOption(List<Book?> possibleBooks, string bookTitle, bool isExactSearch)
+        private BookPriceResult ChooseBestBookOption(List<BookPriceResult?> possibleBooks, string bookTitle, bool isExactSearch)
         {
             bookTitle = bookTitle.ToUpper().Trim();
             if (possibleBooks.Count < 1)
@@ -84,7 +90,7 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.Agility
             if (bestBook is null)
                 throw new NetworkInformationException();
 
-            return new Book();
+            return new BookPriceResult();
         }
 
     }

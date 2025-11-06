@@ -2,7 +2,6 @@
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using Sherlock.Business.Interfaces;
-using Sherlock.Domain.Entities;
 using Sherlock.Domain.Enums;
 
 namespace Sherlock.Business.Core.Scrapers.Cedet.SingleSearch
@@ -38,7 +37,7 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.SingleSearch
                 return new BookPriceResult
                 {
                     Price = book.Price,
-                    Name = book.Title,
+                    Title = book.Title,
                     Author = book.Author,
                     Website = website
                 };
@@ -65,7 +64,7 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.SingleSearch
                 searchButtonElem.Click();
         }
 
-        private Book CreateBook(IWebElement grid, string bookTitle)
+        private BookPriceResult CreateBook(IWebElement grid, string bookTitle)
         {
             IReadOnlyList<IWebElement> itemProductElement = grid.FindElements(By.ClassName("item-product"));
             foreach (var element in itemProductElement)
@@ -90,11 +89,17 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.SingleSearch
                         discount = 0;
                     }
 
-                    return new Book(bookTitle, author, priceNew, discount);
+                    return new BookPriceResult
+                    {
+                        Title = bookTitle,
+                        Author = author,
+                        Price = priceNew,
+                        Discount = discount
+                    };
                 }
             }
 
-            return new Book();
+            return new BookPriceResult();
         }
 
         private IWebDriver InitiateWebDriver()
