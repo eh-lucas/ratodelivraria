@@ -2,7 +2,7 @@
 using SherlockAPI.Services;
 using Sherlock.Data.Context;
 using Sherlock.Domain.Entities;
-
+using SherlockAPI.Services;
 namespace SherlockAPI.Controllers;
 
 [Route("api/[controller]")]
@@ -10,10 +10,12 @@ namespace SherlockAPI.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly SherlockDbContext _context;
+    private readonly TokenService _tokenService;
 
-    public AuthController(SherlockDbContext context)
+    public AuthController(SherlockDbContext context, TokenService tokenService)
     {
         _context = context;
+        _tokenService = tokenService;
     }
 
     [HttpPost("register")]
@@ -26,6 +28,7 @@ public class AuthController : ControllerBase
         {
             Username = request.Username,
             Email = request.Email,
+            Role = "User",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.PasswordHash)
         };
 
@@ -43,6 +46,11 @@ public class AuthController : ControllerBase
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.PasswordHash, user.PasswordHash))
             return Unauthorized("Usuario ou senha inválidos.");
 
-        return Ok("Login efetuado com sucesso.");
+        var token = _tokenService.GenerateToken(
+             user.Id.ToString(),
+             user.Role ?? "User"
+         );
+
+        return Ok(new { token });
     }
 }

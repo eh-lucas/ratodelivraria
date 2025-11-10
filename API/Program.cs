@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Sherlock.Data.Context;
 using SherlockAPI.Configurations;
+using SherlockAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,7 +16,7 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
+builder.Services.AddScoped<TokenService>();
 builder.Services.AddDbContext<SherlockDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
