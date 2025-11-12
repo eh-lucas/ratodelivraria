@@ -7,7 +7,7 @@ import { HttpClient} from '@angular/common/http';
 //Services
 import { AuthService } from '../../services/auth-service';
 //Components
-import { InputComponent } from '../input/input-component'
+import { InputComponent } from '../input-component/input-component'
 import { LinkButtonComponent } from '../link-button-component/link-button-component'
 
 @Component({
