@@ -8,15 +8,13 @@ import { CommonModule } from '@angular/common';
   imports: [CommonModule, FormsModule],
   template: `
     <div class="custom-input-wrapper">
-
       @if (iconSrc) { <img class="input-icon-img" [src]="iconSrc" alt="icon"> }
-
       <input class="input-box" [attr.placeholder]="placeholder" [(ngModel)]="value" [type]="type" >
-
     </div>
   `,
   styleUrls: ['./input-component.scss']
 })
+
 export class InputComponent {
   @Input() iconSrc?: string;
   @Input() hint?: string;

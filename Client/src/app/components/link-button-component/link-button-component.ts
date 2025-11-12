@@ -6,6 +6,7 @@ import { Component } from '@angular/core';
   template: '<ng-content/>',
   styleUrl: './link-button-component.scss'
 })
+
 export class LinkButtonComponent {
 
 }
