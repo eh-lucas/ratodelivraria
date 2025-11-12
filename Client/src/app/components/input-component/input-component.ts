@@ -11,7 +11,7 @@ import { CommonModule } from '@angular/common';
 
       @if (iconSrc) { <img class="input-icon-img" [src]="iconSrc" alt="icon"> }
 
-      <input class="input-box" [attr.placeholder]="placeholder" [(ngModel)]="value" >
+      <input class="input-box" [attr.placeholder]="placeholder" [(ngModel)]="value" [type]="type" >
 
     </div>
   `,
