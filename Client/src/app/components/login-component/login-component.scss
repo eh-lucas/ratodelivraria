@@ -3,67 +3,51 @@
   align-items: center;
   justify-content: center;
   height: 100vh;
- background-color: rgb(241, 236, 236);
+  background-color: #06172b;
+
 
   .login-card {
-    background-color: #fff;
+    background-color: #ffffff;
     border-radius: 12px;
     box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3),
                 0 4px 8px rgba(60, 64, 67, 0.15);
     width: 70%;
     height: 80%;
     padding: 3rem 2.5rem;
+
     display: flex;
-    flex-direction: column;
+    flex-direction: row; 
     align-items: center;
-    gap: 2rem;
+    justify-content: space-between;
+    gap: 3rem;
 
-    h1 {
-      color: #202124;
-      font-weight: 400;
-      font-size: 1.75rem;
-      margin: 0;
-    }
+    .text-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding-left: 2rem;
 
-    // subtítulo
-    .subtitle {
-      color: #3c4043;
-      font-size: 0.95rem;
-      text-align: center;
-      margin-bottom: 1rem;
+      .title {
+        color: #06172b;
+        font-size: 2.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        text-align: left;
+      }
     }
 
     form {
-      width: 50%;
+      flex: 1;
       display: flex;
       flex-direction: column;
-      margin-left: 40%;
       gap: 1.5rem;
+      padding-right: 2rem;
 
       .wrapper-input-field {
         display: flex;
         flex-direction: column;
         width: 100%;
-      }
-
-      label {
-        color: #5f6368;
-        font-size: 13px;
-        margin-bottom: 4px;
-      }
-
-      input {
-        padding: 10px 12px;
-        border: 1px solid #dadce0;
-        border-radius: 4px;
-        font-size: 14px;
-        outline: none;
-        transition: border-color 0.2s ease;
-
-        &:focus {
-          border-color: #1a73e8;
-          box-shadow: 0 0 0 1px #1a73e8;
-        }
       }
 
       .button-container {
@@ -74,7 +58,7 @@
       }
 
       .advance-button {
-        background: #1a73e8;
+        background: #06172b;
         color: white;
         border: none;
         border-radius: 4px;
@@ -85,7 +69,7 @@
         transition: background-color 0.2s ease;
 
         &:hover {
-          background-color: #185abc;
+          background-color: #332f2f;
         }
 
         &:disabled {
@@ -96,7 +80,7 @@
 
       .create-account-button {
         background: transparent;
-        color: #1a73e8;
+        color: #264AFF;
         border: none;
         font-size: 0.9rem;
         font-weight: 500;
@@ -104,11 +88,24 @@
         text-decoration: none;
         transition: background-color 0.2s ease;
         border-radius: 4px;
-
-        &:hover {
-          background-color: rgba(26, 115, 232, 0.1);
-        }
       }
+    }
+  }
+  .error-message {
+    color: #d93025;
+    font-size: 1rem;
+    margin-top: 6px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    small {
+      background: rgba(217, 48, 37, 0.1);
+      padding: 3px 8px;
+      border-radius: 6px;
+      color: #d93025;
     }
   }
 }

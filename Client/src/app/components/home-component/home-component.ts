@@ -7,6 +7,7 @@ import { AuthService } from '../../services/auth-service';
   templateUrl: './home-component.html',
   styleUrl: './home-component.scss'
 })
+
 export class HomeComponent {
   constructor(private authService: AuthService) { }
   logout(): void {

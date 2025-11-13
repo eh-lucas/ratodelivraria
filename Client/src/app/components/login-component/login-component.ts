@@ -1,35 +1,52 @@
 //Angular
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, Validators, FormBuilder, FormGroup } from '@angular/forms';
 import { Router } from '@angular/router';
 //Services
 import { AuthService } from '../../services/auth-service';
 //Components
 import { InputComponent } from '../input-component/input-component'
-import { LinkButtonComponent } from '../link-button-component/link-button-component'
 
 @Component({
   selector: 'login-component',
   standalone: true,
-  imports: [CommonModule, FormsModule, InputComponent, LinkButtonComponent],
+  imports: [CommonModule, FormsModule, InputComponent, ReactiveFormsModule],
   templateUrl: './login-component.html',
   styleUrl: './login-component.scss'
 })
 
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   username: string = '';
   password: string = '';
+  loginForm!: FormGroup;
 
-  constructor(private authService: AuthService, private router: Router) { }
+  constructor(private authService: AuthService, private router: Router, private formBuilder: FormBuilder) { }
   
-  onLogin(): void {
-    this.authService.login(this.username, this.password).subscribe({
+  ngOnInit(): void {
+    this.loginForm = this.formBuilder.group({
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', Validators.required],
+    });
+  }
+
+  get f() {
+    return this.loginForm.controls;
+  }
+
+   onSubmit(): void {
+    if (this.loginForm.invalid) {
+      this.loginForm.markAllAsTouched(); 
+      return;
+    }
+
+    const { email, password } = this.loginForm.value;
+    this.authService.login(email, password).subscribe({
       next: (response: any) => {
         if (response && response.token) {
           this.authService.setToken(response.token);
+          this.router.navigate(['/home']);
         }
-      this.router.navigate(['/home']);
       },
       error: (err: any) => {
         console.error('Login failed.', err);

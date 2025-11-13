@@ -1,20 +1,48 @@
 <div class="login-card">
-  <h1>Fazer login</h1>
-  
-  <div class="subtitle">Ir para o Scrapper</div>
-  <form>
-
+  <div class="text-section"> 
+    <span class="title">Sign in</span> 
+  </div>
+  <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
     <div class="wrapper-input-field">
-      <input-component iconSrc="assets/icons/user-icon.png" placeholder="Usuário" type="user"></input-component>
+      <input-component
+        iconSrc="assets/icons/user-icon.png"
+        placeholder="Email"
+        type="email"
+        formControlName="email"
+      ></input-component>
+
+      @if (f['email'].errors && (f['email'].touched || f['email'].dirty)) {
+        <div class="error-message">
+          @if (f['email'].errors['required']) {
+            <small>Email is required.</small>
+          }
+          @if (f['email'].errors['email']) {
+            <small>Enter a valid email address.</small>
+          }
+        </div>
+      }
     </div>
 
     <div class="wrapper-input-field">
-       <input-component iconSrc="assets/icons/password-icon.png" placeholder="Senha" type="password">></input-component>
+      <input-component
+        iconSrc="assets/icons/password-icon.png"
+        placeholder="Password"
+        type="password"
+        formControlName="password"
+      ></input-component>
+
+      @if (f['password'].errors && (f['password'].touched || f['password'].dirty)) {
+        <div class="error-message">
+          @if (f['password'].errors['required']) {
+            <small>Password is required.</small>
+          }
+        </div>
+      }
     </div>
 
     <div class="button-container">
-      <button class="create-account-button" type="button">Criar conta</button>
-      <button class="advance-button" type="submit">Avançar</button>
+      <button type="button" class="create-account-button">Forgot password?</button>
+      <button type="submit" class="advance-button" [disabled]="loginForm.invalid">Sign in</button>
     </div>
   </form>
 </div>
