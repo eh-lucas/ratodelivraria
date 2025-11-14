@@ -6,20 +6,58 @@
   background-color: #06172b;
 
 
-  .login-card {
-    background-color: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3),
-                0 4px 8px rgba(60, 64, 67, 0.15);
-    width: 70%;
-    height: 80%;
-    padding: 3rem 2.5rem;
+.login-card {
+  background: linear-gradient(
+    to top right,
+    #d4d8dd 0%,
+    #ffffff 90%
+  );
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3),
+              0 4px 8px rgba(60, 64, 67, 0.15);
+  width: 70%;
+  height: 80%;
+  padding: 3rem 2.5rem;
+  display: flex;
+  flex-direction: row;
+  gap: 3rem;
+  align-items: center;
+  flex-wrap: wrap;
 
-    display: flex;
-    flex-direction: row; 
-    align-items: center;
-    justify-content: space-between;
-    gap: 3rem;
+    .card-header {
+      width: 100%;
+      text-align: center;
+      margin-bottom: 2rem;
+
+      .title-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem; 
+        margin-bottom: 0.5rem;
+        justify-content: flex-start;
+      }
+
+      .bookfin-logo {
+        width: 6rem;  
+        height: auto;
+      }
+
+      h1 {
+        color: #06172b;
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        text-align-last: justify;
+      }
+
+      .divider {
+        width: 100%;
+        height: 1px;
+        background-color: #06172b;
+        border-radius: 4px;
+        margin: 0 auto;
+      }
+    }
 
     .text-section {
       flex: 1;
@@ -32,7 +70,7 @@
         color: #06172b;
         font-size: 2.5rem;
         font-weight: 600;
-        margin-bottom: 1rem;
+        margin-bottom: 6rem;
         text-align: left;
       }
     }
@@ -57,7 +95,7 @@
         margin-top: 1.5rem;
       }
 
-      .advance-button {
+      .forgot-password-button {
         background: #06172b;
         color: white;
         border: none;
@@ -78,7 +116,7 @@
         }
       }
 
-      .create-account-button {
+      .sign-in-button {
         background: transparent;
         color: #264AFF;
         border: none;
