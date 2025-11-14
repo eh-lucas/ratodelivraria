@@ -6,17 +6,17 @@ import { Router } from '@angular/router';
 //Services
 import { AuthService } from '../../services/auth-service';
 //Components
-import { InputComponent } from '../input-component/input-component'
+import { InputComponent } from '../../components/input-component/input-component'
 
 @Component({
-  selector: 'login-component',
+  selector: 'login-page',
   standalone: true,
   imports: [CommonModule, FormsModule, InputComponent, ReactiveFormsModule],
-  templateUrl: './login-component.html',
-  styleUrl: './login-component.scss'
+  templateUrl: './login-page.html',
+  styleUrl: './login-page.scss'
 })
 
-export class LoginComponent implements OnInit {
+export class LoginPage implements OnInit {
   username: string = '';
   password: string = '';
   loginForm!: FormGroup;
