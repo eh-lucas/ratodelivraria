@@ -1,0 +1,55 @@
+<div class="login-card">
+  <div class="card-header">
+    <div class="title-row">
+      <img src="/assets/BookFinIcon3.png" alt="BookFin Logo" class="bookfin-logo" />
+      <h1>BookFin</h1>
+    </div>
+    <div class="divider"></div>
+  </div>
+  <div class="text-section"> 
+    <span class="title">Sign in</span> 
+  </div>
+  <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+    <div class="wrapper-input-field">
+      <input-component
+        iconSrc="assets/icons/user-icon.png"
+        placeholder="Email"
+        type="email"
+        formControlName="email"
+      ></input-component>
+
+      @if (f['email'].errors && (f['email'].touched || f['email'].dirty)) {
+        <div class="error-message">
+          @if (f['email'].errors['required']) {
+            <small>Email is required.</small>
+          }
+          @if (f['email'].errors['email']) {
+            <small>Enter a valid email address.</small>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="wrapper-input-field">
+      <input-component
+        iconSrc="assets/icons/password-icon.png"
+        placeholder="Password"
+        type="password"
+        formControlName="password"
+      ></input-component>
+
+      @if (f['password'].errors && (f['password'].touched || f['password'].dirty)) {
+        <div class="error-message">
+          @if (f['password'].errors['required']) {
+            <small>Password is required.</small>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="button-container">
+      <button type="button" class="sign-in-button">Forgot password?</button>
+      <button type="submit" class="forgot-password-button" [disabled]="loginForm.invalid">Sign in</button>
+    </div>
+  </form>
+</div>

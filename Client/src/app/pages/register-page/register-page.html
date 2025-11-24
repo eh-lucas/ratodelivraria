@@ -1,0 +1,65 @@
+<div class="register-wrapper">
+  <div class="card">
+    <h2>Registrar Conta</h2>
+    <p>Crie sua conta para acompanhar preços de livros</p>
+
+    <form [formGroup]="registerForm" (ngSubmit)="submit()">
+
+      <div class="field">
+        <label>Nome</label>
+        <input type="text" formControlName="name">
+
+        @if (registerForm.get('name')?.invalid && registerForm.get('name')?.touched) {
+          <span class="error">
+            Nome deve ter pelo menos 3 caracteres.
+          </span>
+        }
+      </div>
+
+      <div class="field">
+        <label>Email</label>
+        <input type="email" formControlName="email">
+
+        @if (registerForm.get('email')?.invalid && registerForm.get('email')?.touched) {
+          <span class="error">
+            E-mail inválido.
+          </span>
+        }
+      </div>
+
+      <div class="field">
+        <label>Senha</label>
+        <input type="password" formControlName="password">
+
+        @if (registerForm.get('password')?.invalid && registerForm.get('password')?.touched) {
+          <span class="error">
+            A senha deve ter pelo menos 6 caracteres.
+          </span>
+        }
+      </div>
+
+      <div class="field">
+        <label>Confirmar senha</label>
+        <input type="password" formControlName="confirmPassword">
+
+        @if (registerForm.get('confirmPassword')?.hasError('mismatch') && registerForm.get('confirmPassword')?.touched) {
+          <span class="error">
+            As senhas não coincidem.
+          </span>
+        }
+      </div>
+
+      <button type="submit" [disabled]="loading || registerForm.invalid">
+        {{ loading ? 'Criando conta...' : 'Registrar' }}
+      </button>
+    </form>
+
+    @if (successMessage) {
+      <p class="success">{{ successMessage }}</p>
+    }
+
+    @if (errorMessage) {
+      <p class="error">{{ errorMessage }}</p>
+    }
+  </div>
+</div>
