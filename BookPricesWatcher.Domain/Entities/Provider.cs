@@ -3,9 +3,12 @@
 public class Provider
 {
     public int Id { get; set; }
-    public string Url { get; set; }
+    public string Url { get; set; } = string.Empty;
     public ProviderCategoryEnum ProviderCategoryEnum { get; set; }
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+    public decimal? MinFreeShipping { get; set; }
+    public decimal? BaseShippingCost { get; set; }
 
 
     public static Provider LivrariaAlexandreCosta = new()

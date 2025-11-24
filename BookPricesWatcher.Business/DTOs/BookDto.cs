@@ -1,6 +1,6 @@
-﻿namespace Sherlock.Domain.Entities;
+namespace Sherlock.Business.DTOs;
 
-public class Book
+public class BookDto
 {
     public int Id { get; set; }
     public string Title { get; set; } = string.Empty;
@@ -9,7 +9,4 @@ public class Book
     public string Editor { get; set; } = string.Empty;
     public int PageNumber { get; set; }
     public string Language { get; set; } = "pt-BR";
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime? UpdatedAt { get; set; }
 }
-

@@ -6,13 +6,22 @@ using Sherlock.Data.Repositories;
 using Sherlock.Domain.Interfaces;
 
 namespace Sherlock.Data;
+
 public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddData(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<SherlockDbContext>(o => o.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+        // DbContext
+        services.AddDbContext<SherlockDbContext>(options =>
+            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
+        // Repositories
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IBookRepository, BookRepository>();
+        services.AddScoped<IBookPriceRepository, BookPriceRepository>();
+        services.AddScoped<IProviderRepository, ProviderRepository>();
+        services.AddScoped<IQueryRepository, QueryRepository>();
+
         return services;
     }
 }

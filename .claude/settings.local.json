@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(Select-Object FullName)"
+      "Bash(Select-Object FullName)",
+      "Bash(dir:*)",
+      "Bash(dotnet build:*)"
     ],
     "deny": [],
     "ask": []

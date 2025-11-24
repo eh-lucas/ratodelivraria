@@ -28,8 +28,11 @@ public class AuthController : ControllerBase
         var user = new User()
         {
             Username = request.Username,
-            Email = "",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
+            Email = string.Empty,
+            Role = "User",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            Active = true,
+            CreatedAt = DateTime.UtcNow
         };
 
         _context.Users.Add(user);
