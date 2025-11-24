@@ -1,21 +1,17 @@
 ﻿using Sherlock.Business.Core.Scrapers;
+using Sherlock.Domain.Entities;
 using System.Diagnostics;
 
 namespace Sherlock.Business.Core.Base;
 
-// essa classe deve ser genérica.
-// deve processar uma transação inteiramente, a partir de um objeto Requestor, contendo todas as configurações
-// de processamento que o usuario definiu.
-// Ela fará:
-// - 1. Montar req: organizar a chamada da consulta (seja ela unica ou multipla)
-// - 2. Cache: verificar se os resultados ja existem em banco 
-// - 3. Custo: calcular custo da transacao
-// - 4. Registrar: atualizar registros no banco
-
+/// <summary>
+/// Motor principal de execução de transações de busca de preços.
+/// Orquestra scrapers, cache, comparação e registro de resultados.
+/// </summary>
 public class W16Engine
 {
     private readonly Comparator _comparator;
-    private ScraperFactory _scraperFactory;
+    private readonly ScraperFactory _scraperFactory;
 
     public W16Engine()
     {
@@ -25,54 +21,100 @@ public class W16Engine
 
     public async Task<SearchResult> ExecuteTransaction(Requestor requestor)
     {
-        var stopwatch = Stopwatch.StartNew(); // inicia o cronômetro
+        var stopwatch = Stopwatch.StartNew();
 
         var preResults = new List<BookPriceResult>();
-        SearchResult result = new()
+        var result = new SearchResult
         {
-            InicioConsulta = DateTime.Now
+            InicioConsulta = DateTime.Now,
+            TotalSourcesQueried = requestor.SourcesToSearch.Count
         };
 
-        Console.WriteLine("Verifica resultados cacheados");
-
-        Console.WriteLine("Se os dados vindos do cache nao supriram tudo, prepara para rodar os runners.");
-
-        Console.WriteLine("Cria instancias de scrapers");
-        var scrapers = _scraperFactory.CreateScrapers(requestor);
-
-        Console.WriteLine("Roda o(s) scraper(s) consultando todas as fontes solicitadas");
-        foreach (var scraper in scrapers)
+        try
         {
-            foreach (var source in requestor.SourcesToSearch)
-            {
-                var parameters = requestor.SearchParameters;
-                parameters.Source = source;
+            // TODO: Verificar cache antes de fazer scraping
+            // if (TryGetFromCache(requestor, out var cachedResult))
+            //     return cachedResult;
 
-                var singleResult = await scraper.ExecuteSearch(parameters);
-                preResults.Add(singleResult);
+            var scrapers = _scraperFactory.CreateScrapers(requestor);
+
+            foreach (var scraper in scrapers)
+            {
+                foreach (var source in requestor.SourcesToSearch)
+                {
+                    try
+                    {
+                        var parameters = requestor.SearchParameters;
+                        parameters.Source = source;
+
+                        var singleResult = await scraper.ExecuteSearch(parameters);
+
+                        // Só adiciona se teve resultado válido
+                        if (!string.IsNullOrEmpty(singleResult.Title) && singleResult.Price > 0)
+                        {
+                            preResults.Add(singleResult);
+                            result.SuccessfulQueries++;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        result.FailedQueries++;
+                        result.Errors.Add($"{source.Name}: {ex.Message}");
+                        // Continua para próxima fonte ao invés de quebrar tudo
+                    }
+                }
             }
+
+            // Compara e seleciona o melhor resultado
+            result.BookPriceResult = _comparator.Compare(preResults);
+
+            // Define o status da transação
+            result.ResultadoTransacao = DetermineResultType(result, preResults.Count);
+
+            // Calcula custo baseado em queries bem-sucedidas
+            result.CustoCreditos = CalculateCost(result);
+
+            // TODO: Persistir resultados no banco
+            // await SaveResults(result, preResults);
+        }
+        catch (Exception ex)
+        {
+            result.ResultadoTransacao = ResultType.AllFailed;
+            result.Errors.Add($"Erro fatal: {ex.Message}");
+        }
+        finally
+        {
+            stopwatch.Stop();
+            result.TempoDecorrido = stopwatch.ElapsedMilliseconds;
+            result.FimConsulta = DateTime.Now;
         }
 
-
-        Console.WriteLine("Retorna o melhor preço");
-        result.BookPriceResult = _comparator.Compare(preResults);
-
-
-        Console.WriteLine("Salva resultados das consultas no banco, se configurado para tal");
-
-
-        Console.WriteLine("Calcula custo da transação e desconta saldo do cliente");
-        result.CustoCreditos = 10;
-
-        
-        Console.WriteLine("");
-
-
-        stopwatch.Stop(); // para o cronômetro mesmo se ocorrer exceção
-        Console.WriteLine($"⏱ Tempo total de execução: {stopwatch.ElapsedMilliseconds} ms");
-        result.TempoDecorrido = stopwatch.ElapsedMilliseconds;
-        result.FimConsulta = DateTime.Now;
-
         return result;
+    }
+
+    private static ResultType DetermineResultType(SearchResult result, int validResults)
+    {
+        if (result.FailedQueries == result.TotalSourcesQueried)
+            return ResultType.AllFailed;
+
+        if (validResults == 0)
+            return ResultType.NoResults;
+
+        if (result.FailedQueries > 0)
+            return ResultType.PartialSuccess;
+
+        return ResultType.Success;
+    }
+
+    private static int CalculateCost(SearchResult result)
+    {
+        // Custo base por transação + custo por query bem-sucedida
+        const int baseCost = 1;
+        const int costPerSuccessfulQuery = 1;
+
+        if (!result.ResultadoTransacao.IsBillable)
+            return 0;
+
+        return baseCost + (result.SuccessfulQueries * costPerSuccessfulQuery);
     }
 }

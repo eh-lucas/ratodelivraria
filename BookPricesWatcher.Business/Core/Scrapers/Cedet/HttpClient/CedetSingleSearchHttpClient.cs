@@ -9,28 +9,38 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.HttpClient
 {
     public class CedetSingleSearchHttpClient : IScraper
     {
-
         private const string GridXPath = "//*[@id=\"column-right\"]/div[5]";
+        private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
+
+        // HttpClient estático para reutilização de conexões
+        private static readonly System.Net.Http.HttpClient _httpClient;
+
+        static CedetSingleSearchHttpClient()
+        {
+            _httpClient = new System.Net.Http.HttpClient
+            {
+                Timeout = RequestTimeout
+            };
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+        }
 
         public ScraperTypeEnum ScraperType => ScraperTypeEnum.CedetSingleAgilityHttpClient;
 
         public async Task<BookPriceResult> ExecuteSearch(SearchParameter parameters)
         {
+            var website = parameters.Source?.Url ?? string.Empty;
+
             try
             {
-                var website = parameters.Source.Url;
-                var bookTitle = parameters.BookTitle;
+                if (string.IsNullOrEmpty(parameters.BookTitle))
+                    return new BookPriceResult();
 
-                Console.WriteLine($"Consultando livro: {bookTitle} em {website}");
                 string searchTerm = Uri.EscapeDataString(parameters.BookTitle);
-                string url = $"{parameters.Source.Url}index.php?route=product/search&search={searchTerm}";
+                string url = $"{website}index.php?route=product/search&search={searchTerm}";
 
-                using var http = new System.Net.Http.HttpClient();
-                http.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0");
-
-                var response = await http.GetAsync(url);
+                var response = await _httpClient.GetAsync(url);
                 if (!response.IsSuccessStatusCode)
-                    throw new Exception($"Erro ao buscar página: {response.StatusCode}");
+                    return new BookPriceResult();
 
                 var html = await response.Content.ReadAsStringAsync();
 
@@ -45,73 +55,89 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.HttpClient
                 if (products == null || products.Count == 0)
                     return new BookPriceResult();
 
-                var possibleBooks = GetReturnedBooksByTitle(products, parameters.BookTitle);
+                var possibleBooks = GetReturnedBooksByTitle(products, website);
                 var result = ChooseBestBookOption(possibleBooks, parameters.BookTitle, parameters.IsExactSearch);
 
-                return new BookPriceResult
-                {
-                    Price = result.Price,
-                    Title = result.Title,
-                    Author = result.Author,
-                    Website = website
-                };
+                return result;
             }
-            catch (Exception e)
+            catch (TaskCanceledException)
             {
-                Console.WriteLine($"erro ao consultar {parameters.Source.Url}");
+                // Timeout - não propaga exceção, retorna vazio
+                return new BookPriceResult();
+            }
+            catch (HttpRequestException)
+            {
+                // Erro de rede - não propaga exceção, retorna vazio
                 return new BookPriceResult();
             }
         }
 
-        private List<BookPriceResult> GetReturnedBooksByTitle(HtmlNodeCollection products, string bookTitle)
+        private List<BookPriceResult> GetReturnedBooksByTitle(HtmlNodeCollection products, string website)
         {
             var possibleBooks = new List<BookPriceResult>();
+
             foreach (var product in products)
             {
-                var childnode = product.ChildNodes;
-
                 try
                 {
+                    var childnode = product.ChildNodes;
+                    if (childnode.Count < 14)
+                        continue;
+
                     var authorNode = childnode[7].InnerText.Trim();
                     var titleNode = childnode[9].InnerText.Trim();
-                    var discountNode = childnode[11].InnerText.Trim();
                     var priceNodes = childnode[13].ChildNodes;
+
+                    if (priceNodes.Count < 5)
+                        continue;
 
                     var oldPrice = Convert.ToDecimal(priceNodes[1].InnerText.CleanPrice(), CultureInfo.InvariantCulture);
                     var newPrice = Convert.ToDecimal(priceNodes[4].InnerText.CleanPrice(), CultureInfo.InvariantCulture);
-                    int discount = (int)Math.Abs(newPrice * 100 / oldPrice) - 100;
+
+                    // Cálculo correto do desconto: percentual de economia
+                    int discount = oldPrice > 0
+                        ? (int)Math.Round(100 * (1 - (newPrice / oldPrice)))
+                        : 0;
 
                     var book = new BookPriceResult
                     {
                         Title = titleNode,
                         Author = authorNode,
                         Price = newPrice,
-                        Discount = discount
+                        Discount = discount,
+                        Website = website
                     };
                     possibleBooks.Add(book);
                 }
                 catch
                 {
-                    // ignora produtos que não tenham estrutura esperada
+                    // Ignora produtos com estrutura HTML inesperada
                 }
             }
 
             return possibleBooks;
         }
 
-        private BookPriceResult ChooseBestBookOption(List<BookPriceResult> possibleBooks, string bookTitle, bool isExactSearch)
+        private static BookPriceResult ChooseBestBookOption(List<BookPriceResult> possibleBooks, string bookTitle, bool isExactSearch)
         {
-            bookTitle = bookTitle.ToUpper().Trim();
             if (possibleBooks.Count == 0)
                 return new BookPriceResult();
 
+            bookTitle = bookTitle.ToUpper().Trim();
+
             if (isExactSearch)
-                return possibleBooks.FirstOrDefault(b => b.Title.ToUpper() == bookTitle) ?? new BookPriceResult();
+            {
+                var exactMatch = possibleBooks.FirstOrDefault(b =>
+                    !string.IsNullOrEmpty(b.Title) && b.Title.ToUpper().Trim() == bookTitle);
 
-            var bestPrice = possibleBooks.Min(b => b.Price);
-            var bestBook = possibleBooks.FirstOrDefault(b => b.Price == bestPrice);
-            return bestBook ?? new BookPriceResult();
+                return exactMatch ?? new BookPriceResult();
+            }
+
+            // Retorna o livro com menor preço (maior que zero)
+            return possibleBooks
+                .Where(b => b.Price > 0)
+                .OrderBy(b => b.Price)
+                .FirstOrDefault() ?? new BookPriceResult();
         }
-
     }
 }

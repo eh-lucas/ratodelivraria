@@ -7,28 +7,12 @@ import { Router } from '@angular/router';
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = ''; //não temos ainda, lucão ta trolando
+  private apiUrl = 'http://localhost:5177/api';
   private token: string | null = null;
   constructor(private http: HttpClient, private router: Router) { }
 
   login(username: string, password: string): Observable<any> {
-    //return this.http.post(`${this.apiUrl}/login`, { username, password });
-
-
-      console.log('Simulando login com', username, password);
-
-      // Simula um pequeno atraso de rede
-      return new Observable(observer => {
-        setTimeout(() => {
-          if (username === 'admin' && password === '123') {
-            observer.next({ token: 'fake-jwt-token-123' });
-          } else {
-            observer.error({ message: 'Usuário ou senha inválidos' });
-          }
-          observer.complete();
-        }, 800); // atraso de 800ms pra parecer real
-      });
-
+    return this.http.post(`${this.apiUrl}/auth/login`, { username, password });
   }
 
   logout(): void {

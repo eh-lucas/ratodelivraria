@@ -3,16 +3,28 @@ using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using Sherlock.Business;
 using Sherlock.Data;
+using SherlockAPI.Services;
 
 namespace SherlockAPI.Configurations;
 
 public class Configurator
 {
-    private const string secretKey = "O4A*2lcuD)K;s#vmM14S";
+    private const string secretKey = "SherlockSuperSecretKey2024!@#$%^&*";
 
     public void ConfigureServices(WebApplicationBuilder builder)
     {
         var key = Encoding.ASCII.GetBytes(secretKey);
+
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowAngular", policy =>
+            {
+                policy.WithOrigins("http://localhost:4200")
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();
+            });
+        });
 
         builder.Services.AddAuthentication(options =>
             {
@@ -52,6 +64,8 @@ public class Configurator
 
     static void RegisterServices(WebApplicationBuilder builder)
     {
+        builder.Services.AddScoped<TokenService>();
+
         builder.Services
             .AddData(builder.Configuration)
             .AddBusiness();

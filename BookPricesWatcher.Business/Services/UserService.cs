@@ -1,6 +1,5 @@
 ﻿using Sherlock.Business.DTOs;
 using Sherlock.Business.Interfaces;
-using Sherlock.Business.ViewModels;
 using Sherlock.Domain.Interfaces;
 using System.Runtime.CompilerServices;
 
@@ -17,5 +16,6 @@ public class UserService : IUserService
         var users = _userRepository.GetUsers();
         var usersDto = new List<UserDto>();
 
+        return usersDto;
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SherlockAPI.Services;
+using SherlockAPI.DTOs;
 using Sherlock.Data.Context;
 using Sherlock.Domain.Entities;
 
@@ -10,14 +11,16 @@ namespace SherlockAPI.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly SherlockDbContext _context;
+    private readonly TokenService _tokenService;
 
-    public AuthController(SherlockDbContext context)
+    public AuthController(SherlockDbContext context, TokenService tokenService)
     {
         _context = context;
+        _tokenService = tokenService;
     }
 
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] User request)
+    public async Task<IActionResult> Register([FromBody] LoginRequestDTO request)
     {
         if (_context.Users.Any(u => u.Username == request.Username))
             return BadRequest("Usuário já existe.");
@@ -25,8 +28,8 @@ public class AuthController : ControllerBase
         var user = new User()
         {
             Username = request.Username,
-            Email = request.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.PasswordHash)
+            Email = "",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
         };
 
         _context.Users.Add(user);
@@ -36,14 +39,20 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
-    public IActionResult Login([FromBody] User request)
+    public IActionResult Login([FromBody] LoginRequestDTO request)
     {
         var user = _context.Users.FirstOrDefault(u => u.Username == request.Username);
 
-        if (user == null || !BCrypt.Net.BCrypt.Verify(request.PasswordHash, user.PasswordHash))
+        if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             return Unauthorized("Usuario ou senha inválidos.");
 
-        return Ok("Login efetuado com sucesso.");
+        var token = _tokenService.GenerateToken(user.Id.ToString(), "User");
+
+        return Ok(new LoginResponseDTO
+        {
+            Token = token,
+            Username = user.Username
+        });
     }
 
     [HttpPost("reset-password")]
