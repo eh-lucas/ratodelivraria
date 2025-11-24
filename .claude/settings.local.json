@@ -3,7 +3,8 @@
     "allow": [
       "Bash(Select-Object FullName)",
       "Bash(dir:*)",
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "Bash(Get-ChildItem -Path \"C:\\Users\\LucasHergessel\\Desktop\\Projetos\\BookPricesWatcher\\Client\\src\\app\" -Recurse -Directory)"
     ],
     "deny": [],
     "ask": []

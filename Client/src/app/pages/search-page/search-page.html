@@ -1,0 +1,255 @@
+<div class="search-container">
+  <!-- Header -->
+  <header class="header">
+    <div class="logo-section">
+      <img src="/assets/BookFinIcon3.png" alt="BookFin Logo" class="logo" />
+      <h1>BookFin</h1>
+    </div>
+    <button class="logout-btn" (click)="logout()">Sair</button>
+  </header>
+
+  <main class="main-content">
+    <!-- Painel de Busca -->
+    <section class="search-panel">
+      <h2>Buscar Livros</h2>
+
+      <div class="book-form">
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label>Título do Livro *</label>
+            <input
+              type="text"
+              [(ngModel)]="newBook.title"
+              placeholder="Ex: O Senhor dos Anéis"
+              (keyup.enter)="addBook()"
+            />
+          </div>
+          <div class="form-group flex-1">
+            <label>ISBN (opcional)</label>
+            <input
+              type="text"
+              [(ngModel)]="newBook.isbn"
+              placeholder="978-..."
+            />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label>Autor (opcional)</label>
+            <input
+              type="text"
+              [(ngModel)]="newBook.author"
+              placeholder="Ex: J.R.R. Tolkien"
+            />
+          </div>
+          <div class="form-group flex-1">
+            <label>Quantidade</label>
+            <input
+              type="number"
+              [(ngModel)]="newBook.quantity"
+              min="1"
+              max="10"
+            />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-secondary" (click)="quickSearch()" [disabled]="isLoading">
+            Busca Rápida
+          </button>
+          <button class="btn btn-primary" (click)="addBook()" [disabled]="isLoading">
+            Adicionar ao Carrinho
+          </button>
+        </div>
+      </div>
+
+      @if (errorMessage) {
+        <div class="error-message">{{ errorMessage }}</div>
+      }
+    </section>
+
+    <!-- Carrinho -->
+    @if (books.length > 0) {
+      <section class="cart-panel">
+        <div class="cart-header">
+          <h2>Carrinho ({{ books.length }} livros)</h2>
+          <button class="btn btn-danger btn-sm" (click)="clearCart()">Limpar</button>
+        </div>
+
+        <div class="cart-items">
+          @for (book of books; track book.title; let i = $index) {
+            <div class="cart-item">
+              <div class="item-info">
+                <span class="item-title">{{ book.title }}</span>
+                @if (book.author) {
+                  <span class="item-author">{{ book.author }}</span>
+                }
+                @if (book.isbn) {
+                  <span class="item-isbn">ISBN: {{ book.isbn }}</span>
+                }
+              </div>
+              <div class="item-quantity">x{{ book.quantity }}</div>
+              <button class="btn-remove" (click)="removeBook(i)">✕</button>
+            </div>
+          }
+        </div>
+
+        <!-- Opções de Otimização -->
+        <div class="optimization-options">
+          <h3>Opções de Otimização</h3>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Estratégia</label>
+              <select [(ngModel)]="selectedStrategy">
+                @for (strategy of strategies; track strategy.value) {
+                  <option [value]="strategy.value">{{ strategy.description }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Máx. Sites (0 = sem limite)</label>
+              <input type="number" [(ngModel)]="maxProviders" min="0" max="5" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label class="checkbox-label">
+              <input type="checkbox" [(ngModel)]="includeShipping" />
+              Incluir frete no cálculo
+            </label>
+          </div>
+        </div>
+
+        <button
+          class="btn btn-success btn-large"
+          (click)="optimizeCart()"
+          [disabled]="isLoading"
+        >
+          @if (isLoading) {
+            Otimizando...
+          } @else {
+            Otimizar Carrinho
+          }
+        </button>
+      </section>
+    }
+
+    <!-- Resultados -->
+    @if (result) {
+      <section class="results-panel">
+        <div class="results-header">
+          <h2>Resultado da Otimização</h2>
+          @if (result.fromCache) {
+            <span class="cache-badge">Cache</span>
+          }
+        </div>
+
+        @if (result.success) {
+          <!-- Resumo -->
+          <div class="results-summary">
+            <div class="summary-card total">
+              <span class="label">Total</span>
+              <span class="value">R$ {{ result.totalCost.toFixed(2) }}</span>
+            </div>
+            <div class="summary-card">
+              <span class="label">Livros</span>
+              <span class="value">R$ {{ result.booksCost.toFixed(2) }}</span>
+            </div>
+            <div class="summary-card">
+              <span class="label">Frete</span>
+              <span class="value">R$ {{ result.shippingCost.toFixed(2) }}</span>
+            </div>
+            @if (result.savings > 0) {
+              <div class="summary-card savings">
+                <span class="label">Economia</span>
+                <span class="value">R$ {{ result.savings.toFixed(2) }} ({{ result.savingsPercent.toFixed(1) }}%)</span>
+              </div>
+            }
+          </div>
+
+          <!-- Carrinhos por Provider -->
+          <div class="provider-carts">
+            @for (cart of result.providerCarts; track cart.providerId) {
+              <div class="provider-cart">
+                <div class="provider-header">
+                  <h3>{{ cart.providerName }}</h3>
+                  @if (cart.hasFreeShipping) {
+                    <span class="free-shipping-badge">Frete Grátis!</span>
+                  }
+                </div>
+
+                <div class="provider-items">
+                  @for (item of cart.items; track item.title) {
+                    <div class="provider-item">
+                      <div class="item-details">
+                        <span class="item-title">{{ item.title }}</span>
+                        @if (item.author) {
+                          <span class="item-author">{{ item.author }}</span>
+                        }
+                      </div>
+                      <div class="item-pricing">
+                        <span class="quantity">{{ item.quantity }}x</span>
+                        <span class="price">R$ {{ item.unitPrice.toFixed(2) }}</span>
+                        @if (item.discount && item.discount > 0) {
+                          <span class="discount">-{{ item.discount.toFixed(0) }}%</span>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+
+                <div class="provider-totals">
+                  <div class="total-row">
+                    <span>Subtotal:</span>
+                    <span>R$ {{ cart.subtotal.toFixed(2) }}</span>
+                  </div>
+                  <div class="total-row">
+                    <span>Frete:</span>
+                    <span>R$ {{ cart.shippingCost.toFixed(2) }}</span>
+                  </div>
+                  @if (cart.freeShippingThreshold && !cart.hasFreeShipping) {
+                    <div class="free-shipping-hint">
+                      Frete grátis a partir de R$ {{ cart.freeShippingThreshold.toFixed(2) }}
+                    </div>
+                  }
+                  <div class="total-row total">
+                    <span>Total:</span>
+                    <span>R$ {{ cart.total.toFixed(2) }}</span>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Livros não encontrados -->
+          @if (result.booksNotFound.length > 0) {
+            <div class="not-found">
+              <h4>Livros não encontrados:</h4>
+              <ul>
+                @for (book of result.booksNotFound; track book) {
+                  <li>{{ book }}</li>
+                }
+              </ul>
+            </div>
+          }
+
+          <!-- Métricas -->
+          <div class="metrics">
+            <span>Tempo: {{ result.executionTimeMs }}ms</span>
+            <span>Créditos: {{ result.creditsUsed }}</span>
+          </div>
+        } @else {
+          <div class="error-result">
+            <p>{{ result.message }}</p>
+            @if (result.booksNotFound.length > 0) {
+              <p>Livros não encontrados: {{ result.booksNotFound.join(', ') }}</p>
+            }
+          </div>
+        }
+      </section>
+    }
+  </main>
+</div>
