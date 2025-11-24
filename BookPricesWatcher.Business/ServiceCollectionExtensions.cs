@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Sherlock.Business.Core.Base;
+using Sherlock.Business.Core.Optimization;
 using Sherlock.Business.Core.Resilience;
 using Sherlock.Business.Interfaces;
 using Sherlock.Business.Services;
@@ -15,6 +16,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IBookService, BookService>();
         services.AddScoped<IBookPriceService, BookPriceService>();
         services.AddScoped<IQueryHistoryService, QueryHistoryService>();
+        services.AddScoped<ICartOptimizationService, CartOptimizationService>();
 
         // Cache
         services.AddScoped<ICacheService, CacheService>();
@@ -24,6 +26,9 @@ public static class ServiceCollectionExtensions
 
         // Engine
         services.AddScoped<W16Engine>();
+
+        // Optimization
+        services.AddScoped<CartOptimizer>();
 
         return services;
     }
