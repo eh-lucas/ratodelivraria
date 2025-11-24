@@ -1,4 +1,6 @@
-﻿using Sherlock.Business.Core.Scrapers;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Sherlock.Business.Core.Scrapers;
 using Sherlock.Domain.Entities;
 using System.Diagnostics;
 
@@ -12,16 +14,26 @@ public class W16Engine
 {
     private readonly Comparator _comparator;
     private readonly ScraperFactory _scraperFactory;
+    private readonly ILogger<W16Engine> _logger;
 
-    public W16Engine()
+    public W16Engine() : this(NullLogger<W16Engine>.Instance)
+    {
+    }
+
+    public W16Engine(ILogger<W16Engine> logger)
     {
         _comparator = new Comparator();
         _scraperFactory = new ScraperFactory();
+        _logger = logger;
     }
 
     public async Task<SearchResult> ExecuteTransaction(Requestor requestor)
     {
         var stopwatch = Stopwatch.StartNew();
+        var transactionId = Guid.NewGuid().ToString("N")[..8];
+
+        _logger.LogInformation("Iniciando transação {TransactionId} com {SourceCount} fontes",
+            transactionId, requestor.SourcesToSearch.Count);
 
         var preResults = new List<BookPriceResult>();
         var result = new SearchResult
@@ -44,6 +56,8 @@ public class W16Engine
                 {
                     try
                     {
+                        _logger.LogDebug("Consultando fonte {SourceName}", source.Name);
+
                         var parameters = requestor.SearchParameters;
                         parameters.Source = source;
 
@@ -54,12 +68,21 @@ public class W16Engine
                         {
                             preResults.Add(singleResult);
                             result.SuccessfulQueries++;
+
+                            _logger.LogInformation("Resultado encontrado em {SourceName}: {Title} - R${Price:F2}",
+                                source.Name, singleResult.Title, singleResult.Price);
+                        }
+                        else
+                        {
+                            _logger.LogDebug("Fonte {SourceName} não retornou resultado válido", source.Name);
                         }
                     }
                     catch (Exception ex)
                     {
                         result.FailedQueries++;
                         result.Errors.Add($"{source.Name}: {ex.Message}");
+
+                        _logger.LogWarning(ex, "Falha ao consultar fonte {SourceName}", source.Name);
                         // Continua para próxima fonte ao invés de quebrar tudo
                     }
                 }
@@ -74,6 +97,15 @@ public class W16Engine
             // Calcula custo baseado em queries bem-sucedidas
             result.CustoCreditos = CalculateCost(result);
 
+            _logger.LogInformation(
+                "Transação {TransactionId} concluída: {Status} - {Successful}/{Total} fontes, melhor preço: R${BestPrice:F2} em {Elapsed}ms",
+                transactionId,
+                result.ResultadoTransacao.Name,
+                result.SuccessfulQueries,
+                result.TotalSourcesQueried,
+                result.BookPriceResult?.Price ?? 0,
+                stopwatch.ElapsedMilliseconds);
+
             // TODO: Persistir resultados no banco
             // await SaveResults(result, preResults);
         }
@@ -81,6 +113,8 @@ public class W16Engine
         {
             result.ResultadoTransacao = ResultType.AllFailed;
             result.Errors.Add($"Erro fatal: {ex.Message}");
+
+            _logger.LogError(ex, "Erro fatal na transação {TransactionId}", transactionId);
         }
         finally
         {
