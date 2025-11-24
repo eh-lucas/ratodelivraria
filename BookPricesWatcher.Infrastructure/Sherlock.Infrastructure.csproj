@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\BookPricesWatcher.Business\Sherlock.Business.csproj" />
+    <ProjectReference Include="..\BookPricesWatcher.Data\Sherlock.Data.csproj" />
+  </ItemGroup>
+
 </Project>

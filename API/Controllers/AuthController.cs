@@ -45,4 +45,15 @@ public class AuthController : ControllerBase
 
         return Ok("Login efetuado com sucesso.");
     }
+
+    [HttpPost("reset-password")]
+    public IActionResult ResetPassword([FromBody] User request)
+    {
+        var user = _context.Users.FirstOrDefault(u => u.Username == request.Username);
+
+        if (user == null || !BCrypt.Net.BCrypt.Verify(request.PasswordHash, user.PasswordHash))
+            return Unauthorized("Usuario ou senha inválidos.");
+
+        return Ok("Login efetuado com sucesso.");
+    }
 }

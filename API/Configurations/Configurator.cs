@@ -1,18 +1,20 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
+using Sherlock.Business;
+using Sherlock.Data;
 
 namespace SherlockAPI.Configurations;
-public class AuthenticationConfig
+
+public class Configurator
 {
     private const string secretKey = "O4A*2lcuD)K;s#vmM14S";
-    public void ConfigureServices(IServiceCollection services)
+
+    public void ConfigureServices(WebApplicationBuilder builder)
     {
         var key = Encoding.ASCII.GetBytes(secretKey);
 
-        services.AddAuthentication(options =>
+        builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -42,6 +44,16 @@ public class AuthenticationConfig
                     }
                 };
             });
-        services.AddControllers();
+
+        RegisterServices(builder);
+
+        builder.Services.AddControllers();
+    }
+
+    static void RegisterServices(WebApplicationBuilder builder)
+    {
+        builder.Services
+            .AddData(builder.Configuration)
+            .AddBusiness();
     }
 }
