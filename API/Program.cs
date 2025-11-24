@@ -1,3 +1,4 @@
+using System.Threading.RateLimiting;
 using Serilog;
 using SherlockAPI.Configurations;
 
@@ -31,10 +32,70 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
 
+    // Redis Cache
+    var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnection;
+        options.InstanceName = "Sherlock:";
+    });
+
+    // Rate Limiting
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+        // Política por usuário autenticado
+        options.AddPolicy("authenticated", context =>
+        {
+            var userId = context.User?.FindFirst("sub")?.Value
+                ?? context.User?.FindFirst("nameid")?.Value
+                ?? context.Connection.RemoteIpAddress?.ToString()
+                ?? "anonymous";
+
+            return RateLimitPartition.GetTokenBucketLimiter(userId, _ => new TokenBucketRateLimiterOptions
+            {
+                TokenLimit = 20,
+                TokensPerPeriod = 10,
+                ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+                QueueLimit = 5,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            });
+        });
+
+        // Política global (fallback)
+        options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        {
+            return RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 100,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 10,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                });
+        });
+
+        options.OnRejected = async (context, cancellationToken) =>
+        {
+            Log.Warning("Rate limit excedido para {IP}",
+                context.HttpContext.Connection.RemoteIpAddress);
+
+            context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            await context.HttpContext.Response.WriteAsJsonAsync(new
+            {
+                error = "Muitas requisições. Tente novamente em alguns segundos.",
+                retryAfter = 60
+            }, cancellationToken);
+        };
+    });
+
     // Health checks
     var connectionString = builder.Configuration.GetConnectionString("SherlockDb");
     builder.Services.AddHealthChecks()
-        .AddNpgSql(connectionString!, name: "postgresql", tags: ["db", "sql", "postgresql"]);
+        .AddNpgSql(connectionString!, name: "postgresql", tags: ["db", "sql", "postgresql"])
+        .AddRedis(redisConnection, name: "redis", tags: ["cache", "redis"]);
 
     var app = builder.Build();
 
@@ -52,6 +113,8 @@ try
     app.UseHttpsRedirection();
 
     app.UseCors("AllowAngular");
+
+    app.UseRateLimiter();
 
     app.UseAuthentication();
     app.UseAuthorization();

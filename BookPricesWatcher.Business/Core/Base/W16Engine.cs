@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Sherlock.Business.Core.Resilience;
 using Sherlock.Business.Core.Scrapers;
+using Sherlock.Business.Interfaces;
 using Sherlock.Domain.Entities;
 using System.Diagnostics;
 
@@ -15,19 +17,30 @@ public class W16Engine
     private readonly Comparator _comparator;
     private readonly ScraperFactory _scraperFactory;
     private readonly ILogger<W16Engine> _logger;
+    private readonly ResilientScraperWrapper? _resilientWrapper;
+    private readonly ICacheService? _cacheService;
 
-    public W16Engine() : this(NullLogger<W16Engine>.Instance)
+    public W16Engine() : this(NullLogger<W16Engine>.Instance, null, null)
     {
     }
 
-    public W16Engine(ILogger<W16Engine> logger)
+    public W16Engine(ILogger<W16Engine> logger) : this(logger, null, null)
+    {
+    }
+
+    public W16Engine(
+        ILogger<W16Engine> logger,
+        ICacheService? cacheService,
+        ResilientScraperWrapper? resilientWrapper)
     {
         _comparator = new Comparator();
         _scraperFactory = new ScraperFactory();
         _logger = logger;
+        _cacheService = cacheService;
+        _resilientWrapper = resilientWrapper;
     }
 
-    public async Task<SearchResult> ExecuteTransaction(Requestor requestor)
+    public async Task<SearchResult> ExecuteTransaction(Requestor requestor, CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
         var transactionId = Guid.NewGuid().ToString("N")[..8];
@@ -44,9 +57,24 @@ public class W16Engine
 
         try
         {
-            // TODO: Verificar cache antes de fazer scraping
-            // if (TryGetFromCache(requestor, out var cachedResult))
-            //     return cachedResult;
+            // Verifica cache agregado primeiro (resultado completo da busca)
+            if (_cacheService != null)
+            {
+                var cacheKey = _cacheService.GenerateBookPriceKey(
+                    requestor.SearchParameters.BookTitle,
+                    requestor.SearchParameters.Isbn);
+
+                var cachedResult = await _cacheService.GetAsync<SearchResult>(cacheKey);
+                if (cachedResult != null)
+                {
+                    _logger.LogInformation(
+                        "Transação {TransactionId} resolvida via cache em {Elapsed}ms",
+                        transactionId, stopwatch.ElapsedMilliseconds);
+
+                    cachedResult.FromCache = true;
+                    return cachedResult;
+                }
+            }
 
             var scrapers = _scraperFactory.CreateScrapers(requestor);
 
@@ -54,6 +82,9 @@ public class W16Engine
             {
                 foreach (var source in requestor.SourcesToSearch)
                 {
+                    if (cancellationToken.IsCancellationRequested)
+                        break;
+
                     try
                     {
                         _logger.LogDebug("Consultando fonte {SourceName}", source.Name);
@@ -61,10 +92,21 @@ public class W16Engine
                         var parameters = requestor.SearchParameters;
                         parameters.Source = source;
 
-                        var singleResult = await scraper.ExecuteSearch(parameters);
+                        BookPriceResult? singleResult;
+
+                        // Usa wrapper resiliente se disponível
+                        if (_resilientWrapper != null)
+                        {
+                            singleResult = await _resilientWrapper.ExecuteWithResilienceAsync(
+                                scraper, parameters, cancellationToken);
+                        }
+                        else
+                        {
+                            singleResult = await scraper.ExecuteSearch(parameters);
+                        }
 
                         // Só adiciona se teve resultado válido
-                        if (!string.IsNullOrEmpty(singleResult.Title) && singleResult.Price > 0)
+                        if (singleResult != null && !string.IsNullOrEmpty(singleResult.Title) && singleResult.Price > 0)
                         {
                             preResults.Add(singleResult);
                             result.SuccessfulQueries++;
@@ -90,6 +132,7 @@ public class W16Engine
 
             // Compara e seleciona o melhor resultado
             result.BookPriceResult = _comparator.Compare(preResults);
+            result.AllResults = preResults;
 
             // Define o status da transação
             result.ResultadoTransacao = DetermineResultType(result, preResults.Count);
@@ -106,8 +149,15 @@ public class W16Engine
                 result.BookPriceResult?.Price ?? 0,
                 stopwatch.ElapsedMilliseconds);
 
-            // TODO: Persistir resultados no banco
-            // await SaveResults(result, preResults);
+            // Cacheia resultado agregado se teve sucesso
+            if (_cacheService != null && result.ResultadoTransacao.IsSuccess)
+            {
+                var cacheKey = _cacheService.GenerateBookPriceKey(
+                    requestor.SearchParameters.BookTitle,
+                    requestor.SearchParameters.Isbn);
+
+                await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromHours(2));
+            }
         }
         catch (Exception ex)
         {

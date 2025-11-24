@@ -1,0 +1,19 @@
+namespace Sherlock.Business.Interfaces;
+
+public interface ICacheService
+{
+    Task<T?> GetAsync<T>(string key) where T : class;
+    Task SetAsync<T>(string key, T value, TimeSpan? expiration = null) where T : class;
+    Task RemoveAsync(string key);
+    Task<bool> ExistsAsync(string key);
+
+    /// <summary>
+    /// Gera chave de cache para busca de preço de livro
+    /// </summary>
+    string GenerateBookPriceKey(string bookTitle, string? isbn = null);
+
+    /// <summary>
+    /// Gera chave de cache para provider específico
+    /// </summary>
+    string GenerateProviderKey(string bookTitle, int providerId);
+}

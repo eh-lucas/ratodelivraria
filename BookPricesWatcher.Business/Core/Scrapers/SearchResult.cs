@@ -15,4 +15,10 @@ public class SearchResult
     public int SuccessfulQueries { get; set; }
     public int FailedQueries { get; set; }
     public List<string> Errors { get; set; } = new List<string>();
+
+    // Cache
+    public bool FromCache { get; set; }
+
+    // Todos os resultados encontrados (não apenas o melhor)
+    public List<BookPriceResult> AllResults { get; set; } = new List<BookPriceResult>();
 }
