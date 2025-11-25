@@ -11,9 +11,10 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddData(this IServiceCollection services, IConfiguration configuration)
     {
-        // DbContext
+        // DbContext - snake_case para tabelas e colunas, mantendo histórico de migrações intacto
         services.AddDbContext<SherlockDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"))
+                   .UseSnakeCaseNamingConvention());
 
         // Repositories
         services.AddScoped<IUserRepository, UserRepository>();
