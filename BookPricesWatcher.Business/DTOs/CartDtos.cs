@@ -24,6 +24,11 @@ public class CartOptimizationRequest
     /// Considerar frete na otimização
     /// </summary>
     public bool IncludeShipping { get; set; } = true;
+
+    /// <summary>
+    /// URLs dos providers específicos para buscar (null = todos ativos)
+    /// </summary>
+    public List<string>? ProviderUrls { get; set; }
 }
 
 /// <summary>

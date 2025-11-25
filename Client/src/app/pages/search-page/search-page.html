@@ -54,8 +54,35 @@
           </div>
         </div>
 
+        <!-- Seleção de Providers -->
+        <div class="providers-section">
+          <div class="providers-header">
+            <label>Sites para buscar</label>
+            <div class="providers-actions">
+              <button type="button" class="btn-link" (click)="selectAllProviders()">Todos</button>
+              <span>|</span>
+              <button type="button" class="btn-link" (click)="deselectAllProviders()">Nenhum</button>
+            </div>
+          </div>
+          <div class="providers-grid">
+            @for (provider of providers; track provider.id) {
+              <label class="provider-checkbox" [class.selected]="isProviderSelected(provider.url)">
+                <input
+                  type="checkbox"
+                  [checked]="isProviderSelected(provider.url)"
+                  (change)="toggleProvider(provider.url)"
+                />
+                <span class="provider-name">{{ provider.name }}</span>
+              </label>
+            }
+          </div>
+          @if (providers.length === 0) {
+            <p class="providers-loading">Carregando sites...</p>
+          }
+        </div>
+
         <div class="form-actions">
-          <button class="btn btn-secondary" (click)="quickSearch()" [disabled]="isLoading">
+          <button class="btn btn-secondary" (click)="quickSearch()" [disabled]="isLoading || selectedProviderUrls.length === 0">
             Busca Rápida
           </button>
           <button class="btn btn-primary" (click)="addBook()" [disabled]="isLoading">

@@ -11,15 +11,18 @@ namespace Sherlock.Business.Core.Resilience;
 public class ResilientScraperWrapper
 {
     private readonly ICacheService _cacheService;
+    private readonly IQueryHistoryService _queryHistoryService;
     private readonly ILogger<ResilientScraperWrapper> _logger;
     private readonly Dictionary<string, ResiliencePipeline<BookPriceResult?>> _pipelines = new();
     private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(2);
 
     public ResilientScraperWrapper(
         ICacheService cacheService,
+        IQueryHistoryService queryHistoryService,
         ILogger<ResilientScraperWrapper> logger)
     {
         _cacheService = cacheService;
+        _queryHistoryService = queryHistoryService;
         _logger = logger;
     }
 
@@ -31,6 +34,8 @@ public class ResilientScraperWrapper
         SearchParameter parameters,
         CancellationToken cancellationToken = default)
     {
+        const bool UseDbCache = true;
+
         var scraperName = scraper.GetType().Name;
         var providerId = parameters.Source?.Id ?? 0;
 

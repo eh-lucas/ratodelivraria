@@ -68,6 +68,14 @@ export interface StrategyOption {
   description: string;
 }
 
+export interface ProviderOption {
+  id: number;
+  name: string;
+  url: string;
+  category: string;
+  isActive: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -95,15 +103,26 @@ export class CartService {
     );
   }
 
-  searchBook(title: string, isbn?: string, author?: string): Observable<CartOptimizationResult> {
+  searchBook(title: string, isbn?: string, author?: string, providerUrls?: string[]): Observable<CartOptimizationResult> {
     let url = `${this.apiUrl}/search?title=${encodeURIComponent(title)}`;
     if (isbn) url += `&isbn=${encodeURIComponent(isbn)}`;
     if (author) url += `&author=${encodeURIComponent(author)}`;
+    if (providerUrls && providerUrls.length > 0) {
+      url += `&providerUrls=${encodeURIComponent(providerUrls.join(','))}`;
+    }
 
     return this.http.get<CartOptimizationResult>(url, { headers: this.getHeaders() });
   }
 
   getStrategies(): Observable<StrategyOption[]> {
     return this.http.get<StrategyOption[]>(`${this.apiUrl}/strategies`);
+  }
+
+  getProviders(): Observable<ProviderOption[]> {
+    return this.http.get<ProviderOption[]>('http://localhost:5177/api/providers');
+  }
+
+  getActiveProviders(): Observable<ProviderOption[]> {
+    return this.http.get<ProviderOption[]>('http://localhost:5177/api/providers/active');
   }
 }

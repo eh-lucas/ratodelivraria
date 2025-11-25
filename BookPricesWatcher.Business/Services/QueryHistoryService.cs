@@ -8,68 +8,156 @@ namespace Sherlock.Business.Services;
 
 public class QueryHistoryService : IQueryHistoryService
 {
+    private readonly ITransactionRepository _transactionRepository;
     private readonly IQueryRepository _queryRepository;
 
-    public QueryHistoryService(IQueryRepository queryRepository)
+    public QueryHistoryService(
+        ITransactionRepository transactionRepository,
+        IQueryRepository queryRepository)
     {
+        _transactionRepository = transactionRepository;
         _queryRepository = queryRepository;
     }
 
-    public async Task LogQueryAsync(SearchResult result, string inputParameters, int? userId = null, int? bookId = null)
+    public async Task<Transaction> LogTransactionAsync(
+        SearchResult result,
+        string inputParameters,
+        List<QueryResultInfo> queryResults,
+        int? userId = null,
+        int? bookId = null)
     {
-        var query = new Query
+        // Cria a transação
+        var transaction = new Transaction
         {
             UserId = userId,
             BookId = bookId,
-            StartDateTime = result.InicioConsulta,
-            EndDateTime = result.FimConsulta,
+            StartedAt = result.InicioConsulta,
+            EndedAt = result.FimConsulta,
             ExecutionTimeMs = result.TempoDecorrido,
-            ProvidersQueried = result.TotalSourcesQueried,
+            TotalProvidersQueried = result.TotalSourcesQueried,
             SuccessfulQueries = result.SuccessfulQueries,
             FailedQueries = result.FailedQueries,
             CostCredits = result.CustoCreditos,
-            ResultTypeId = result.ResultadoTransacao.IsSuccess ? 1 : 0,
+            ResultTypeId = result.ResultadoTransacao.Id,
             InputParameters = inputParameters,
-            Result = JsonSerializer.Serialize(new
-            {
-                result.BookPriceResult.Title,
-                result.BookPriceResult.Price,
-                result.BookPriceResult.Website,
-                result.BookPriceResult.Discount,
-                result.Errors
-            })
+            FromCache = result.FromCache,
+            Errors = result.Errors.Count > 0 ? JsonSerializer.Serialize(result.Errors) : null
         };
 
-        await _queryRepository.LogQueryAsync(query);
-    }
+        // Salva a transação primeiro para obter o ID
+        var savedTransaction = await _transactionRepository.CreateTransactionAsync(transaction);
 
-    public async Task<IEnumerable<QueryHistoryDto>> GetUserHistoryAsync(int userId, int limit = 20)
-    {
-        // Nota: Para implementar isso corretamente, precisaríamos adicionar UserId
-        // à interface IQueryRepository ou criar um método específico
-        var queries = await _queryRepository.GetRecentAsync(limit);
-        return queries.Select(MapToDto);
-    }
-
-    public async Task<IEnumerable<QueryHistoryDto>> GetRecentQueriesAsync(int limit = 10)
-    {
-        var queries = await _queryRepository.GetRecentAsync(limit);
-        return queries.Select(MapToDto);
-    }
-
-    private static QueryHistoryDto MapToDto(Query query)
-    {
-        return new QueryHistoryDto
+        // Cria as queries individuais
+        var queries = queryResults.Select(qr => new Query
         {
-            Id = query.Id,
-            StartDateTime = query.StartDateTime,
-            EndDateTime = query.EndDateTime,
-            ExecutionTimeMs = query.ExecutionTimeMs,
-            ProvidersQueried = query.ProvidersQueried,
-            SuccessfulQueries = query.SuccessfulQueries,
-            CostCredits = query.CostCredits,
-            InputParameters = query.InputParameters,
-            IsSuccess = query.ResultTypeId == 1
+            TransactionId = savedTransaction.Id,
+            ProviderId = qr.ProviderId,
+            ResponseTimeMs = qr.ResponseTimeMs,
+            Success = qr.Success,
+            Title = qr.Title,
+            Author = qr.Author,
+            Price = qr.Price,
+            Discount = qr.Discount,
+            ProductUrl = qr.ProductUrl,
+            ErrorMessage = qr.ErrorMessage
+        }).ToList();
+
+        // Salva todas as queries
+        if (queries.Count > 0)
+        {
+            await _queryRepository.AddQueriesAsync(queries);
+
+            // Identifica a melhor query (menor preço com sucesso)
+            var bestQuery = await _queryRepository.GetBestQueryForTransactionAsync(savedTransaction.Id);
+            if (bestQuery != null)
+            {
+                await _transactionRepository.UpdateBestQueryAsync(savedTransaction.Id, bestQuery.Id);
+            }
+        }
+
+        return savedTransaction;
+    }
+
+    public async Task<IEnumerable<TransactionHistoryDto>> GetUserHistoryAsync(int userId, int limit = 20)
+    {
+        var transactions = await _transactionRepository.GetByUserIdAsync(userId, limit);
+        return transactions.Select(MapToHistoryDto);
+    }
+
+    public async Task<IEnumerable<TransactionHistoryDto>> GetRecentTransactionsAsync(int limit = 10)
+    {
+        var transactions = await _transactionRepository.GetRecentAsync(limit);
+        return transactions.Select(MapToHistoryDto);
+    }
+
+    public async Task<TransactionDetailDto?> GetTransactionDetailAsync(int transactionId)
+    {
+        var transaction = await _transactionRepository.GetWithQueriesAsync(transactionId);
+        if (transaction == null)
+            return null;
+
+        return MapToDetailDto(transaction);
+    }
+
+    private static TransactionHistoryDto MapToHistoryDto(Transaction transaction)
+    {
+        var bestQuery = transaction.Queries
+            .Where(q => q.Success && q.Price > 0)
+            .OrderBy(q => q.Price)
+            .FirstOrDefault();
+
+        return new TransactionHistoryDto
+        {
+            Id = transaction.Id,
+            StartedAt = transaction.StartedAt,
+            EndedAt = transaction.EndedAt,
+            ExecutionTimeMs = transaction.ExecutionTimeMs,
+            TotalProvidersQueried = transaction.TotalProvidersQueried,
+            SuccessfulQueries = transaction.SuccessfulQueries,
+            CostCredits = transaction.CostCredits,
+            InputParameters = transaction.InputParameters,
+            IsSuccess = transaction.ResultTypeId == 1 || transaction.ResultTypeId == 2, // Success ou PartialSuccess
+            FromCache = transaction.FromCache,
+            BestTitle = bestQuery?.Title,
+            BestPrice = bestQuery?.Price,
+            BestProvider = bestQuery?.Provider?.Name
         };
+    }
+
+    private static TransactionDetailDto MapToDetailDto(Transaction transaction)
+    {
+        var dto = new TransactionDetailDto
+        {
+            Id = transaction.Id,
+            StartedAt = transaction.StartedAt,
+            EndedAt = transaction.EndedAt,
+            ExecutionTimeMs = transaction.ExecutionTimeMs,
+            TotalProvidersQueried = transaction.TotalProvidersQueried,
+            SuccessfulQueries = transaction.SuccessfulQueries,
+            CostCredits = transaction.CostCredits,
+            InputParameters = transaction.InputParameters,
+            IsSuccess = transaction.ResultTypeId == 1 || transaction.ResultTypeId == 2,
+            FromCache = transaction.FromCache,
+            Queries = transaction.Queries.Select(q => new QueryDetailDto
+            {
+                Id = q.Id,
+                ProviderId = q.ProviderId,
+                ProviderName = q.Provider?.Name ?? $"Provider #{q.ProviderId}",
+                ResponseTimeMs = q.ResponseTimeMs,
+                Success = q.Success,
+                Title = q.Title,
+                Author = q.Author,
+                Price = q.Price,
+                Discount = q.Discount,
+                ErrorMessage = q.ErrorMessage
+            }).OrderBy(q => q.Price ?? decimal.MaxValue).ToList()
+        };
+
+        var bestQuery = dto.Queries.FirstOrDefault(q => q.Success && q.Price > 0);
+        dto.BestTitle = bestQuery?.Title;
+        dto.BestPrice = bestQuery?.Price;
+        dto.BestProvider = bestQuery?.ProviderName;
+
+        return dto;
     }
 }

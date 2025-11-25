@@ -63,9 +63,12 @@ public class CartOptimizationService : ICartOptimizationService
         var searchTasks = new List<Task<(CartBookItem book, SearchResult result)>>();
         int creditsUsed = 0;
 
+        // Determina quais providers usar
+        var sourcesToSearch = GetSourcesToSearch(request.ProviderUrls);
+
         foreach (var book in request.Books)
         {
-            searchTasks.Add(SearchBookPricesAsync(book, cancellationToken));
+            searchTasks.Add(SearchBookPricesAsync(book, sourcesToSearch, cancellationToken));
         }
 
         var searchResults = await Task.WhenAll(searchTasks);
@@ -147,6 +150,7 @@ public class CartOptimizationService : ICartOptimizationService
 
     private async Task<(CartBookItem book, SearchResult result)> SearchBookPricesAsync(
         CartBookItem book,
+        List<Provider> sources,
         CancellationToken cancellationToken)
     {
         var requestor = new Requestor
@@ -157,16 +161,29 @@ public class CartOptimizationService : ICartOptimizationService
                 Isbn = book.Isbn,
                 AuthorName = book.Author
             },
-            SourcesToSearch = GetDefaultSources()
+            SourcesToSearch = sources
         };
 
         var result = await _engine.ExecuteTransaction(requestor, cancellationToken);
         return (book, result);
     }
 
-    private List<Provider> GetDefaultSources()
+    private List<Provider> GetSourcesToSearch(List<string>? providerUrls)
     {
-        // Usa os providers cadastrados no sistema (Cedet por padrão)
+        if (providerUrls != null && providerUrls.Count > 0)
+        {
+            var urls = providerUrls.ToHashSet();
+            var filtered = Provider.AllSources
+                .Where(p => urls.Contains(p.Url))
+                .ToList();
+
+            if (filtered.Count > 0)
+            {
+                return filtered;
+            }
+        }
+
+        // Fallback: usa todos os providers ativos
         return Provider.AllSources
             .Where(s => s.IsActive)
             .Take(10) // Limita para não sobrecarregar
@@ -193,7 +210,11 @@ public class CartOptimizationService : ICartOptimizationService
             .Select(b => $"{b.Title.ToLowerInvariant()}:{b.Quantity}")
             .ToList();
 
+        var providersKey = request.ProviderUrls != null && request.ProviderUrls.Count > 0
+            ? string.Join(",", request.ProviderUrls.OrderBy(u => u))
+            : "all";
+
         var hash = string.Join("|", bookKeys).GetHashCode();
-        return $"cart:optimization:{hash}:{request.Strategy}:{request.MaxProviders}";
+        return $"cart:optimization:{hash}:{request.Strategy}:{request.MaxProviders}:{providersKey.GetHashCode()}";
     }
 }

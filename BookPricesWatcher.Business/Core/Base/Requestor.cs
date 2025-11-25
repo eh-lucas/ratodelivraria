@@ -20,6 +20,13 @@ public class Requestor
         CacheTimeSpan = cacheTimeSpan;
     }
 
+    public Requestor(SearchParameter searchParameters, List<Provider> sourcesToSearch)
+    {
+        SearchParameters = searchParameters;
+        SourcesToSearch = sourcesToSearch;
+        CacheTimeSpan = TimeSpan.FromDays(1);
+    }
+
     public Requestor(SearchParameter searchParameters)
     {
         SearchParameters = searchParameters;

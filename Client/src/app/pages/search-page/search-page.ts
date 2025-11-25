@@ -7,7 +7,8 @@ import {
   CartOptimizationRequest,
   CartOptimizationResult,
   OptimizationStrategy,
-  StrategyOption
+  StrategyOption,
+  ProviderOption
 } from '../../services/cart-service';
 import { AuthService } from '../../services/auth-service';
 
@@ -36,6 +37,10 @@ export class SearchPage implements OnInit {
   includeShipping: boolean = true;
   strategies: StrategyOption[] = [];
 
+  // Providers
+  providers: ProviderOption[] = [];
+  selectedProviderUrls: string[] = [];
+
   // Resultado
   result: CartOptimizationResult | null = null;
 
@@ -50,6 +55,7 @@ export class SearchPage implements OnInit {
 
   ngOnInit(): void {
     this.loadStrategies();
+    this.loadProviders();
   }
 
   loadStrategies(): void {
@@ -68,6 +74,40 @@ export class SearchPage implements OnInit {
         ];
       }
     });
+  }
+
+  loadProviders(): void {
+    this.cartService.getActiveProviders().subscribe({
+      next: (providers) => {
+        this.providers = providers;
+        // Por padrão, seleciona todos os providers
+        this.selectedProviderUrls = providers.map(p => p.url);
+      },
+      error: (err) => {
+        console.error('Erro ao carregar providers', err);
+      }
+    });
+  }
+
+  toggleProvider(url: string): void {
+    const index = this.selectedProviderUrls.indexOf(url);
+    if (index > -1) {
+      this.selectedProviderUrls.splice(index, 1);
+    } else {
+      this.selectedProviderUrls.push(url);
+    }
+  }
+
+  isProviderSelected(url: string): boolean {
+    return this.selectedProviderUrls.includes(url);
+  }
+
+  selectAllProviders(): void {
+    this.selectedProviderUrls = this.providers.map(p => p.url);
+  }
+
+  deselectAllProviders(): void {
+    this.selectedProviderUrls = [];
   }
 
   addBook(): void {
@@ -139,13 +179,19 @@ export class SearchPage implements OnInit {
       return;
     }
 
+    if (this.selectedProviderUrls.length === 0) {
+      this.errorMessage = 'Selecione pelo menos um site para buscar';
+      return;
+    }
+
     this.isLoading = true;
     this.errorMessage = '';
 
     this.cartService.searchBook(
       this.newBook.title.trim(),
       this.newBook.isbn?.trim(),
-      this.newBook.author?.trim()
+      this.newBook.author?.trim(),
+      this.selectedProviderUrls
     ).subscribe({
       next: (result) => {
         this.result = result;

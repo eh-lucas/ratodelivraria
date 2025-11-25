@@ -94,7 +94,7 @@ public class CartController : ControllerBase
     }
 
     /// <summary>
-    /// Busca preço de um único livro em todos os providers
+    /// Busca preço de um único livro em todos os providers ou providers específicos
     /// </summary>
     [HttpGet("search")]
     [EnableRateLimiting("authenticated")]
@@ -104,11 +104,22 @@ public class CartController : ControllerBase
         [FromQuery] string title,
         [FromQuery] string? isbn = null,
         [FromQuery] string? author = null,
+        [FromQuery] string? providerUrls = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(title))
         {
             return BadRequest(new { error = "O título do livro é obrigatório." });
+        }
+
+        // Parse provider URLs se fornecido
+        List<string>? parsedProviderUrls = null;
+        if (!string.IsNullOrEmpty(providerUrls))
+        {
+            parsedProviderUrls = providerUrls
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(u => u.Trim())
+                .ToList();
         }
 
         var request = new CartOptimizationRequest
@@ -124,7 +135,8 @@ public class CartController : ControllerBase
                 }
             },
             Strategy = OptimizationStrategy.LowestTotal,
-            IncludeShipping = false
+            IncludeShipping = false,
+            ProviderUrls = parsedProviderUrls
         };
 
         var userId = GetUserId();
