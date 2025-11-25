@@ -71,21 +71,12 @@ namespace Sherlock.Data.Migrations
                 nullable: false,
                 defaultValue: "");
 
-            migrationBuilder.AlterColumn<string>(
-                name: "Result",
-                table: "Queries",
-                type: "jsonb",
-                nullable: false,
-                oldClrType: typeof(string),
-                oldType: "text");
+            // Conversão de text para jsonb com USING
+            migrationBuilder.Sql(
+                @"ALTER TABLE ""Queries"" ALTER COLUMN ""Result"" TYPE jsonb USING ""Result""::jsonb;");
 
-            migrationBuilder.AlterColumn<string>(
-                name: "InputParameters",
-                table: "Queries",
-                type: "jsonb",
-                nullable: false,
-                oldClrType: typeof(string),
-                oldType: "text");
+            migrationBuilder.Sql(
+                @"ALTER TABLE ""Queries"" ALTER COLUMN ""InputParameters"" TYPE jsonb USING ""InputParameters""::jsonb;");
 
             migrationBuilder.AlterColumn<DateTime>(
                 name: "EndDateTime",
