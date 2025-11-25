@@ -19,6 +19,11 @@ public class SearchResult
     // Cache
     public bool FromCache { get; set; }
 
-    // Todos os resultados encontrados (não apenas o melhor)
+    // Todos os resultados encontrados (não apenas o melhor) - compatibilidade
     public List<BookPriceResult> AllResults { get; set; } = new List<BookPriceResult>();
+
+    /// <summary>
+    /// Todos os QueryResults com dados completos (inclui erros, tempos, etc)
+    /// </summary>
+    public List<QueryResult> AllQueryResults { get; set; } = new List<QueryResult>();
 }

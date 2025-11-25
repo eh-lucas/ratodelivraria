@@ -66,24 +66,23 @@ public class CedetSingleSearchHttpClient : IScraper
 
     public ScraperTypeEnum ScraperType => ScraperTypeEnum.CedetSingleAgilityHttpClient;
 
-    public async Task<BookPriceResult> ExecuteSearch(SearchParameter parameters)
+    public async Task<QueryResult> ExecuteSearch(SearchParameter parameters)
     {
-        var website = parameters.Source?.Url ?? string.Empty;
-        var providerName = parameters.Source?.Name ?? website;
+        var provider = parameters.Source ?? new Provider { Id = 0, Name = "Unknown", Url = string.Empty };
         var stopwatch = Stopwatch.StartNew();
 
         try
         {
             if (string.IsNullOrEmpty(parameters.BookTitle))
             {
-                _logger.LogDebug("[{Provider}] Título vazio, ignorando busca", providerName);
-                return new BookPriceResult();
+                _logger.LogDebug("[{Provider}] Título vazio, ignorando busca", provider.Name);
+                return QueryResult.CreateNoResult(provider, stopwatch.ElapsedMilliseconds);
             }
 
-            string searchTerm = Uri.EscapeDataString(parameters.BookTitle);
-            string url = $"{website.TrimEnd('/')}/?s={searchTerm}&post_type=product";
+            var searchTerm = SetSearchingParameter(parameters);
+            var url = $"{provider.Url.TrimEnd('/')}/?s={searchTerm}&post_type=product";
 
-            _logger.LogDebug("[{Provider}] Iniciando busca: {Url}", providerName, url);
+            _logger.LogDebug("[{Provider}] Iniciando busca: {Url}", provider.Name, url);
 
             var response = await _retryPolicy.ExecuteAsync(async () =>
                 await _httpClient.GetAsync(url));
@@ -93,14 +92,20 @@ public class CedetSingleSearchHttpClient : IScraper
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("[{Provider}] HTTP {StatusCode} em {ElapsedMs}ms",
-                    providerName, (int)response.StatusCode, stopwatch.ElapsedMilliseconds);
-                return new BookPriceResult();
+                    provider.Name, (int)response.StatusCode, stopwatch.ElapsedMilliseconds);
+
+                return QueryResult.CreateFailure(
+                    provider,
+                    QueryErrorType.HttpError,
+                    $"HTTP {(int)response.StatusCode}",
+                    stopwatch.ElapsedMilliseconds,
+                    (int)response.StatusCode);
             }
 
             var html = await response.Content.ReadAsStringAsync();
 
             _logger.LogDebug("[{Provider}] Resposta recebida em {ElapsedMs}ms ({Size} bytes)",
-                providerName, stopwatch.ElapsedMilliseconds, html.Length);
+                provider.Name, stopwatch.ElapsedMilliseconds, html.Length);
 
             var doc = new HtmlDocument();
             doc.LoadHtml(html);
@@ -108,44 +113,83 @@ public class CedetSingleSearchHttpClient : IScraper
             var products = ExtractProducts(doc);
             if (products == null || products.Count == 0)
             {
-                _logger.LogDebug("[{Provider}] Nenhum produto encontrado", providerName);
-                return new BookPriceResult();
+                _logger.LogDebug("[{Provider}] Nenhum produto encontrado", provider.Name);
+                return QueryResult.CreateNoResult(provider, stopwatch.ElapsedMilliseconds);
             }
 
-            var possibleBooks = ParseProducts(products, website, providerName);
+            var possibleBooks = ParseProducts(products, provider);
 
-            _logger.LogDebug("[{Provider}] {Count} produtos parseados", providerName, possibleBooks.Count);
+            _logger.LogDebug("[{Provider}] {Count} produtos parseados", provider.Name, possibleBooks.Count);
 
-            var result = ChooseBestBookOption(possibleBooks, parameters.BookTitle, parameters.IsExactSearch);
+            var bestBook = ChooseBestBookOption(possibleBooks, parameters.BookTitle, parameters.IsExactSearch);
 
-            if (!string.IsNullOrEmpty(result.Title) && result.Price > 0)
+            if (bestBook != null && !string.IsNullOrEmpty(bestBook.Title) && bestBook.Price > 0)
             {
                 _logger.LogInformation("[{Provider}] Encontrado: \"{Title}\" - R${Price:F2} em {ElapsedMs}ms",
-                    providerName, result.Title, result.Price, stopwatch.ElapsedMilliseconds);
+                    provider.Name, bestBook.Title, bestBook.Price, stopwatch.ElapsedMilliseconds);
+
+                return QueryResult.CreateSuccess(
+                    provider,
+                    bestBook.Title,
+                    bestBook.Author,
+                    bestBook.Price,
+                    bestBook.Discount,
+                    stopwatch.ElapsedMilliseconds,
+                    bestBook.ProductUrl);
             }
 
-            return result;
+            return QueryResult.CreateNoResult(provider, stopwatch.ElapsedMilliseconds);
         }
         catch (TaskCanceledException)
         {
             stopwatch.Stop();
-            _logger.LogWarning("[{Provider}] Timeout após {ElapsedMs}ms", providerName, stopwatch.ElapsedMilliseconds);
-            return new BookPriceResult();
+            _logger.LogWarning("[{Provider}] Timeout após {ElapsedMs}ms", provider.Name, stopwatch.ElapsedMilliseconds);
+
+            return QueryResult.CreateFailure(
+                provider,
+                QueryErrorType.Timeout,
+                "Request timeout",
+                stopwatch.ElapsedMilliseconds);
         }
         catch (HttpRequestException ex)
         {
             stopwatch.Stop();
             _logger.LogWarning("[{Provider}] Erro de rede após {ElapsedMs}ms: {Message}",
-                providerName, stopwatch.ElapsedMilliseconds, ex.Message);
-            return new BookPriceResult();
+                provider.Name, stopwatch.ElapsedMilliseconds, ex.Message);
+
+            return QueryResult.CreateFailure(
+                provider,
+                QueryErrorType.Network,
+                ex.Message,
+                stopwatch.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             _logger.LogError(ex, "[{Provider}] Erro inesperado após {ElapsedMs}ms",
-                providerName, stopwatch.ElapsedMilliseconds);
-            return new BookPriceResult();
+                provider.Name, stopwatch.ElapsedMilliseconds);
+
+            return QueryResult.CreateFailure(
+                provider,
+                QueryErrorType.Unknown,
+                ex.Message,
+                stopwatch.ElapsedMilliseconds);
         }
+    }
+
+    private string SetSearchingParameter(SearchParameter parameters)
+    {
+        var searchTerm = string.Empty;
+
+        if (parameters.IsExactSearch)
+        {
+            if (parameters.Isbn != null)
+                searchTerm = parameters.Isbn;
+            else
+                searchTerm = Uri.EscapeDataString(parameters.BookTitle);
+        }
+
+        return searchTerm;
     }
 
     /// <summary>
@@ -179,15 +223,15 @@ public class CedetSingleSearchHttpClient : IScraper
     /// <summary>
     /// Parseia produtos usando seletores CSS robustos ao invés de índices fixos
     /// </summary>
-    private List<BookPriceResult> ParseProducts(HtmlNodeCollection products, string website, string providerName)
+    private List<ParsedProduct> ParseProducts(HtmlNodeCollection products, Provider provider)
     {
-        var possibleBooks = new List<BookPriceResult>();
+        var possibleBooks = new List<ParsedProduct>();
 
         foreach (var product in products)
         {
             try
             {
-                var book = ParseSingleProduct(product, website, providerName);
+                var book = ParseSingleProduct(product, provider);
                 if (book != null && !string.IsNullOrEmpty(book.Title) && book.Price > 0)
                 {
                     possibleBooks.Add(book);
@@ -195,7 +239,7 @@ public class CedetSingleSearchHttpClient : IScraper
             }
             catch (Exception ex)
             {
-                _logger.LogDebug("[{Provider}] Erro ao parsear produto: {Message}", providerName, ex.Message);
+                _logger.LogDebug("[{Provider}] Erro ao parsear produto: {Message}", provider.Name, ex.Message);
             }
         }
 
@@ -205,7 +249,7 @@ public class CedetSingleSearchHttpClient : IScraper
     /// <summary>
     /// Parseia um único produto usando múltiplos seletores CSS
     /// </summary>
-    private BookPriceResult? ParseSingleProduct(HtmlNode product, string website, string providerName)
+    private ParsedProduct? ParseSingleProduct(HtmlNode product, Provider provider)
     {
         // Extrai título - tenta múltiplos seletores
         var title = ExtractText(product, new[]
@@ -273,13 +317,22 @@ public class CedetSingleSearchHttpClient : IScraper
             discount = (int)Math.Round(100 * (1 - (newPrice / oldPrice)));
         }
 
-        return new BookPriceResult
+        // Tenta extrair URL do produto
+        var productUrl = ExtractHref(product, new[]
+        {
+            ".//a[contains(@class, 'name')]",
+            ".//a[contains(@class, 'woocommerce-LoopProduct-link')]",
+            ".//h2//a",
+            ".//a"
+        });
+
+        return new ParsedProduct
         {
             Title = CleanText(title),
             Author = CleanText(author),
             Price = newPrice,
             Discount = discount,
-            Website = providerName
+            ProductUrl = productUrl
         };
     }
 
@@ -297,6 +350,26 @@ public class CedetSingleSearchHttpClient : IScraper
                 if (!string.IsNullOrWhiteSpace(text))
                 {
                     return System.Net.WebUtility.HtmlDecode(text);
+                }
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Extrai href usando múltiplos seletores XPath
+    /// </summary>
+    private string? ExtractHref(HtmlNode node, string[] selectors)
+    {
+        foreach (var selector in selectors)
+        {
+            var element = node.SelectSingleNode(selector);
+            if (element != null)
+            {
+                var href = element.GetAttributeValue("href", null);
+                if (!string.IsNullOrWhiteSpace(href))
+                {
+                    return href;
                 }
             }
         }
@@ -386,10 +459,10 @@ public class CedetSingleSearchHttpClient : IScraper
     /// <summary>
     /// Escolhe o melhor livro baseado no título buscado
     /// </summary>
-    private static BookPriceResult ChooseBestBookOption(List<BookPriceResult> possibleBooks, string bookTitle, bool isExactSearch)
+    private static ParsedProduct? ChooseBestBookOption(List<ParsedProduct> possibleBooks, string bookTitle, bool isExactSearch)
     {
         if (possibleBooks.Count == 0)
-            return new BookPriceResult();
+            return null;
 
         var normalizedSearch = NormalizeForComparison(bookTitle);
 
@@ -398,7 +471,7 @@ public class CedetSingleSearchHttpClient : IScraper
             var exactMatch = possibleBooks.FirstOrDefault(b =>
                 NormalizeForComparison(b.Title) == normalizedSearch);
 
-            return exactMatch ?? new BookPriceResult();
+            return exactMatch;
         }
 
         // Primeiro tenta match exato
@@ -422,7 +495,7 @@ public class CedetSingleSearchHttpClient : IScraper
         return possibleBooks
             .Where(b => b.Price > 0)
             .OrderBy(b => b.Price)
-            .FirstOrDefault() ?? new BookPriceResult();
+            .FirstOrDefault();
     }
 
     /// <summary>
@@ -457,5 +530,17 @@ public class CedetSingleSearchHttpClient : IScraper
         text = Regex.Replace(text, @"\s+", " ");
 
         return text.Trim();
+    }
+
+    /// <summary>
+    /// Classe interna para armazenar dados parseados antes de criar QueryResult
+    /// </summary>
+    private class ParsedProduct
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Author { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public int Discount { get; set; }
+        public string? ProductUrl { get; set; }
     }
 }

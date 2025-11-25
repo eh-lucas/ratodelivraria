@@ -54,7 +54,7 @@ public class W16Engine
 
         LogTransactionStart(transactionId, requestor);
 
-        var preResults = new ConcurrentBag<BookPriceResult>();
+        var queryResults = new ConcurrentBag<QueryResult>();
         var result = CreateInitialSearchResult(requestor);
         var metrics = new ParallelismMetrics();
 
@@ -64,11 +64,11 @@ public class W16Engine
             if (cachedResult != null)
                 return cachedResult;
 
-            await ExecuteScrapersAsync(requestor, preResults, metrics, cancellationToken);
+            await ExecuteScrapersAsync(requestor, queryResults, metrics, cancellationToken);
 
             stopwatch.Stop();
 
-            FinalizeSearchResult(result, preResults, metrics);
+            FinalizeSearchResult(result, queryResults, metrics);
             LogParallelismMetrics(transactionId, metrics, stopwatch.ElapsedMilliseconds, result);
             await TryCacheResultAsync(requestor, result);
         }
@@ -136,7 +136,7 @@ public class W16Engine
 
     private async Task ExecuteScrapersAsync(
         Requestor requestor,
-        ConcurrentBag<BookPriceResult> preResults,
+        ConcurrentBag<QueryResult> queryResults,
         ParallelismMetrics metrics,
         CancellationToken cancellationToken)
     {
@@ -152,7 +152,7 @@ public class W16Engine
                 continue;
             }
 
-            await ExecuteCategoryScrapingAsync(scraper, sources, requestor.SearchParameters, preResults, metrics, cancellationToken);
+            await ExecuteCategoryScrapingAsync(scraper, sources, requestor.SearchParameters, queryResults, metrics, cancellationToken);
         }
     }
 
@@ -167,7 +167,7 @@ public class W16Engine
         IScraper scraper,
         List<Provider> sources,
         SearchParameter baseParameters,
-        ConcurrentBag<BookPriceResult> preResults,
+        ConcurrentBag<QueryResult> queryResults,
         ParallelismMetrics metrics,
         CancellationToken cancellationToken)
     {
@@ -181,7 +181,7 @@ public class W16Engine
 
             await semaphore.WaitAsync(cancellationToken);
 
-            tasks.Add(ExecuteSingleScrapingAsync(scraper, source, baseParameters, preResults, metrics, semaphore, cancellationToken));
+            tasks.Add(ExecuteSingleScrapingAsync(scraper, source, baseParameters, queryResults, metrics, semaphore, cancellationToken));
         }
 
         await Task.WhenAll(tasks);
@@ -191,29 +191,28 @@ public class W16Engine
         IScraper scraper,
         Provider source,
         SearchParameter baseParameters,
-        ConcurrentBag<BookPriceResult> preResults,
+        ConcurrentBag<QueryResult> queryResults,
         ParallelismMetrics metrics,
         SemaphoreSlim semaphore,
         CancellationToken cancellationToken)
     {
         return Task.Run(async () =>
         {
-            var sourceStopwatch = Stopwatch.StartNew();
             TrackActiveTask(metrics, true);
 
             try
             {
                 var parameters = CreateSearchParameter(baseParameters, source);
-                var singleResult = await ExecuteScraperAsync(scraper, parameters, cancellationToken);
+                var queryResult = await ExecuteScraperAsync(scraper, parameters, cancellationToken);
 
-                sourceStopwatch.Stop();
-                RecordProviderResponse(metrics, source.Name, sourceStopwatch.ElapsedMilliseconds, singleResult);
-                ProcessScraperResult(singleResult, preResults, metrics);
+                queryResults.Add(queryResult);
+                RecordQueryResult(metrics, queryResult);
             }
             catch (Exception ex)
             {
-                sourceStopwatch.Stop();
-                HandleScraperError(metrics, source.Name, sourceStopwatch.ElapsedMilliseconds, ex);
+                var errorResult = QueryResult.CreateFailure(source, QueryErrorType.Unknown, ex.Message, 0);
+                queryResults.Add(errorResult);
+                HandleScraperError(metrics, source.Name, 0, ex);
             }
             finally
             {
@@ -254,7 +253,7 @@ public class W16Engine
         };
     }
 
-    private async Task<BookPriceResult?> ExecuteScraperAsync(IScraper scraper, SearchParameter parameters, CancellationToken cancellationToken)
+    private async Task<QueryResult> ExecuteScraperAsync(IScraper scraper, SearchParameter parameters, CancellationToken cancellationToken)
     {
         if (_resilientWrapper != null)
         {
@@ -264,32 +263,26 @@ public class W16Engine
         return await scraper.ExecuteSearch(parameters);
     }
 
-    private static void RecordProviderResponse(ParallelismMetrics metrics, string providerName, long elapsedMs, BookPriceResult? result)
+    private void RecordQueryResult(ParallelismMetrics metrics, QueryResult queryResult)
     {
-        var isSuccess = IsValidResult(result);
-
         lock (metrics.ResponseTimes)
         {
             metrics.ResponseTimes.Add(new ProviderResponseTime
             {
-                ProviderName = providerName,
-                ElapsedMs = elapsedMs,
-                Success = isSuccess
+                ProviderName = queryResult.ProviderName,
+                ElapsedMs = queryResult.ResponseTimeMs,
+                Success = queryResult.HasValidResult,
+                Error = queryResult.ErrorMessage
             });
         }
-    }
 
-    private static bool IsValidResult(BookPriceResult? result)
-    {
-        return result != null && !string.IsNullOrEmpty(result.Title) && result.Price > 0;
-    }
-
-    private static void ProcessScraperResult(BookPriceResult? result, ConcurrentBag<BookPriceResult> preResults, ParallelismMetrics metrics)
-    {
-        if (IsValidResult(result))
+        if (queryResult.HasValidResult)
         {
-            preResults.Add(result!);
             Interlocked.Increment(ref metrics.SuccessCount);
+        }
+        else if (!queryResult.Success)
+        {
+            Interlocked.Increment(ref metrics.FailedCount);
         }
         else
         {
@@ -315,15 +308,31 @@ public class W16Engine
         _logger.LogWarning("[{Provider}] Falha: {Message}", providerName, ex.Message);
     }
 
-    private void FinalizeSearchResult(SearchResult result, ConcurrentBag<BookPriceResult> preResults, ParallelismMetrics metrics)
+    private void FinalizeSearchResult(SearchResult result, ConcurrentBag<QueryResult> queryResults, ParallelismMetrics metrics)
     {
         result.SuccessfulQueries = metrics.SuccessCount;
         result.FailedQueries = metrics.FailedCount;
 
-        var resultList = preResults.ToList();
-        result.BookPriceResult = _comparator.Compare(resultList);
-        result.AllResults = resultList;
-        result.ResultadoTransacao = DetermineResultType(result, resultList.Count);
+        // Converte QueryResults para BookPriceResults para manter compatibilidade
+        var validResults = queryResults
+            .Where(q => q.HasValidResult)
+            .Select(q => new BookPriceResult
+            {
+                Title = q.Title ?? string.Empty,
+                Author = q.Author ?? string.Empty,
+                Price = q.Price,
+                Discount = q.Discount,
+                Website = q.ProviderName
+            })
+            .ToList();
+
+        result.BookPriceResult = _comparator.Compare(validResults);
+        result.AllResults = validResults;
+
+        // Armazena os QueryResults completos para acesso aos dados de erro
+        result.AllQueryResults = queryResults.ToList();
+
+        result.ResultadoTransacao = DetermineResultType(result, validResults.Count);
         result.CustoCreditos = CalculateCost(result);
     }
 
@@ -355,7 +364,7 @@ public class W16Engine
 
     public async Task PersistQueryInDatabase()
     {
-        
+
     }
     private void LogParallelismMetrics(string transactionId, ParallelismMetrics metrics, long totalElapsedMs, SearchResult result)
     {

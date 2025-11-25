@@ -1,26 +1,75 @@
-﻿using System.Globalization;
-using System.Net.NetworkInformation;
+using System.Diagnostics;
+using System.Globalization;
 using API.Utils;
 using HtmlAgilityPack;
 using Sherlock.Business.Interfaces;
 using Sherlock.Domain.Entities;
 using Sherlock.Domain.Enums;
 
-namespace Sherlock.Business.Core.Scrapers.Cedet.Agility
+namespace Sherlock.Business.Core.Scrapers.Cedet.Agility;
+
+public class CedetSingleAgility : IScraper
 {
-    public class CedetSingleAgility : IScraper
+    public ScraperTypeEnum ScraperType => ScraperTypeEnum.CedetSingleAgility;
+
+    private const string GridXPath = "//*[@id=\"column-right\"]/div[5]";
+
+    public async Task<QueryResult> ExecuteSearch(SearchParameter parameters)
     {
-        public ScraperTypeEnum ScraperType => ScraperTypeEnum.CedetSingleAgility;
+        var provider = parameters.Source ?? new Provider { Id = 0, Name = "Unknown", Url = string.Empty };
+        var stopwatch = Stopwatch.StartNew();
 
-        private const string GridXPath = "//*[@id=\"column-right\"]/div[5]";
-        private const string SearchBoxXPath = "//*[@id=\"input-search\"]";
-        private const string SearchButtonXPath = "//*[@id=\"doSearch\"]";
-
-        public List<BookPriceResult> GetReturnedBooksByTitle(HtmlNodeCollection products, string bookTitle)
+        try
         {
-            List<BookPriceResult> possibleBooks = new();
+            var bookTitle = parameters.BookTitle;
 
-            foreach (var product in products)
+            var web = new HtmlWeb();
+            var doc = web.Load(provider.Url);
+
+            stopwatch.Stop();
+
+            var inputNode = doc.DocumentNode.SelectSingleNode(GridXPath);
+            var products = inputNode?.SelectNodes("//div[contains(@class, 'item-product')]");
+
+            if (products == null || products.Count == 0)
+            {
+                return QueryResult.CreateNoResult(provider, stopwatch.ElapsedMilliseconds);
+            }
+
+            var possibleBooks = GetReturnedBooksByTitle(products, bookTitle);
+            var result = ChooseBestBookOption(possibleBooks, bookTitle, parameters.IsExactSearch);
+
+            if (result != null && !string.IsNullOrEmpty(result.Title) && result.Price > 0)
+            {
+                return QueryResult.CreateSuccess(
+                    provider,
+                    result.Title,
+                    result.Author,
+                    result.Price,
+                    result.Discount,
+                    stopwatch.ElapsedMilliseconds);
+            }
+
+            return QueryResult.CreateNoResult(provider, stopwatch.ElapsedMilliseconds);
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            return QueryResult.CreateFailure(
+                provider,
+                QueryErrorType.Unknown,
+                ex.Message,
+                stopwatch.ElapsedMilliseconds);
+        }
+    }
+
+    private List<ParsedBook> GetReturnedBooksByTitle(HtmlNodeCollection products, string bookTitle)
+    {
+        var possibleBooks = new List<ParsedBook>();
+
+        foreach (var product in products)
+        {
+            try
             {
                 var childnode = product.ChildNodes;
                 var authorNode = childnode[7].InnerText.Trim();
@@ -31,95 +80,44 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.Agility
                 var newPrice = Convert.ToDecimal(childnodes[4].InnerText.CleanPrice(), CultureInfo.InvariantCulture);
                 var discount = (int)Math.Abs(newPrice * 100 / oldPrice) - 100;
 
-                BookPriceResult book = new()
+                possibleBooks.Add(new ParsedBook
                 {
                     Title = titleNode,
                     Author = authorNode,
                     Price = newPrice,
-                    Discount = discount,
-                };
-                possibleBooks.Add(book);
+                    Discount = discount
+                });
             }
-
-            return possibleBooks;
-        }
-
-        public async Task<BookPriceResult> ExecuteSearch(SearchParameter parameters)
-        {
-            var website = parameters.Source.Url;
-            var bookTitle = parameters.BookTitle;
-
-            var web = new HtmlWeb();
-            var doc = web.Load(website);
-
-            var inputNode = doc.DocumentNode.SelectSingleNode(GridXPath);
-            var products = inputNode.SelectNodes("//div[contains(@class, 'item-product')]");
-
-            if (products != null)
+            catch
             {
-                var possibleBooks = GetReturnedBooksByTitle(products, bookTitle);
-
-                var result = ChooseBestBookOption(possibleBooks, bookTitle, parameters.IsExactSearch);
-
-                return new BookPriceResult
-                {
-                    Price = result.Price,
-                    Title = result.Title,
-                    Author = result.Author,
-                    Website = website
-                };
+                // Ignora erros de parsing
             }
-
-            return new BookPriceResult();
         }
 
-        private BookPriceResult ChooseBestBookOption(List<BookPriceResult?> possibleBooks, string bookTitle, bool isExactSearch)
+        return possibleBooks;
+    }
+
+    private ParsedBook? ChooseBestBookOption(List<ParsedBook> possibleBooks, string bookTitle, bool isExactSearch)
+    {
+        if (possibleBooks.Count == 0)
+            return null;
+
+        bookTitle = bookTitle.ToUpper().Trim();
+
+        if (isExactSearch)
         {
-            bookTitle = bookTitle.ToUpper().Trim();
-            if (possibleBooks.Count < 1)
-                throw new NotImplementedException();
-
-            if (isExactSearch)
-                return possibleBooks.FirstOrDefault(b => b.Title.ToUpper() == bookTitle);
-
-            var bestPrice = possibleBooks.Min(b => b.Price);
-            var bestBook = possibleBooks.Find(b => b.Price == bestPrice);
-
-            if (bestBook is List<Book>)
-                throw new NetworkInformationException();
-            if (bestBook is null)
-                throw new NetworkInformationException();
-
-            return new BookPriceResult();
+            return possibleBooks.FirstOrDefault(b => b.Title.ToUpper() == bookTitle);
         }
 
+        var bestPrice = possibleBooks.Min(b => b.Price);
+        return possibleBooks.FirstOrDefault(b => b.Price == bestPrice);
+    }
+
+    private class ParsedBook
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Author { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public int Discount { get; set; }
     }
 }
-//{
-
-//    string author = element.FindElement(By.ClassName("author")).Text;
-//    double priceNew = Convert.ToDouble(element.FindElement(By.ClassName("price-new")).Text);
-//    int discount;
-//    try
-//    {
-//        var auxText = element.FindElement(By.ClassName("price-old")).Text;
-//        auxText = auxText.CleanPrice();
-//        var oldPrice = Convert.ToDouble(auxText);
-//        discount = (int)Math.Abs(priceNew * 100 / oldPrice) - 100;
-//    }
-//    catch
-//    {
-//        double oldPrice = priceNew;
-//        discount = 0;
-//    }
-
-//    return new Book(bookTitle, author, priceNew, discount, "");
-//}
-
-
-//if (books.Count > 1)
-//{
-//    var minPrice = books.Min(book => book.Price);
-//    var cheapestBook = books.Find(book => book.Price == minPrice);
-//    return cheapestBook;
-//}

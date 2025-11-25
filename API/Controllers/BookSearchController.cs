@@ -37,11 +37,12 @@ public class BookSearchController : ControllerBase
 
         try
         {
-            var search = new SearchParameter
+            var parameters = new SearchParameter
             {
                 BookTitle = title,
                 Isbn = isbn,
-                AuthorName = author
+                AuthorName = author,
+                IsExactSearch = true
             };
 
             var selectedProviders = GetSelectedProviders(providerUrls);
@@ -50,7 +51,7 @@ public class BookSearchController : ControllerBase
                 return BadRequest(new { error = "Nenhum provider válido encontrado com as URLs especificadas." });
             }
 
-            var requestor = new Requestor(search, selectedProviders);
+            var requestor = new Requestor(parameters, selectedProviders);
             var coreExecutor = new W16Engine();
             var result = await coreExecutor.ExecuteTransaction(requestor);
 
