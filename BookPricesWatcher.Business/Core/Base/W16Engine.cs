@@ -50,8 +50,47 @@ public class W16Engine
     public async Task<SearchResult> ExecuteTransaction(Requestor requestor, CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
-        var transactionId = Guid.NewGuid().ToString("N")[..8];
+        var transactionId = GenerateTransactionId();
 
+        LogTransactionStart(transactionId, requestor);
+
+        var preResults = new ConcurrentBag<BookPriceResult>();
+        var result = CreateInitialSearchResult(requestor);
+        var metrics = new ParallelismMetrics();
+
+        try
+        {
+            var cachedResult = await TryGetFromCacheAsync(requestor, transactionId, stopwatch);
+            if (cachedResult != null)
+                return cachedResult;
+
+            await ExecuteScrapersAsync(requestor, preResults, metrics, cancellationToken);
+
+            stopwatch.Stop();
+
+            FinalizeSearchResult(result, preResults, metrics);
+            LogParallelismMetrics(transactionId, metrics, stopwatch.ElapsedMilliseconds, result);
+            await TryCacheResultAsync(requestor, result);
+        }
+        catch (Exception ex)
+        {
+            HandleFatalError(result, ex, transactionId);
+        }
+        finally
+        {
+            FinalizeTransaction(result, stopwatch);
+        }
+
+        return result;
+    }
+
+    private static string GenerateTransactionId()
+    {
+        return Guid.NewGuid().ToString("N")[..8];
+    }
+
+    private void LogTransactionStart(string transactionId, Requestor requestor)
+    {
         _logger.LogInformation(
             "========== TRANSAÇÃO {TransactionId} INICIADA ==========\n" +
             "  Livro: \"{BookTitle}\"\n" +
@@ -61,200 +100,257 @@ public class W16Engine
             requestor.SearchParameters.BookTitle,
             requestor.SourcesToSearch.Count,
             MaxDegreeOfParallelism);
+    }
 
-        var preResults = new ConcurrentBag<BookPriceResult>();
-        var result = new SearchResult
+    private static SearchResult CreateInitialSearchResult(Requestor requestor)
+    {
+        return new SearchResult
         {
             InicioConsulta = DateTime.Now,
             TotalSourcesQueried = requestor.SourcesToSearch.Count
         };
+    }
 
-        // Métricas de paralelismo
-        var metrics = new ParallelismMetrics();
+    private async Task<SearchResult?> TryGetFromCacheAsync(Requestor requestor, string transactionId, Stopwatch stopwatch)
+    {
+        if (_cacheService == null)
+            return null;
 
-        try
+        var cacheKey = _cacheService.GenerateBookPriceKey(
+            requestor.SearchParameters.BookTitle,
+            requestor.SearchParameters.Isbn);
+
+        var cachedResult = await _cacheService.GetAsync<SearchResult>(cacheKey);
+        if (cachedResult != null)
         {
-            // Verifica cache agregado primeiro (resultado completo da busca)
-            if (_cacheService != null)
-            {
-                var cacheKey = _cacheService.GenerateBookPriceKey(
-                    requestor.SearchParameters.BookTitle,
-                    requestor.SearchParameters.Isbn);
+            _logger.LogInformation(
+                "Transação {TransactionId} resolvida via cache em {Elapsed}ms",
+                transactionId, stopwatch.ElapsedMilliseconds);
 
-                var cachedResult = await _cacheService.GetAsync<SearchResult>(cacheKey);
-                if (cachedResult != null)
-                {
-                    _logger.LogInformation(
-                        "Transação {TransactionId} resolvida via cache em {Elapsed}ms",
-                        transactionId, stopwatch.ElapsedMilliseconds);
-
-                    cachedResult.FromCache = true;
-                    return cachedResult;
-                }
-            }
-
-            // Agrupa sources por categoria para usar o scraper correto
-            var sourcesByCategory = requestor.SourcesToSearch
-                .GroupBy(s => s.ProviderCategoryEnum)
-                .ToDictionary(g => g.Key, g => g.ToList());
-
-            foreach (var (category, sources) in sourcesByCategory)
-            {
-                var scraper = _scraperFactory.CreateScraper(category);
-                if (scraper == null)
-                {
-                    _logger.LogWarning("Scraper não encontrado para categoria {Category}", category);
-                    Interlocked.Add(ref metrics.FailedCount, sources.Count);
-                    continue;
-                }
-
-                // Executa buscas em paralelo com limite de concorrência
-                var semaphore = new SemaphoreSlim(MaxDegreeOfParallelism);
-                var tasks = new List<Task>();
-
-                foreach (var source in sources)
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                        break;
-
-                    await semaphore.WaitAsync(cancellationToken);
-
-                    tasks.Add(Task.Run(async () =>
-                    {
-                        var sourceStopwatch = Stopwatch.StartNew();
-                        Interlocked.Increment(ref metrics.ActiveTasks);
-                        var currentActive = metrics.ActiveTasks;
-
-                        // Atualiza pico de tarefas simultâneas
-                        lock (metrics)
-                        {
-                            if (currentActive > metrics.PeakActiveTasks)
-                                metrics.PeakActiveTasks = currentActive;
-                        }
-
-                        try
-                        {
-                            var parameters = new SearchParameter
-                            {
-                                BookTitle = requestor.SearchParameters.BookTitle,
-                                Isbn = requestor.SearchParameters.Isbn,
-                                AuthorName = requestor.SearchParameters.AuthorName,
-                                IsExactSearch = requestor.SearchParameters.IsExactSearch,
-                                Source = source
-                            };
-
-                            BookPriceResult? singleResult;
-
-                            // Usa wrapper resiliente se disponível
-                            if (_resilientWrapper != null)
-                            {
-                                singleResult = await _resilientWrapper.ExecuteWithResilienceAsync(
-                                    scraper, parameters, cancellationToken);
-                            }
-                            else
-                            {
-                                singleResult = await scraper.ExecuteSearch(parameters);
-                            }
-
-                            sourceStopwatch.Stop();
-
-                            // Registra tempo de resposta
-                            lock (metrics.ResponseTimes)
-                            {
-                                metrics.ResponseTimes.Add(new ProviderResponseTime
-                                {
-                                    ProviderName = source.Name,
-                                    ElapsedMs = sourceStopwatch.ElapsedMilliseconds,
-                                    Success = singleResult != null && !string.IsNullOrEmpty(singleResult.Title) && singleResult.Price > 0
-                                });
-                            }
-
-                            // Só adiciona se teve resultado válido
-                            if (singleResult != null && !string.IsNullOrEmpty(singleResult.Title) && singleResult.Price > 0)
-                            {
-                                preResults.Add(singleResult);
-                                Interlocked.Increment(ref metrics.SuccessCount);
-                            }
-                            else
-                            {
-                                Interlocked.Increment(ref metrics.NoResultCount);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            sourceStopwatch.Stop();
-                            Interlocked.Increment(ref metrics.FailedCount);
-
-                            lock (metrics.ResponseTimes)
-                            {
-                                metrics.ResponseTimes.Add(new ProviderResponseTime
-                                {
-                                    ProviderName = source.Name,
-                                    ElapsedMs = sourceStopwatch.ElapsedMilliseconds,
-                                    Success = false,
-                                    Error = ex.Message
-                                });
-                            }
-
-                            _logger.LogWarning("[{Provider}] Falha: {Message}", source.Name, ex.Message);
-                        }
-                        finally
-                        {
-                            Interlocked.Decrement(ref metrics.ActiveTasks);
-                            semaphore.Release();
-                        }
-                    }, cancellationToken));
-                }
-
-                // Aguarda todas as tarefas completarem
-                await Task.WhenAll(tasks);
-            }
-
-            stopwatch.Stop();
-
-            // Atualiza resultado
-            result.SuccessfulQueries = metrics.SuccessCount;
-            result.FailedQueries = metrics.FailedCount;
-
-            // Compara e seleciona o melhor resultado
-            var resultList = preResults.ToList();
-            result.BookPriceResult = _comparator.Compare(resultList);
-            result.AllResults = resultList;
-
-            // Define o status da transação
-            result.ResultadoTransacao = DetermineResultType(result, resultList.Count);
-
-            // Calcula custo baseado em queries bem-sucedidas
-            result.CustoCreditos = CalculateCost(result);
-
-            // Log detalhado de métricas de paralelismo
-            LogParallelismMetrics(transactionId, metrics, stopwatch.ElapsedMilliseconds, result);
-
-            // Cacheia resultado agregado se teve sucesso
-            if (_cacheService != null && result.ResultadoTransacao.IsSuccess)
-            {
-                var cacheKey = _cacheService.GenerateBookPriceKey(
-                    requestor.SearchParameters.BookTitle,
-                    requestor.SearchParameters.Isbn);
-
-                await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromHours(2));
-            }
-        }
-        catch (Exception ex)
-        {
-            result.ResultadoTransacao = ResultType.AllFailed;
-            result.Errors.Add($"Erro fatal: {ex.Message}");
-
-            _logger.LogError(ex, "Erro fatal na transação {TransactionId}", transactionId);
-        }
-        finally
-        {
-            stopwatch.Stop();
-            result.TempoDecorrido = stopwatch.ElapsedMilliseconds;
-            result.FimConsulta = DateTime.Now;
+            cachedResult.FromCache = true;
+            return cachedResult;
         }
 
-        return result;
+        return null;
+    }
+
+    private async Task ExecuteScrapersAsync(
+        Requestor requestor,
+        ConcurrentBag<BookPriceResult> preResults,
+        ParallelismMetrics metrics,
+        CancellationToken cancellationToken)
+    {
+        var sourcesByCategory = GroupSourcesByCategory(requestor.SourcesToSearch);
+
+        foreach (var (category, sources) in sourcesByCategory)
+        {
+            var scraper = _scraperFactory.CreateScraper(category);
+            if (scraper == null)
+            {
+                _logger.LogWarning("Scraper não encontrado para categoria {Category}", category);
+                Interlocked.Add(ref metrics.FailedCount, sources.Count);
+                continue;
+            }
+
+            await ExecuteCategoryScrapingAsync(scraper, sources, requestor.SearchParameters, preResults, metrics, cancellationToken);
+        }
+    }
+
+    private static Dictionary<ProviderCategoryEnum, List<Provider>> GroupSourcesByCategory(IEnumerable<Provider> sources)
+    {
+        return sources
+            .GroupBy(s => s.ProviderCategoryEnum)
+            .ToDictionary(g => g.Key, g => g.ToList());
+    }
+
+    private async Task ExecuteCategoryScrapingAsync(
+        IScraper scraper,
+        List<Provider> sources,
+        SearchParameter baseParameters,
+        ConcurrentBag<BookPriceResult> preResults,
+        ParallelismMetrics metrics,
+        CancellationToken cancellationToken)
+    {
+        var semaphore = new SemaphoreSlim(MaxDegreeOfParallelism);
+        var tasks = new List<Task>();
+
+        foreach (var source in sources)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                break;
+
+            await semaphore.WaitAsync(cancellationToken);
+
+            tasks.Add(ExecuteSingleScrapingAsync(scraper, source, baseParameters, preResults, metrics, semaphore, cancellationToken));
+        }
+
+        await Task.WhenAll(tasks);
+    }
+
+    private Task ExecuteSingleScrapingAsync(
+        IScraper scraper,
+        Provider source,
+        SearchParameter baseParameters,
+        ConcurrentBag<BookPriceResult> preResults,
+        ParallelismMetrics metrics,
+        SemaphoreSlim semaphore,
+        CancellationToken cancellationToken)
+    {
+        return Task.Run(async () =>
+        {
+            var sourceStopwatch = Stopwatch.StartNew();
+            TrackActiveTask(metrics, true);
+
+            try
+            {
+                var parameters = CreateSearchParameter(baseParameters, source);
+                var singleResult = await ExecuteScraperAsync(scraper, parameters, cancellationToken);
+
+                sourceStopwatch.Stop();
+                RecordProviderResponse(metrics, source.Name, sourceStopwatch.ElapsedMilliseconds, singleResult);
+                ProcessScraperResult(singleResult, preResults, metrics);
+            }
+            catch (Exception ex)
+            {
+                sourceStopwatch.Stop();
+                HandleScraperError(metrics, source.Name, sourceStopwatch.ElapsedMilliseconds, ex);
+            }
+            finally
+            {
+                TrackActiveTask(metrics, false);
+                semaphore.Release();
+            }
+        }, cancellationToken);
+    }
+
+    private static void TrackActiveTask(ParallelismMetrics metrics, bool increment)
+    {
+        if (increment)
+        {
+            Interlocked.Increment(ref metrics.ActiveTasks);
+            var currentActive = metrics.ActiveTasks;
+
+            lock (metrics)
+            {
+                if (currentActive > metrics.PeakActiveTasks)
+                    metrics.PeakActiveTasks = currentActive;
+            }
+        }
+        else
+        {
+            Interlocked.Decrement(ref metrics.ActiveTasks);
+        }
+    }
+
+    private static SearchParameter CreateSearchParameter(SearchParameter baseParameters, Provider source)
+    {
+        return new SearchParameter
+        {
+            BookTitle = baseParameters.BookTitle,
+            Isbn = baseParameters.Isbn,
+            AuthorName = baseParameters.AuthorName,
+            IsExactSearch = baseParameters.IsExactSearch,
+            Source = source
+        };
+    }
+
+    private async Task<BookPriceResult?> ExecuteScraperAsync(IScraper scraper, SearchParameter parameters, CancellationToken cancellationToken)
+    {
+        if (_resilientWrapper != null)
+        {
+            return await _resilientWrapper.ExecuteWithResilienceAsync(scraper, parameters, cancellationToken);
+        }
+
+        return await scraper.ExecuteSearch(parameters);
+    }
+
+    private static void RecordProviderResponse(ParallelismMetrics metrics, string providerName, long elapsedMs, BookPriceResult? result)
+    {
+        var isSuccess = IsValidResult(result);
+
+        lock (metrics.ResponseTimes)
+        {
+            metrics.ResponseTimes.Add(new ProviderResponseTime
+            {
+                ProviderName = providerName,
+                ElapsedMs = elapsedMs,
+                Success = isSuccess
+            });
+        }
+    }
+
+    private static bool IsValidResult(BookPriceResult? result)
+    {
+        return result != null && !string.IsNullOrEmpty(result.Title) && result.Price > 0;
+    }
+
+    private static void ProcessScraperResult(BookPriceResult? result, ConcurrentBag<BookPriceResult> preResults, ParallelismMetrics metrics)
+    {
+        if (IsValidResult(result))
+        {
+            preResults.Add(result!);
+            Interlocked.Increment(ref metrics.SuccessCount);
+        }
+        else
+        {
+            Interlocked.Increment(ref metrics.NoResultCount);
+        }
+    }
+
+    private void HandleScraperError(ParallelismMetrics metrics, string providerName, long elapsedMs, Exception ex)
+    {
+        Interlocked.Increment(ref metrics.FailedCount);
+
+        lock (metrics.ResponseTimes)
+        {
+            metrics.ResponseTimes.Add(new ProviderResponseTime
+            {
+                ProviderName = providerName,
+                ElapsedMs = elapsedMs,
+                Success = false,
+                Error = ex.Message
+            });
+        }
+
+        _logger.LogWarning("[{Provider}] Falha: {Message}", providerName, ex.Message);
+    }
+
+    private void FinalizeSearchResult(SearchResult result, ConcurrentBag<BookPriceResult> preResults, ParallelismMetrics metrics)
+    {
+        result.SuccessfulQueries = metrics.SuccessCount;
+        result.FailedQueries = metrics.FailedCount;
+
+        var resultList = preResults.ToList();
+        result.BookPriceResult = _comparator.Compare(resultList);
+        result.AllResults = resultList;
+        result.ResultadoTransacao = DetermineResultType(result, resultList.Count);
+        result.CustoCreditos = CalculateCost(result);
+    }
+
+    private async Task TryCacheResultAsync(Requestor requestor, SearchResult result)
+    {
+        if (_cacheService == null || !result.ResultadoTransacao.IsSuccess)
+            return;
+
+        var cacheKey = _cacheService.GenerateBookPriceKey(
+            requestor.SearchParameters.BookTitle,
+            requestor.SearchParameters.Isbn);
+
+        await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromHours(2));
+    }
+
+    private void HandleFatalError(SearchResult result, Exception ex, string transactionId)
+    {
+        result.ResultadoTransacao = ResultType.AllFailed;
+        result.Errors.Add($"Erro fatal: {ex.Message}");
+        _logger.LogError(ex, "Erro fatal na transação {TransactionId}", transactionId);
+    }
+
+    private static void FinalizeTransaction(SearchResult result, Stopwatch stopwatch)
+    {
+        stopwatch.Stop();
+        result.TempoDecorrido = stopwatch.ElapsedMilliseconds;
+        result.FimConsulta = DateTime.Now;
     }
 
     public async Task PersistQueryInDatabase()
@@ -403,7 +499,7 @@ internal class ParallelismMetrics
 /// </summary>
 internal class ProviderResponseTime
 {
-    public string ProviderName { get; set; } = "";
+    public string ProviderName { get; set; } = string.Empty;
     public long ElapsedMs { get; set; }
     public bool Success { get; set; }
     public string? Error { get; set; }
