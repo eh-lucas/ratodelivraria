@@ -44,7 +44,7 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public IActionResult Login([FromBody] LoginRequestDTO request)
     {
-        var user = _context.Users.FirstOrDefault(u => u.Username == request.Username);
+        var user = _context.Users.FirstOrDefault(u => u.Email == request.Username);
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             return Unauthorized("Usuario ou senha inválidos.");
