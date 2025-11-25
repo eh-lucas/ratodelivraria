@@ -32,13 +32,24 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
 
-    // Redis Cache
+    // Cache - Tenta Redis, fallback para memória
     var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
-    builder.Services.AddStackExchangeRedisCache(options =>
+    var useRedis = builder.Configuration.GetValue<bool>("UseRedis", false);
+
+    if (useRedis)
     {
-        options.Configuration = redisConnection;
-        options.InstanceName = "Sherlock:";
-    });
+        builder.Services.AddStackExchangeRedisCache(options =>
+        {
+            options.Configuration = redisConnection;
+            options.InstanceName = "Sherlock:";
+        });
+        Log.Information("Cache: Redis habilitado ({Connection})", redisConnection);
+    }
+    else
+    {
+        builder.Services.AddDistributedMemoryCache();
+        Log.Information("Cache: Usando memória (Redis desabilitado)");
+    }
 
     // Rate Limiting
     builder.Services.AddRateLimiter(options =>
@@ -93,9 +104,13 @@ try
 
     // Health checks
     var connectionString = builder.Configuration.GetConnectionString("SherlockDb");
-    builder.Services.AddHealthChecks()
-        .AddNpgSql(connectionString!, name: "postgresql", tags: ["db", "sql", "postgresql"])
-        .AddRedis(redisConnection, name: "redis", tags: ["cache", "redis"]);
+    var healthChecks = builder.Services.AddHealthChecks()
+        .AddNpgSql(connectionString!, name: "postgresql", tags: ["db", "sql", "postgresql"]);
+
+    if (useRedis)
+    {
+        healthChecks.AddRedis(redisConnection, name: "redis", tags: ["cache", "redis"]);
+    }
 
     var app = builder.Build();
 
