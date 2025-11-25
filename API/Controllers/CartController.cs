@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Sherlock.Business.DTOs;
 using Sherlock.Business.Interfaces;
+using SherlockAPI.Constants;
 using System.Security.Claims;
 
 namespace SherlockAPI.Controllers;
@@ -41,9 +42,9 @@ public class CartController : ControllerBase
             return BadRequest(new { error = "A lista de livros não pode estar vazia." });
         }
 
-        if (request.Books.Count > 20)
+        if (request.Books.Count > AppConstants.Cart.MaxBooksPerOptimization)
         {
-            return BadRequest(new { error = "Máximo de 20 livros por otimização." });
+            return BadRequest(new { error = $"Máximo de {AppConstants.Cart.MaxBooksPerOptimization} livros por otimização." });
         }
 
         // Valida cada livro
@@ -56,12 +57,12 @@ public class CartController : ControllerBase
 
             if (book.Quantity <= 0)
             {
-                book.Quantity = 1;
+                book.Quantity = AppConstants.Cart.DefaultQuantity;
             }
 
-            if (book.Quantity > 10)
+            if (book.Quantity > AppConstants.Cart.MaxQuantityPerBook)
             {
-                return BadRequest(new { error = $"Quantidade máxima de 10 unidades por livro. Livro: {book.Title}" });
+                return BadRequest(new { error = $"Quantidade máxima de {AppConstants.Cart.MaxQuantityPerBook} unidades por livro. Livro: {book.Title}" });
             }
         }
 
