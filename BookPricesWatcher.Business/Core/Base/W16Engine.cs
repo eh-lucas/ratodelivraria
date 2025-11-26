@@ -1,11 +1,15 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Sherlock.Business.Core.Exceptions;
 using Sherlock.Business.Core.Resilience;
 using Sherlock.Business.Core.Scrapers;
 using Sherlock.Business.Interfaces;
 using Sherlock.Domain.Entities;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
+using Sherlock.Business.Services;
 
 namespace Sherlock.Business.Core.Base;
 
@@ -20,6 +24,7 @@ public class W16Engine
     private readonly ILogger<W16Engine> _logger;
     private readonly ResilientScraperWrapper? _resilientWrapper;
     private readonly ICacheService? _cacheService;
+    private readonly IQueryHistoryService? _queryHistoryService;
 
     /// <summary>
     /// Nível de paralelismo para buscas. Ajuste este valor para encontrar o melhor desempenho.
@@ -50,6 +55,7 @@ public class W16Engine
     public async Task<SearchResult> ExecuteTransaction(Requestor requestor, CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
+        var transaction = new Transaction();
         var transactionId = GenerateTransactionId();
 
         LogTransactionStart(transactionId, requestor);
@@ -134,6 +140,29 @@ public class W16Engine
         return null;
     }
 
+    private async Task<SearchResult?> TryGetFromDatabaseCachedAsync(Requestor requestor, string transactionId, Stopwatch stopwatch)
+    {
+        if (_cacheService == null)
+            return null;
+
+        var cacheKey = _cacheService.GenerateBookPriceKey(
+            requestor.SearchParameters.BookTitle,
+            requestor.SearchParameters.Isbn);
+
+        var cachedResult = await _cacheService.GetAsync<SearchResult>(cacheKey);
+        if (cachedResult != null)
+        {
+            _logger.LogInformation(
+                "Transação {TransactionId} resolvida via cache em {Elapsed}ms",
+                transactionId, stopwatch.ElapsedMilliseconds);
+
+            cachedResult.FromCache = true;
+            return cachedResult;
+        }
+
+        return null;
+    }
+
     private async Task ExecuteScrapersAsync(
         Requestor requestor,
         ConcurrentBag<QueryResult> queryResults,
@@ -186,6 +215,7 @@ public class W16Engine
 
         await Task.WhenAll(tasks);
     }
+ 
 
     private Task ExecuteSingleScrapingAsync(
         IScraper scraper,
@@ -198,6 +228,7 @@ public class W16Engine
     {
         return Task.Run(async () =>
         {
+            var stopwatch = Stopwatch.StartNew();
             TrackActiveTask(metrics, true);
 
             try
@@ -208,11 +239,20 @@ public class W16Engine
                 queryResults.Add(queryResult);
                 RecordQueryResult(metrics, queryResult);
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                stopwatch.Stop();
+                var errorResult = QueryResult.CreateFailure(source, QueryErrorType.Timeout, "Operação cancelada pelo usuário", stopwatch.ElapsedMilliseconds);
+                queryResults.Add(errorResult);
+                RecordErrorResult(metrics, source.Name, stopwatch.ElapsedMilliseconds, QueryErrorType.Timeout, "Cancelado");
+            }
             catch (Exception ex)
             {
-                var errorResult = QueryResult.CreateFailure(source, QueryErrorType.Unknown, ex.Message, 0);
+                stopwatch.Stop();
+                var (errorType, errorMessage, httpStatusCode) = ClassifyException(ex, source.Name);
+                var errorResult = QueryResult.CreateFailure(source, errorType, errorMessage, stopwatch.ElapsedMilliseconds, httpStatusCode);
                 queryResults.Add(errorResult);
-                HandleScraperError(metrics, source.Name, 0, ex);
+                RecordErrorResult(metrics, source.Name, stopwatch.ElapsedMilliseconds, errorType, errorMessage, ex);
             }
             finally
             {
@@ -220,6 +260,97 @@ public class W16Engine
                 semaphore.Release();
             }
         }, cancellationToken);
+    }
+
+    private (QueryErrorType errorType, string message, int? httpStatusCode) ClassifyException(Exception ex, string providerName)
+    {
+        return ex switch
+        {
+            // Exceções customizadas do scraper
+            ScraperTimeoutException ste => (QueryErrorType.Timeout, ste.Message, null),
+            ScraperNetworkException sne => (QueryErrorType.Network, sne.Message, null),
+            ScraperHttpException she => (QueryErrorType.HttpError, she.Message, she.StatusCode),
+            ScraperParseException spe => (QueryErrorType.ParseError, spe.Message, null),
+            ScraperBlockedException sbe => (QueryErrorType.Blocked, sbe.Message, null),
+            ScraperRateLimitException sre => (QueryErrorType.Blocked, sre.Message, 429),
+
+            // Timeout genérico
+            TaskCanceledException or OperationCanceledException => (QueryErrorType.Timeout, "Request timeout", null),
+
+            // Erros de rede
+            HttpRequestException hre => ClassifyHttpRequestException(hre),
+            SocketException se => (QueryErrorType.Network, $"Erro de socket: {se.SocketErrorCode}", null),
+            WebException we => (QueryErrorType.Network, $"Erro web: {we.Status}", null),
+
+            // Erros de parsing
+            InvalidOperationException ioe when ioe.Message.Contains("parse", StringComparison.OrdinalIgnoreCase)
+                => (QueryErrorType.ParseError, ioe.Message, null),
+            FormatException fe => (QueryErrorType.ParseError, $"Formato inválido: {fe.Message}", null),
+
+            // Erro genérico
+            _ => (QueryErrorType.Unknown, TruncateMessage(ex.Message), null)
+        };
+    }
+
+    private static (QueryErrorType, string, int?) ClassifyHttpRequestException(HttpRequestException hre)
+    {
+        if (hre.StatusCode.HasValue)
+        {
+            var statusCode = (int)hre.StatusCode.Value;
+            var errorType = statusCode switch
+            {
+                429 => QueryErrorType.Blocked,
+                >= 400 and < 500 => QueryErrorType.HttpError,
+                >= 500 => QueryErrorType.HttpError,
+                _ => QueryErrorType.Network
+            };
+            return (errorType, $"HTTP {statusCode}", statusCode);
+        }
+
+        // Sem status code - provavelmente erro de conexão
+        if (hre.InnerException is SocketException se)
+        {
+            return (QueryErrorType.Network, $"Conexão falhou: {se.SocketErrorCode}", null);
+        }
+
+        return (QueryErrorType.Network, hre.Message, null);
+    }
+
+    private static string TruncateMessage(string message, int maxLength = 200)
+    {
+        if (string.IsNullOrEmpty(message)) return "Erro desconhecido";
+        return message.Length <= maxLength ? message : message[..maxLength] + "...";
+    }
+
+    private void RecordErrorResult(ParallelismMetrics metrics, string providerName, long elapsedMs, QueryErrorType errorType, string errorMessage, Exception? ex = null)
+    {
+        Interlocked.Increment(ref metrics.FailedCount);
+
+        lock (metrics.ResponseTimes)
+        {
+            metrics.ResponseTimes.Add(new ProviderResponseTime
+            {
+                ProviderName = providerName,
+                ElapsedMs = elapsedMs,
+                Success = false,
+                Error = errorMessage,
+                ErrorType = errorType
+            });
+        }
+
+        // Log estruturado com nível apropriado baseado no tipo de erro
+        var logLevel = errorType switch
+        {
+            QueryErrorType.Timeout => LogLevel.Warning,
+            QueryErrorType.Network => LogLevel.Warning,
+            QueryErrorType.HttpError => LogLevel.Warning,
+            QueryErrorType.Blocked => LogLevel.Information, // Rate limit é esperado às vezes
+            QueryErrorType.ParseError => LogLevel.Warning,
+            _ => LogLevel.Error
+        };
+
+        _logger.Log(logLevel, ex, "[{Provider}] {ErrorType}: {Message} ({ElapsedMs}ms)",
+            providerName, errorType, errorMessage, elapsedMs);
     }
 
     private static void TrackActiveTask(ParallelismMetrics metrics, bool increment)
@@ -290,23 +421,6 @@ public class W16Engine
         }
     }
 
-    private void HandleScraperError(ParallelismMetrics metrics, string providerName, long elapsedMs, Exception ex)
-    {
-        Interlocked.Increment(ref metrics.FailedCount);
-
-        lock (metrics.ResponseTimes)
-        {
-            metrics.ResponseTimes.Add(new ProviderResponseTime
-            {
-                ProviderName = providerName,
-                ElapsedMs = elapsedMs,
-                Success = false,
-                Error = ex.Message
-            });
-        }
-
-        _logger.LogWarning("[{Provider}] Falha: {Message}", providerName, ex.Message);
-    }
 
     private void FinalizeSearchResult(SearchResult result, ConcurrentBag<QueryResult> queryResults, ParallelismMetrics metrics)
     {
@@ -444,13 +558,27 @@ public class W16Engine
                 string.Join("\n", slowest.Select((r, i) => $"    {i + 1}. {r.ProviderName}: {r.ElapsedMs}ms")));
         }
 
-        // Log das falhas
+        // Log das falhas agrupadas por tipo
         if (failed.Any())
         {
+            var errorsByType = failed
+                .GroupBy(r => r.ErrorType ?? QueryErrorType.Unknown)
+                .OrderByDescending(g => g.Count())
+                .ToList();
+
             _logger.LogWarning(
-                "  PROVIDERS COM FALHA ({FailCount}):\n{FailedList}",
+                "  PROVIDERS COM FALHA ({FailCount}):\n" +
+                "    Por tipo:\n{ErrorSummary}\n" +
+                "    Detalhes:\n{FailedList}",
                 failed.Count,
-                string.Join("\n", failed.Select(r => $"    - {r.ProviderName}: {r.Error ?? "Timeout/Sem resposta"} ({r.ElapsedMs}ms)")));
+                string.Join("\n", errorsByType.Select(g => $"      {g.Key}: {g.Count()}")),
+                string.Join("\n", failed.Take(10).Select(r => $"    - {r.ProviderName}: [{r.ErrorType}] {r.Error ?? "Sem detalhes"} ({r.ElapsedMs}ms)")));
+
+            // Se houver mais de 10 falhas, indica que há mais
+            if (failed.Count > 10)
+            {
+                _logger.LogWarning("    ... e mais {RemainingCount} falhas", failed.Count - 10);
+            }
         }
     }
 
@@ -512,4 +640,5 @@ internal class ProviderResponseTime
     public long ElapsedMs { get; set; }
     public bool Success { get; set; }
     public string? Error { get; set; }
+    public QueryErrorType? ErrorType { get; set; }
 }
