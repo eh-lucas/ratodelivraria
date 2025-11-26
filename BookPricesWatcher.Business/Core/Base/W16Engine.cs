@@ -30,21 +30,22 @@ public class W16Engine
     /// </summary>
     public int MaxDegreeOfParallelism { get; set; } = 10;
 
-    public W16Engine() : this(NullLogger<W16Engine>.Instance, null, null)
+    public W16Engine() : this(NullLoggerFactory.Instance, NullLogger<W16Engine>.Instance, null, null)
     {
     }
 
-    public W16Engine(ILogger<W16Engine> logger) : this(logger, null, null)
+    public W16Engine(ILogger<W16Engine> logger) : this(NullLoggerFactory.Instance, logger, null, null)
     {
     }
 
     public W16Engine(
+        ILoggerFactory loggerFactory,
         ILogger<W16Engine> logger,
         ICacheService? cacheService,
         ResilientScraperWrapper? resilientWrapper)
     {
         _comparator = new Comparator();
-        _scraperFactory = new ScraperFactory();
+        _scraperFactory = new ScraperFactory(loggerFactory);
         _logger = logger;
         _cacheService = cacheService;
         _resilientWrapper = resilientWrapper;

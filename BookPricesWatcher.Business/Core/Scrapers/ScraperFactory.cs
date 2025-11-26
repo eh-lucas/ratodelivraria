@@ -1,4 +1,6 @@
-﻿using Sherlock.Business.Core.Base;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Sherlock.Business.Core.Base;
 using Sherlock.Business.Core.Scrapers.Cedet.HttpClient;
 using Sherlock.Business.Interfaces;
 using Sherlock.Domain.Entities;
@@ -6,6 +8,17 @@ using Sherlock.Domain.Entities;
 namespace Sherlock.Business.Core.Scrapers;
 public class ScraperFactory
 {
+    private readonly ILoggerFactory _loggerFactory;
+
+    public ScraperFactory() : this(NullLoggerFactory.Instance)
+    {
+    }
+
+    public ScraperFactory(ILoggerFactory loggerFactory)
+    {
+        _loggerFactory = loggerFactory;
+    }
+
     public List<IScraper> CreateScrapers(Requestor requestor)
     {
         var distinctScrapingCategories = requestor.SourcesToSearch
@@ -29,7 +42,8 @@ public class ScraperFactory
     {
         return providerCategoryEnum switch
         {
-            ProviderCategoryEnum.Cedet => new CedetSingleSearchHttpClient(),
+            ProviderCategoryEnum.Cedet => new CedetSingleSearchHttpClient(
+                _loggerFactory.CreateLogger<CedetSingleSearchHttpClient>()),
             _ => null,
         };
     }

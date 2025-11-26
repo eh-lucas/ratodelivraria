@@ -32,7 +32,10 @@ public class CedetSingleSearchHttpClient : IScraper
             PooledConnectionLifetime = TimeSpan.FromMinutes(5),
             PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
             // Timeout para estabelecer conexão
-            ConnectTimeout = TimeSpan.FromSeconds(10)
+            ConnectTimeout = TimeSpan.FromSeconds(10),
+            // Segue redirects automaticamente (301, 302, 307, 308)
+            AllowAutoRedirect = true,
+            MaxAutomaticRedirections = 5
         };
 
         _httpClient = new System.Net.Http.HttpClient(handler)
@@ -94,22 +97,39 @@ public class CedetSingleSearchHttpClient : IScraper
             }
 
             var searchTerm = SetSearchingParameter(parameters);
-            var url = $"{provider.Url.TrimEnd('/')}/?s={searchTerm}&post_type=product";
+            // Normaliza a URL removendo www. para evitar redirects
+            var baseUrl = NormalizeUrl(provider.Url);
+            var url = $"{baseUrl.TrimEnd('/')}/?s={searchTerm}&post_type=product";
 
             _logger.LogDebug("[{Provider}] Iniciando busca: {Url}", provider.Name, url);
 
-            var response = await _retryPolicy.ExecuteAsync(async () =>
+            HttpResponseMessage response;
+            try
             {
-                using var request = CreateRequest(url);
-                return await _httpClient.SendAsync(request);
-            });
+                response = await _retryPolicy.ExecuteAsync(async () =>
+                {
+                    using var request = CreateRequest(url);
+                    _logger.LogDebug("[{Provider}] Enviando requisição para {Url}", provider.Name, url);
+                    return await _httpClient.SendAsync(request);
+                });
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _logger.LogWarning(ex, "[{Provider}] Exceção durante requisição HTTP após {ElapsedMs}ms: {Message}",
+                    provider.Name, stopwatch.ElapsedMilliseconds, ex.Message);
+                throw;
+            }
 
             stopwatch.Stop();
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("[{Provider}] HTTP {StatusCode} em {ElapsedMs}ms",
-                    provider.Name, (int)response.StatusCode, stopwatch.ElapsedMilliseconds);
+                // Log detalhado para diagnóstico de redirects
+                var locationHeader = response.Headers.Location?.ToString() ?? "N/A";
+                var finalUrl = response.RequestMessage?.RequestUri?.ToString() ?? "N/A";
+                _logger.LogWarning("[{Provider}] HTTP {StatusCode} em {ElapsedMs}ms - Location: {Location} - FinalUrl: {FinalUrl} - OriginalUrl: {OriginalUrl}",
+                    provider.Name, (int)response.StatusCode, stopwatch.ElapsedMilliseconds, locationHeader, finalUrl, url);
 
                 return QueryResult.CreateFailure(
                     provider,
@@ -201,6 +221,30 @@ public class CedetSingleSearchHttpClient : IScraper
             return Uri.EscapeDataString(parameters.Isbn);
 
         return Uri.EscapeDataString(parameters.BookTitle);
+    }
+
+    /// <summary>
+    /// Normaliza a URL removendo www. para evitar redirects HTTPS->HTTP
+    /// que o HttpClient não segue por segurança
+    /// </summary>
+    private static string NormalizeUrl(string url)
+    {
+        if (string.IsNullOrEmpty(url))
+            return url;
+
+        // Remove www. do host
+        var uri = new Uri(url);
+        if (uri.Host.StartsWith("www.", StringComparison.OrdinalIgnoreCase))
+        {
+            var newHost = uri.Host.Substring(4);
+            var builder = new UriBuilder(uri)
+            {
+                Host = newHost
+            };
+            return builder.Uri.ToString();
+        }
+
+        return url;
     }
 
     /// <summary>

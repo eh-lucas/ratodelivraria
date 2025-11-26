@@ -186,7 +186,6 @@ public class CartOptimizationService : ICartOptimizationService
         // Fallback: usa todos os providers ativos
         return Provider.AllSources
             .Where(s => s.IsActive)
-            .Take(10) // Limita para não sobrecarregar
             .ToList();
     }
 

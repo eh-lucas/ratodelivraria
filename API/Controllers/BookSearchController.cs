@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Sherlock.Business.Core.Scrapers;
 using Sherlock.Business.Core.Base;
+using Sherlock.Business.Core.Scrapers;
 using Sherlock.Domain.Entities;
 
 namespace SherlockAPI.Controllers;
@@ -12,6 +12,13 @@ namespace SherlockAPI.Controllers;
 [Route("api/[controller]")]
 public class BookSearchController : ControllerBase
 {
+    private readonly W16Engine _engine;
+
+    public BookSearchController(W16Engine engine)
+    {
+        _engine = engine;
+    }
+
     /// <summary>
     /// Busca preços de um livro em todos os providers ou providers específicos
     /// </summary>
@@ -52,8 +59,7 @@ public class BookSearchController : ControllerBase
             }
 
             var requestor = new Requestor(parameters, selectedProviders);
-            var coreExecutor = new W16Engine();
-            var result = await coreExecutor.ExecuteTransaction(requestor);
+            var result = await _engine.ExecuteTransaction(requestor);
 
             return Ok(result);
         }
@@ -108,8 +114,7 @@ public class BookSearchController : ControllerBase
             }
 
             var requestor = new Requestor(search, selectedProviders);
-            var coreExecutor = new W16Engine();
-            var result = await coreExecutor.ExecuteTransaction(requestor);
+            var result = await _engine.ExecuteTransaction(requestor);
 
             return Ok(result);
         }

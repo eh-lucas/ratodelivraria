@@ -6,10 +6,10 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override("Sherlock.Business.Core.Scrapers", Serilog.Events.LogEventLevel.Debug)
+    .MinimumLevel.Override("Sherlock.Business.Core.Scrapers.Cedet.HttpClient", Serilog.Events.LogEventLevel.Debug)
     .Enrich.FromLogContext()
-    .Enrich.WithMachineName()
-    .Enrich.WithThreadId()
-    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
     .WriteTo.File("logs/sherlock-.log",
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 30,
