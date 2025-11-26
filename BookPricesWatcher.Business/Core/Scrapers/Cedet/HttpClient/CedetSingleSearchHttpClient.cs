@@ -14,7 +14,7 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.HttpClient;
 
 public class CedetSingleSearchHttpClient : IScraper
 {
-    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
     private readonly ILogger<CedetSingleSearchHttpClient> _logger;
 
     // HttpClient estático para reutilização de conexões
@@ -23,23 +23,22 @@ public class CedetSingleSearchHttpClient : IScraper
 
     static CedetSingleSearchHttpClient()
     {
-        var handler = new HttpClientHandler
+        var handler = new SocketsHttpHandler
         {
-            AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
+            AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
+            // Permite mais conexões simultâneas
+            MaxConnectionsPerServer = 100,
+            // Conexões podem ser reutilizadas
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+            // Timeout para estabelecer conexão
+            ConnectTimeout = TimeSpan.FromSeconds(10)
         };
 
         _httpClient = new System.Net.Http.HttpClient(handler)
         {
             Timeout = RequestTimeout
         };
-
-        // Headers mais completos para evitar bloqueios
-        _httpClient.DefaultRequestHeaders.Add("User-Agent",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-        _httpClient.DefaultRequestHeaders.Add("Accept",
-            "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
-        _httpClient.DefaultRequestHeaders.Add("Accept-Language", "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7");
-        _httpClient.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate");
 
         // Retry policy com Polly: 2 retries com exponential backoff
         _retryPolicy = Policy
@@ -53,6 +52,21 @@ public class CedetSingleSearchHttpClient : IScraper
                 {
                     // Log será feito no método principal
                 });
+    }
+
+    /// <summary>
+    /// Cria um HttpRequestMessage com headers apropriados (thread-safe)
+    /// </summary>
+    private static HttpRequestMessage CreateRequest(string url)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Add("User-Agent",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+        request.Headers.Add("Accept",
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+        request.Headers.Add("Accept-Language", "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7");
+        request.Headers.Add("Accept-Encoding", "gzip, deflate");
+        return request;
     }
 
     public CedetSingleSearchHttpClient() : this(NullLogger<CedetSingleSearchHttpClient>.Instance)
@@ -85,7 +99,10 @@ public class CedetSingleSearchHttpClient : IScraper
             _logger.LogDebug("[{Provider}] Iniciando busca: {Url}", provider.Name, url);
 
             var response = await _retryPolicy.ExecuteAsync(async () =>
-                await _httpClient.GetAsync(url));
+            {
+                using var request = CreateRequest(url);
+                return await _httpClient.SendAsync(request);
+            });
 
             stopwatch.Stop();
 
@@ -179,17 +196,11 @@ public class CedetSingleSearchHttpClient : IScraper
 
     private string SetSearchingParameter(SearchParameter parameters)
     {
-        var searchTerm = string.Empty;
+        // Sempre usa o título do livro como termo de busca
+        if (!string.IsNullOrEmpty(parameters.Isbn))
+            return Uri.EscapeDataString(parameters.Isbn);
 
-        if (parameters.IsExactSearch)
-        {
-            if (parameters.Isbn != null)
-                searchTerm = parameters.Isbn;
-            else
-                searchTerm = Uri.EscapeDataString(parameters.BookTitle);
-        }
-
-        return searchTerm;
+        return Uri.EscapeDataString(parameters.BookTitle);
     }
 
     /// <summary>
@@ -200,11 +211,14 @@ public class CedetSingleSearchHttpClient : IScraper
         // Tenta múltiplos seletores em ordem de preferência
         string[] selectors = new[]
         {
+            // Cedet - estrutura principal (item-product é a classe correta!)
             "//div[contains(@class, 'item-product')]",
-            "//li[contains(@class, 'product')]",
             "//div[contains(@class, 'product-item')]",
-            "//article[contains(@class, 'product')]",
-            "//div[contains(@class, 'product') and contains(@class, 'type-product')]"
+            "//li[contains(@class, 'product')]//div[contains(@class, 'item-product')]",
+            // WooCommerce padrão
+            "//ul[contains(@class, 'products')]//li[contains(@class, 'product')]",
+            "//div[@class='product']",
+            "//article[contains(@class, 'product')]"
         };
 
         foreach (var selector in selectors)
@@ -212,11 +226,12 @@ public class CedetSingleSearchHttpClient : IScraper
             var products = doc.DocumentNode.SelectNodes(selector);
             if (products != null && products.Count > 0)
             {
-                _logger.LogDebug("Produtos encontrados com seletor: {Selector}", selector);
+                _logger.LogDebug("Produtos encontrados com seletor: {Selector} ({Count} produtos)", selector, products.Count);
                 return products;
             }
         }
 
+        _logger.LogDebug("Nenhum produto encontrado no HTML");
         return null;
     }
 
@@ -251,39 +266,45 @@ public class CedetSingleSearchHttpClient : IScraper
     /// </summary>
     private ParsedProduct? ParseSingleProduct(HtmlNode product, Provider provider)
     {
-        // Extrai título - tenta múltiplos seletores
+        // Extrai título - Cedet usa a.product-name ou div.name/a
         var title = ExtractText(product, new[]
         {
-            ".//a[contains(@class, 'name')]",
-            ".//h2[contains(@class, 'title')]//a",
-            ".//h2[contains(@class, 'product-title')]//a",
-            ".//h3[contains(@class, 'name')]//a",
+            // Cedet - seletores corretos identificados no HTML
+            ".//a[contains(@class, 'product-name')]",
             ".//div[contains(@class, 'name')]//a",
-            ".//a[contains(@class, 'woocommerce-LoopProduct-link')]",
-            ".//h2[contains(@class, 'woocommerce-loop-product__title')]"
+            ".//div[contains(@class, 'name')]",
+            // WooCommerce
+            ".//h2[contains(@class, 'woocommerce-loop-product__title')]",
+            ".//a[contains(@class, 'woocommerce-LoopProduct-link')]//h2",
+            ".//h2//a",
+            ".//h3//a"
         });
 
         if (string.IsNullOrEmpty(title))
             return null;
 
-        // Extrai autor - tenta múltiplos seletores
+        // Extrai autor - Cedet usa p.author ou p.author/a
         var author = ExtractText(product, new[]
         {
-            ".//span[contains(@class, 'author')]",
-            ".//div[contains(@class, 'author')]",
+            // Cedet - seletores corretos identificados no HTML
+            ".//p[contains(@class, 'author')]//a",
             ".//p[contains(@class, 'author')]",
-            ".//a[contains(@class, 'author')]"
+            ".//a[contains(@href, 'author')]",
+            ".//span[contains(@class, 'author')]",
+            ".//div[contains(@class, 'author')]"
         }) ?? "";
 
-        // Extrai preço atual (com desconto se houver)
+        // Extrai preço atual - Cedet usa span.price-new
         var newPrice = ExtractPrice(product, new[]
         {
+            // Cedet - seletores corretos identificados no HTML
             ".//span[contains(@class, 'price-new')]",
-            ".//ins//span[contains(@class, 'amount')]",
-            ".//span[contains(@class, 'woocommerce-Price-amount')]",
-            ".//span[contains(@class, 'price')]//ins//bdi",
-            ".//p[contains(@class, 'price')]//ins//span",
-            ".//span[contains(@class, 'current-price')]"
+            ".//span[contains(@class, 'sale-price')]",
+            ".//span[contains(@class, 'special')]",
+            // WooCommerce
+            ".//ins//span[contains(@class, 'woocommerce-Price-amount')]//bdi",
+            ".//ins//span[contains(@class, 'woocommerce-Price-amount')]",
+            ".//ins//bdi"
         });
 
         // Se não achou preço com desconto, tenta preço normal
@@ -292,22 +313,26 @@ public class CedetSingleSearchHttpClient : IScraper
             newPrice = ExtractPrice(product, new[]
             {
                 ".//span[contains(@class, 'woocommerce-Price-amount')]//bdi",
+                ".//span[contains(@class, 'woocommerce-Price-amount')]",
                 ".//span[contains(@class, 'price')]//bdi",
-                ".//p[contains(@class, 'price')]//span[contains(@class, 'amount')]",
-                ".//span[contains(@class, 'amount')]"
+                ".//bdi"
             });
         }
 
         if (newPrice <= 0)
             return null;
 
-        // Extrai preço antigo (sem desconto) para calcular desconto
+        // Extrai preço antigo - Cedet usa span.price-old
         var oldPrice = ExtractPrice(product, new[]
         {
+            // Cedet - seletores corretos identificados no HTML
             ".//span[contains(@class, 'price-old')]",
-            ".//del//span[contains(@class, 'amount')]",
-            ".//span[contains(@class, 'price')]//del//bdi",
-            ".//p[contains(@class, 'price')]//del//span"
+            ".//span[contains(@class, 'price-of')]",
+            ".//span[contains(@class, 'original-price')]",
+            // WooCommerce
+            ".//del//span[contains(@class, 'woocommerce-Price-amount')]//bdi",
+            ".//del//span[contains(@class, 'woocommerce-Price-amount')]",
+            ".//del//bdi"
         });
 
         // Calcula desconto
@@ -318,9 +343,12 @@ public class CedetSingleSearchHttpClient : IScraper
         }
 
         // Tenta extrair URL do produto
+        // Cedet: a.product-name ou a.link-card
         var productUrl = ExtractHref(product, new[]
         {
-            ".//a[contains(@class, 'name')]",
+            ".//a[contains(@class, 'product-name')]",
+            ".//a[contains(@class, 'link-card')]",
+            ".//div[contains(@class, 'name')]//a",
             ".//a[contains(@class, 'woocommerce-LoopProduct-link')]",
             ".//h2//a",
             ".//a"

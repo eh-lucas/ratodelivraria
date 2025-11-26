@@ -42,7 +42,7 @@ public class BookSearchController : ControllerBase
                 BookTitle = title,
                 Isbn = isbn,
                 AuthorName = author,
-                IsExactSearch = true
+                IsExactSearch = false  // Busca flexível para encontrar resultados similares
             };
 
             var selectedProviders = GetSelectedProviders(providerUrls);
