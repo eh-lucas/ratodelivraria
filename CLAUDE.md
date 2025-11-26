@@ -98,12 +98,30 @@ Each search creates one `Transaction` with multiple `Query` records:
 - `Transaction`: Who searched, total cost, execution time, best result reference
 - `Query`: Individual provider result (provider_id, transaction_id, price, title, success/error)
 
+#### Persistência Automática
+
+O `W16Engine` persiste automaticamente cada transação via `TransactionPersistenceService`:
+1. Cria `Transaction` com `InputParameters` (JSON com título, ISBN, autor)
+2. Salva todas as `Query` entities em batch
+3. Identifica a melhor query (menor preço) e atualiza `BestQueryId`
+4. Serializa erros em `Transaction.Errors` (JSON)
+
+**Fluxo:**
+```
+Controller (autenticado) → Service → W16Engine.ExecuteTransaction(requestor, userId)
+                                         ↓
+                               TransactionPersistenceService.PersistAsync()
+```
+
+**Importante:** `userId` é obrigatório - todos os endpoints de busca requerem autenticação.
+
 ### Web Scraping
 
 Core engine in `BookPricesWatcher.Business/Core/Base/W16Engine.cs`:
 - Configurable parallelism via `MaxDegreeOfParallelism` (default: 10)
 - Detailed metrics logging (response times, P50/P95, throughput)
 - Uses `ScraperFactory` to create scrapers by provider category
+- **Persistência automática**: Após cada busca, persiste Transaction e Queries no banco via `ITransactionPersistenceService`
 
 Scrapers in `BookPricesWatcher.Business/Core/Scrapers/`:
 - **CedetSingleSearchHttpClient** - Primary scraper using HttpClient + HtmlAgilityPack
@@ -135,13 +153,24 @@ Scrapers in `BookPricesWatcher.Business/Core/Scrapers/`:
 ## API Endpoints
 
 - Swagger UI: `http://localhost:5177/swagger` (development only)
+
+### Autenticação (públicos)
 - `POST /api/auth/register` - User registration
 - `POST /api/auth/login` - User login
-- `GET /api/BookSearch?title={title}` - Search book prices
+
+### Busca de Livros (requerem autenticação)
+- `GET /api/BookSearch?title={title}&isbn={isbn}` - Search book prices (título OU ISBN obrigatório)
 - `POST /api/BookSearch` - Search with body (title, isbn, author, providerUrls)
+- `POST /api/BookSearch/single` - Busca livro único, retorna melhor opção + 2 alternativas
+
+### Carrinho (requerem autenticação)
+- `POST /api/Cart/optimize` - Optimize cart for best prices (múltiplos providers)
+- `POST /api/Cart/best-provider` - Encontra melhor provider único para todos os livros
+- `GET /api/Cart/search?title={title}` - Busca preço de um livro
+
+### Providers (públicos)
 - `GET /api/Providers` - List all providers
 - `GET /api/Providers/active` - List active providers only
-- `POST /api/Cart/optimize` - Optimize cart for best prices
 
 ## Key Entry Points
 
