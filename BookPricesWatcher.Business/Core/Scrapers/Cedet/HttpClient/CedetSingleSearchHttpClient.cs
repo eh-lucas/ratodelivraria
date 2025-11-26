@@ -90,9 +90,10 @@ public class CedetSingleSearchHttpClient : IScraper
 
         try
         {
-            if (string.IsNullOrEmpty(parameters.BookTitle))
+            // Aceita busca por título OU ISBN
+            if (string.IsNullOrEmpty(parameters.BookTitle) && string.IsNullOrEmpty(parameters.Isbn))
             {
-                _logger.LogDebug("[{Provider}] Título vazio, ignorando busca", provider.Name);
+                _logger.LogDebug("[{Provider}] Título e ISBN vazios, ignorando busca", provider.Name);
                 return QueryResult.CreateNoResult(provider, stopwatch.ElapsedMilliseconds);
             }
 
@@ -160,7 +161,11 @@ public class CedetSingleSearchHttpClient : IScraper
 
             _logger.LogDebug("[{Provider}] {Count} produtos parseados", provider.Name, possibleBooks.Count);
 
-            var bestBook = ChooseBestBookOption(possibleBooks, parameters.BookTitle, parameters.IsExactSearch);
+            // Quando busca por ISBN (sem título), retorna o primeiro resultado com preço válido
+            // Quando busca por título, usa a lógica de comparação normal
+            var searchTerm2 = !string.IsNullOrEmpty(parameters.BookTitle) ? parameters.BookTitle : string.Empty;
+            var useExactSearch = !string.IsNullOrEmpty(parameters.BookTitle) && parameters.IsExactSearch;
+            var bestBook = ChooseBestBookOption(possibleBooks, searchTerm2, useExactSearch);
 
             if (bestBook != null && !string.IsNullOrEmpty(bestBook.Title) && bestBook.Price > 0)
             {

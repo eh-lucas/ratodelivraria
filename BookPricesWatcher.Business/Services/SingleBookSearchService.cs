@@ -28,9 +28,10 @@ public class SingleBookSearchService : ISingleBookSearchService
     {
         var stopwatch = Stopwatch.StartNew();
 
+        var searchTerm = !string.IsNullOrEmpty(request.Isbn) ? $"ISBN:{request.Isbn}" : request.Title;
         _logger.LogInformation(
-            "Iniciando busca de livro único: {Title} para usuário {UserId}",
-            request.Title, userId ?? 0);
+            "Iniciando busca de livro único: {SearchTerm} para usuário {UserId}",
+            searchTerm, userId ?? 0);
 
         var result = new SingleBookSearchResult();
 
@@ -38,7 +39,7 @@ public class SingleBookSearchService : ISingleBookSearchService
         {
             var searchParam = new SearchParameter
             {
-                BookTitle = request.Title,
+                BookTitle = request.Title ?? string.Empty,
                 Isbn = request.Isbn,
                 AuthorName = request.Author,
                 IsExactSearch = false
@@ -55,7 +56,7 @@ public class SingleBookSearchService : ISingleBookSearchService
             result.FromCache = searchResult.FromCache;
 
             // Converte resultados para BookPriceOption ordenados por preço
-            var allOptions = ConvertToBookPriceOptions(searchResult, request.Title);
+            var allOptions = ConvertToBookPriceOptions(searchResult, request.Title ?? string.Empty);
 
             if (allOptions.Count > 0)
             {
