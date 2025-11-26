@@ -10,6 +10,13 @@ public class Provider
     public decimal? MinFreeShipping { get; set; }
     public decimal? BaseShippingCost { get; set; }
 
+    /// <summary>
+    /// Template da URL de busca. Use {search} como placeholder para o termo de busca.
+    /// Default: "index.php?route=product/search&search={search}" (OpenCart - usado por 89/93 providers)
+    /// WooCommerce: "?s={search}&post_type=product"
+    /// </summary>
+    public string SearchUrlTemplate { get; set; } = "index.php?route=product/search&search={search}";
+
     // ========== PROVIDERS EXISTENTES ==========
 
     public static Provider LivrariaAlexandreCosta = new()

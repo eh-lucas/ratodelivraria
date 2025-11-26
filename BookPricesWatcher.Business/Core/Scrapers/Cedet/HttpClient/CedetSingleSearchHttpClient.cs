@@ -99,7 +99,9 @@ public class CedetSingleSearchHttpClient : IScraper
             var searchTerm = SetSearchingParameter(parameters);
             // Normaliza a URL removendo www. para evitar redirects
             var baseUrl = NormalizeUrl(provider.Url);
-            var url = $"{baseUrl.TrimEnd('/')}/?s={searchTerm}&post_type=product";
+            // Usa o template de URL do provider (permite WooCommerce, OpenCart, etc)
+            var searchPath = provider.SearchUrlTemplate.Replace("{search}", searchTerm);
+            var url = $"{baseUrl.TrimEnd('/')}/{searchPath.TrimStart('/')}";
 
             _logger.LogDebug("[{Provider}] Iniciando busca: {Url}", provider.Name, url);
 
