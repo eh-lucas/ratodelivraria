@@ -12,8 +12,7 @@ public interface IQueryHistoryService
         SearchResult result,
         string inputParameters,
         List<QueryResultInfo> queryResults,
-        int? userId = null,
-        int? bookId = null);
+        int? userId = null);
 
     Task<IEnumerable<TransactionHistoryDto>> GetUserHistoryAsync(int userId, int limit = 20);
     Task<IEnumerable<TransactionHistoryDto>> GetRecentTransactionsAsync(int limit = 10);
@@ -50,7 +49,6 @@ public class TransactionHistoryDto
     public int CostCredits { get; set; }
     public string InputParameters { get; set; } = string.Empty;
     public bool IsSuccess { get; set; }
-    public bool FromCache { get; set; }
 
     // Melhor resultado
     public string? BestTitle { get; set; }
@@ -81,4 +79,5 @@ public class QueryDetailDto
     public decimal? Price { get; set; }
     public float? Discount { get; set; }
     public string? ErrorMessage { get; set; }
+    public bool FromCache { get; set; }
 }

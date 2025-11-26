@@ -71,11 +71,6 @@ public class SherlockDbContext : DbContext
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            entity.HasOne(e => e.Book)
-                .WithMany()
-                .HasForeignKey(e => e.BookId)
-                .OnDelete(DeleteBehavior.SetNull);
-
             entity.HasOne(e => e.TransactionResult)
                 .WithMany()
                 .HasForeignKey(e => e.ResultTypeId)

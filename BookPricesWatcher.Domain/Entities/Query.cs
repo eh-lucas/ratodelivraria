@@ -68,6 +68,11 @@ public class Query
     /// </summary>
     public string? ErrorMessage { get; set; }
 
+    /// <summary>
+    /// Se o resultado veio do cache
+    /// </summary>
+    public bool FromCache { get; set; }
+
     // Navegação
     public Transaction? Transaction { get; set; }
     public Provider? Provider { get; set; }

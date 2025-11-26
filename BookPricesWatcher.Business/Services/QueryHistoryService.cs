@@ -23,14 +23,12 @@ public class QueryHistoryService : IQueryHistoryService
         SearchResult result,
         string inputParameters,
         List<QueryResultInfo> queryResults,
-        int? userId = null,
-        int? bookId = null)
+        int? userId = null)
     {
         // Cria a transação
         var transaction = new Transaction
         {
             UserId = userId,
-            BookId = bookId,
             StartedAt = result.InicioConsulta,
             EndedAt = result.FimConsulta,
             ExecutionTimeMs = result.TempoDecorrido,
@@ -40,7 +38,6 @@ public class QueryHistoryService : IQueryHistoryService
             CostCredits = result.CustoCreditos,
             ResultTypeId = result.ResultadoTransacao.Id,
             InputParameters = inputParameters,
-            FromCache = result.FromCache,
             Errors = result.Errors.Count > 0 ? JsonSerializer.Serialize(result.Errors) : null
         };
 
@@ -117,7 +114,6 @@ public class QueryHistoryService : IQueryHistoryService
             CostCredits = transaction.CostCredits,
             InputParameters = transaction.InputParameters,
             IsSuccess = transaction.ResultTypeId == 1 || transaction.ResultTypeId == 2, // Success ou PartialSuccess
-            FromCache = transaction.FromCache,
             BestTitle = bestQuery?.Title,
             BestPrice = bestQuery?.Price,
             BestProvider = bestQuery?.Provider?.Name
@@ -137,7 +133,6 @@ public class QueryHistoryService : IQueryHistoryService
             CostCredits = transaction.CostCredits,
             InputParameters = transaction.InputParameters,
             IsSuccess = transaction.ResultTypeId == 1 || transaction.ResultTypeId == 2,
-            FromCache = transaction.FromCache,
             Queries = transaction.Queries.Select(q => new QueryDetailDto
             {
                 Id = q.Id,
@@ -149,7 +144,8 @@ public class QueryHistoryService : IQueryHistoryService
                 Author = q.Author,
                 Price = q.Price,
                 Discount = q.Discount,
-                ErrorMessage = q.ErrorMessage
+                ErrorMessage = q.ErrorMessage,
+                FromCache = q.FromCache
             }).OrderBy(q => q.Price ?? decimal.MaxValue).ToList()
         };
 

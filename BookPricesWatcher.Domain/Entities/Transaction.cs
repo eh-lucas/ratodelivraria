@@ -14,11 +14,6 @@ public class Transaction
     public int? UserId { get; set; }
 
     /// <summary>
-    /// Livro buscado (opcional, pode ser preenchido após identificação)
-    /// </summary>
-    public int? BookId { get; set; }
-
-    /// <summary>
     /// Tipo de resultado da transação (Success, PartialSuccess, NoResults, AllFailed)
     /// </summary>
     public int ResultTypeId { get; set; }
@@ -64,11 +59,6 @@ public class Transaction
     public string InputParameters { get; set; } = string.Empty;
 
     /// <summary>
-    /// Se o resultado veio do cache
-    /// </summary>
-    public bool FromCache { get; set; }
-
-    /// <summary>
     /// Erros gerais da transação em JSON
     /// </summary>
     public string? Errors { get; set; }
@@ -80,7 +70,6 @@ public class Transaction
 
     // Navegação
     public User? User { get; set; }
-    public Book? Book { get; set; }
     public TransactionResult? TransactionResult { get; set; }
     public Query? BestQuery { get; set; }
     public ICollection<Query> Queries { get; set; } = new List<Query>();
