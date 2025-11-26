@@ -41,7 +41,7 @@ public class ResilientScraperWrapper
         var stopwatch = Stopwatch.StartNew();
 
         // Tenta buscar do cache primeiro
-        var cacheKey = _cacheService.GenerateProviderKey(parameters.BookTitle, provider.Id);
+        var cacheKey = _cacheService.GenerateBookProviderKey(parameters.BookTitle, provider.Id);
         var cachedResult = await _cacheService.GetAsync<QueryResult>(cacheKey);
 
         if (cachedResult != null)

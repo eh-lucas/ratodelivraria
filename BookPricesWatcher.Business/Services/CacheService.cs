@@ -87,17 +87,7 @@ public class CacheService : ICacheService
         }
     }
 
-    public string GenerateBookPriceKey(string bookTitle, string? isbn = null)
-    {
-        var normalizedTitle = NormalizeString(bookTitle);
-        var baseKey = !string.IsNullOrEmpty(isbn)
-            ? $"book:price:{isbn}"
-            : $"book:price:{GenerateHash(normalizedTitle)}";
-
-        return baseKey;
-    }
-
-    public string GenerateProviderKey(string bookTitle, int providerId)
+    public string GenerateBookProviderKey(string bookTitle, int providerId)
     {
         var normalizedTitle = NormalizeString(bookTitle);
         return $"book:price:{GenerateHash(normalizedTitle)}:provider:{providerId}";

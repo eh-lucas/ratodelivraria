@@ -8,12 +8,7 @@ public interface ICacheService
     Task<bool> ExistsAsync(string key);
 
     /// <summary>
-    /// Gera chave de cache para busca de preço de livro
-    /// </summary>
-    string GenerateBookPriceKey(string bookTitle, string? isbn = null);
-
-    /// <summary>
     /// Gera chave de cache para provider específico
     /// </summary>
-    string GenerateProviderKey(string bookTitle, int providerId);
+    string GenerateBookProviderKey(string bookTitle, int providerId);
 }
