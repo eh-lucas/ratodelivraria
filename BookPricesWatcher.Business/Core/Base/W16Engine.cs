@@ -1,10 +1,13 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Sherlock.Business.Configuration;
 using Sherlock.Business.Core.Exceptions;
 using Sherlock.Business.Core.Resilience;
 using Sherlock.Business.Core.Scrapers;
 using Sherlock.Business.Interfaces;
 using Sherlock.Domain.Entities;
+using Sherlock.Domain.Interfaces;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
@@ -24,6 +27,8 @@ public class W16Engine
     private readonly ResilientScraperWrapper? _resilientWrapper;
     private readonly ICacheService? _cacheService;
     private readonly ITransactionPersistenceService? _persistenceService;
+    private readonly IQueryRepository? _queryRepository;
+    private readonly QueryCacheSettings _cacheSettings;
 
     /// <summary>
     /// Nível de paralelismo para buscas. Ajuste este valor para encontrar o melhor desempenho.
@@ -31,11 +36,11 @@ public class W16Engine
     /// </summary>
     public int MaxDegreeOfParallelism { get; set; } = 10;
 
-    public W16Engine() : this(NullLoggerFactory.Instance, NullLogger<W16Engine>.Instance, null, null, null)
+    public W16Engine() : this(NullLoggerFactory.Instance, NullLogger<W16Engine>.Instance, null, null, null, null, null)
     {
     }
 
-    public W16Engine(ILogger<W16Engine> logger) : this(NullLoggerFactory.Instance, logger, null, null, null)
+    public W16Engine(ILogger<W16Engine> logger) : this(NullLoggerFactory.Instance, logger, null, null, null, null, null)
     {
     }
 
@@ -44,7 +49,9 @@ public class W16Engine
         ILogger<W16Engine> logger,
         ICacheService? cacheService,
         ResilientScraperWrapper? resilientWrapper,
-        ITransactionPersistenceService? persistenceService)
+        ITransactionPersistenceService? persistenceService,
+        IQueryRepository? queryRepository,
+        IOptions<QueryCacheSettings>? cacheSettings)
     {
         _comparator = new Comparator();
         _scraperFactory = new ScraperFactory(loggerFactory);
@@ -52,6 +59,8 @@ public class W16Engine
         _cacheService = cacheService;
         _resilientWrapper = resilientWrapper;
         _persistenceService = persistenceService;
+        _queryRepository = queryRepository;
+        _cacheSettings = cacheSettings?.Value ?? new QueryCacheSettings();
     }
 
     /// <summary>
@@ -63,63 +72,28 @@ public class W16Engine
     /// <returns>Resultado da busca com preços e métricas</returns>
     public async Task<SearchResult> ExecuteTransaction(Requestor requestor, int userId, CancellationToken cancellationToken = default)
     {
+        // Inicia contador
         var stopwatch = Stopwatch.StartNew();
-        var transactionId = GenerateTransactionId();
 
+        // Cria transaction ID
+        var transactionId = GenerateTransactionId();
         LogTransactionStart(transactionId, requestor);
 
+        // Cria resultado inicial
         var queryResults = new ConcurrentBag<QueryResult>();
         var result = CreateInitialSearchResult(requestor);
         var metrics = new ParallelismMetrics();
 
         try
         {
-            var sourcesByCategory = GroupSourcesByCategory(requestor.SourcesToSearch);
-
-            foreach (var (category, sources) in sourcesByCategory)
-            {
-                var scraper = _scraperFactory.CreateScraper(category);
-                if (scraper == null)
-                {
-                    _logger.LogWarning("Scraper não encontrado para categoria {Category}", category);
-                    Interlocked.Add(ref metrics.FailedCount, sources.Count);
-                    continue;
-                }
-
-                var semaphore = new SemaphoreSlim(MaxDegreeOfParallelism);
-                var tasks = new List<Task>();
-
-                foreach (var source in sources)
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                        break;
-
-                    // Verifica cache Redis se disponível
-                    if (_cacheService != null)
-                    {
-                        var cacheKey = _cacheService.GenerateBookProviderKey(requestor.SearchParameters.BookTitle, source.Id);
-                        var cachedResult = await _cacheService.GetAsync<QueryResult>(cacheKey);
-
-                        if (cachedResult != null)
-                        {
-                            _logger.LogInformation("Resultado em cache para {BookTitle} no provider {ProviderId}", requestor.SearchParameters.BookTitle, source.Id);
-                            queryResults.Add(cachedResult);
-                            continue;
-                        }
-                    }
-
-                    await semaphore.WaitAsync(cancellationToken);
-
-                    tasks.Add(ExecuteSingleScrapingAsync(scraper, source, requestor.SearchParameters, queryResults, metrics, semaphore, cancellationToken));
-                }
-
-                await Task.WhenAll(tasks);
-            }
-
-            stopwatch.Stop();
+            // Executa buscas
+            await ExecuteSearch(requestor, metrics, queryResults, cancellationToken);
 
             FinalizeSearchResult(result, queryResults, metrics);
             LogParallelismMetrics(transactionId, metrics, stopwatch.ElapsedMilliseconds, result);
+
+            stopwatch.Stop();
+
         }
         catch (Exception ex)
         {
@@ -134,6 +108,146 @@ public class W16Engine
         await PersistTransactionAsync(result, requestor.SearchParameters, userId, cancellationToken);
 
         return result;
+    }
+
+    public async Task ExecuteSearch(Requestor requestor, ParallelismMetrics metrics,
+        ConcurrentBag<QueryResult> queryResults, CancellationToken cancellationToken = default)
+    {
+        var parallel = false;
+
+        try
+        {
+            // Prepara os providers a serem consultados por categoria
+            var sourcesByCategory = GroupSourcesByCategory(requestor.SourcesToSearch);
+
+            foreach (var (category, sources) in sourcesByCategory)
+            {
+                // Cria scraper para a categoria
+                var scraper = _scraperFactory.CreateScraper(category);
+                if (scraper == null)
+                {
+                    _logger.LogWarning("Scraper não encontrado para categoria {Category}", category);
+                    Interlocked.Add(ref metrics.FailedCount, sources.Count);
+                    continue;
+                }
+
+                if (parallel)
+                    await ExecuteParallely(requestor, queryResults, sources, scraper, metrics, cancellationToken);
+                else
+                    await ExecuteNonConcurrently(requestor, queryResults, sources, scraper, metrics, cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao executar buscas");
+            throw;
+        }
+    }
+
+    private async Task<bool> GetCacheFromDatabase(string isbn, ConcurrentBag<QueryResult> queryResults, Provider source,
+        int cacheTimeMinutes, ParallelismMetrics metrics)
+    {
+        var cachedQuery = await _queryRepository!.GetCachedQueryAsync(isbn!, source.Id, cacheTimeMinutes);
+        if (cachedQuery != null)
+        {
+            _logger.LogInformation(
+                "Cache hit (DB): ISBN {Isbn} no provider {ProviderId} ({ProviderName})",
+                isbn, source.Id, source.Name);
+
+            var cachedResult = ConvertQueryToQueryResult(cachedQuery, source);
+            queryResults.Add(cachedResult);
+            Interlocked.Increment(ref metrics.SuccessCount);
+            return true;
+        }
+
+        return false;
+    }
+
+    private async Task<bool> GetCacheFromRedis(Requestor requestor, ConcurrentBag<QueryResult> queryResults, Provider source)
+    {
+        var cacheKey = _cacheService.GenerateBookProviderKey(requestor.SearchParameters.BookTitle, source.Id);
+        var cachedResult = await _cacheService.GetAsync<QueryResult>(cacheKey);
+
+        if (cachedResult != null)
+        {
+            _logger.LogInformation("Cache hit (Redis): {BookTitle} no provider {ProviderId}",
+                requestor.SearchParameters.BookTitle, source.Id);
+            queryResults.Add(cachedResult);
+            return true;
+        }
+
+        return false;
+    }
+
+    private async Task ExecuteParallely(Requestor requestor, ConcurrentBag<QueryResult> queryResults, List<Provider> sources, IScraper scraper,
+        ParallelismMetrics metrics, CancellationToken cancellationToken)
+    {
+        foreach (var source in sources)
+        {
+            // Determina tempo de cache (usa valor do requestor ou default)
+            var cacheTimeMinutes = requestor.CacheTimeMinutes ?? _cacheSettings.DefaultCacheTimeMinutes;
+            var isbn = requestor.SearchParameters.Isbn;
+            var canUseDbCache = !string.IsNullOrEmpty(isbn) && _queryRepository != null;
+
+            // Verifica cache no banco por ISBN (somente se ISBN foi informado)
+            if (canUseDbCache)
+            {
+                var hasCache = await GetCacheFromDatabase(isbn, queryResults, source, cacheTimeMinutes, metrics);
+                if (hasCache) continue;
+            }
+
+            // Verifica cache Redis se disponível (fallback para busca por título)
+            if (_cacheService != null)
+            {
+                var hasCache = await GetCacheFromRedis(requestor, queryResults, source);
+                if (hasCache) continue;
+            }
+
+            var semaphore = new SemaphoreSlim(MaxDegreeOfParallelism);
+            var tasks = new List<Task>();
+
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
+            await semaphore.WaitAsync(cancellationToken);
+
+            // Se chegou ate aqui eh porque nao encontrou cache - decide se executa em paralelo ou nao
+            tasks.Add(ExecuteSingleScrapingAsync(scraper, source, requestor.SearchParameters, queryResults,
+                metrics, semaphore, cancellationToken));
+
+            await Task.WhenAll(tasks);
+        }
+    }
+
+
+    private async Task ExecuteNonConcurrently(Requestor requestor, ConcurrentBag<QueryResult> queryResults, List<Provider> sources, IScraper scraper,
+        ParallelismMetrics metrics, CancellationToken cancellationToken)
+    {
+        foreach (var source in sources)
+        {
+            // Determina tempo de cache (usa valor do requestor ou default)
+            var cacheTimeMinutes = requestor.CacheTimeMinutes ?? _cacheSettings.DefaultCacheTimeMinutes;
+            var isbn = requestor.SearchParameters.Isbn;
+            var canUseDbCache = !string.IsNullOrEmpty(isbn) && _queryRepository != null;
+
+            // Verifica cache no banco por ISBN (somente se ISBN foi informado)
+            if (canUseDbCache)
+            {
+                var hasCache = await GetCacheFromDatabase(isbn, queryResults, source, cacheTimeMinutes, metrics);
+                if (hasCache) continue;
+            }
+
+            // Verifica cache Redis se disponível (fallback para busca por título)
+            if (_cacheService != null)
+            {
+                var hasCache = await GetCacheFromRedis(requestor, queryResults, source);
+                if (hasCache) continue;
+            }
+
+            await ExecuteSingleScrapingAsync(scraper, source, requestor.SearchParameters, queryResults,
+                metrics, cancellationToken);
+
+        }
     }
 
     private async Task PersistTransactionAsync(
@@ -237,6 +351,46 @@ public class W16Engine
                 semaphore.Release();
             }
         }, cancellationToken);
+    }
+
+    private async Task ExecuteSingleScrapingAsync(
+        IScraper scraper,
+        Provider source,
+        SearchParameter baseParameters,
+        ConcurrentBag<QueryResult> queryResults,
+        ParallelismMetrics metrics,
+        CancellationToken cancellationToken)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        TrackActiveTask(metrics, true);
+
+        try
+        {
+            var parameters = CreateSearchParameter(baseParameters, source);
+            var queryResult = await scraper.ExecuteSearch(parameters);
+
+            queryResults.Add(queryResult);
+            RecordQueryResult(metrics, queryResult);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            stopwatch.Stop();
+            var errorResult = QueryResult.CreateFailure(source, QueryErrorType.Timeout, "Operação cancelada pelo usuário", stopwatch.ElapsedMilliseconds);
+            queryResults.Add(errorResult);
+            RecordErrorResult(metrics, source.Name, stopwatch.ElapsedMilliseconds, QueryErrorType.Timeout, "Cancelado");
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            var (errorType, errorMessage, httpStatusCode) = ClassifyException(ex, source.Name);
+            var errorResult = QueryResult.CreateFailure(source, errorType, errorMessage, stopwatch.ElapsedMilliseconds, httpStatusCode);
+            queryResults.Add(errorResult);
+            RecordErrorResult(metrics, source.Name, stopwatch.ElapsedMilliseconds, errorType, errorMessage, ex);
+        }
+        finally
+        {
+            TrackActiveTask(metrics, false);
+        }
     }
 
     private (QueryErrorType errorType, string message, int? httpStatusCode) ClassifyException(Exception ex, string providerName)
@@ -358,6 +512,28 @@ public class W16Engine
             AuthorName = baseParameters.AuthorName,
             IsExactSearch = baseParameters.IsExactSearch,
             Source = source
+        };
+    }
+
+    /// <summary>
+    /// Converte uma Query do banco (cache) para QueryResult
+    /// </summary>
+    private static QueryResult ConvertQueryToQueryResult(Query query, Provider provider)
+    {
+        return new QueryResult
+        {
+            ProviderId = query.ProviderId,
+            ProviderName = provider.Name,
+            ProviderUrl = provider.Url,
+            Success = query.Success,
+            Title = query.Title,
+            Author = query.Author,
+            Price = query.Price ?? 0,
+            Discount = (int)(query.Discount ?? 0),
+            ProductUrl = query.ProductUrl,
+            ResponseTimeMs = 0, // Cache hit - tempo de resposta não aplicável
+            QueriedAt = query.QueriedAt,
+            FromCache = true
         };
     }
 
@@ -582,7 +758,7 @@ public class W16Engine
 /// <summary>
 /// Métricas de execução paralela
 /// </summary>
-internal class ParallelismMetrics
+public class ParallelismMetrics
 {
     public int SuccessCount;
     public int NoResultCount;
@@ -595,7 +771,7 @@ internal class ParallelismMetrics
 /// <summary>
 /// Tempo de resposta de um provider
 /// </summary>
-internal class ProviderResponseTime
+public class ProviderResponseTime
 {
     public string ProviderName { get; set; } = string.Empty;
     public long ElapsedMs { get; set; }

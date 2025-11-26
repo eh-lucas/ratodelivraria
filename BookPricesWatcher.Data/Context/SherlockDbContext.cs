@@ -53,6 +53,9 @@ public class SherlockDbContext : DbContext
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Url).IsRequired().HasMaxLength(500);
             entity.HasIndex(e => e.Url).IsUnique();
+
+            // Seed data - usa Provider.AllSources
+            entity.HasData(Provider.AllSources.ToArray());
         });
 
         // Transaction
@@ -96,10 +99,13 @@ public class SherlockDbContext : DbContext
             entity.Property(e => e.Price).HasPrecision(18, 2);
             entity.Property(e => e.ProductUrl).HasMaxLength(1000);
             entity.Property(e => e.ErrorMessage).HasMaxLength(500);
+            entity.Property(e => e.SearchIsbn).HasMaxLength(20);
 
             entity.HasIndex(e => e.TransactionId);
             entity.HasIndex(e => e.ProviderId);
             entity.HasIndex(e => new { e.TransactionId, e.ProviderId });
+            entity.HasIndex(e => new { e.SearchIsbn, e.ProviderId, e.QueriedAt })
+                .HasFilter("search_isbn IS NOT NULL"); // Índice para cache por ISBN
 
             // Relacionamentos
             entity.HasOne(e => e.Provider)
@@ -128,6 +134,14 @@ public class SherlockDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).HasMaxLength(50);
             entity.ToTable("result_types"); // Mantém nome da tabela para compatibilidade
+
+            // Seed data
+            entity.HasData(
+                new TransactionResult { Id = 1, Name = "Success", Description = "Busca realizada com sucesso", IsSuccess = true, IsBillable = true },
+                new TransactionResult { Id = 2, Name = "PartialSuccess", Description = "Busca parcialmente realizada - alguns providers falharam", IsSuccess = true, IsBillable = true },
+                new TransactionResult { Id = 3, Name = "NoResults", Description = "Nenhum resultado encontrado", IsSuccess = false, IsBillable = false },
+                new TransactionResult { Id = 4, Name = "AllFailed", Description = "Todos os providers falharam", IsSuccess = false, IsBillable = false }
+            );
         });
     }
 }

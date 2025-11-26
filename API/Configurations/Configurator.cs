@@ -68,6 +68,6 @@ public class Configurator
 
         builder.Services
             .AddData(builder.Configuration)
-            .AddBusiness();
+            .AddBusiness(builder.Configuration);
     }
 }

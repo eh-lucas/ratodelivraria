@@ -10,28 +10,26 @@ namespace Sherlock.Business.Core.Base;
 public class Requestor
 {
     public SearchParameter SearchParameters { get; set; }
-    public TimeSpan CacheTimeSpan { get; set; }
+
+    /// <summary>
+    /// Tempo de cache em minutos. Se null, usa valor default do config.
+    /// Cache só é aplicado para buscas por ISBN.
+    /// </summary>
+    public int? CacheTimeMinutes { get; set; }
+
     public List<Provider> SourcesToSearch { get; set; }
 
-    public Requestor(SearchParameter searchParameters, List<Provider> sourcesToSearch, TimeSpan cacheTimeSpan)
+    public Requestor(SearchParameter searchParameters, List<Provider> sourcesToSearch, int? cacheTimeMinutes = null)
     {
         SearchParameters = searchParameters;
         SourcesToSearch = sourcesToSearch;
-        CacheTimeSpan = cacheTimeSpan;
-    }
-
-    public Requestor(SearchParameter searchParameters, List<Provider> sourcesToSearch)
-    {
-        SearchParameters = searchParameters;
-        SourcesToSearch = sourcesToSearch;
-        CacheTimeSpan = TimeSpan.FromDays(1);
+        CacheTimeMinutes = cacheTimeMinutes;
     }
 
     public Requestor(SearchParameter searchParameters)
     {
         SearchParameters = searchParameters;
         SourcesToSearch = Provider.AllSources.Where(s => s.ProviderCategoryEnum == ProviderCategoryEnum.Cedet).ToList();
-        CacheTimeSpan = TimeSpan.FromDays(1);
     }
 
     public Requestor()

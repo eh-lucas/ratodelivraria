@@ -23,7 +23,7 @@ public class RequestorTests
     }
 
     [Fact]
-    public void Constructor_WithSearchParameterOnly_SetsDefaultCacheTimeSpan()
+    public void Constructor_WithSearchParameterOnly_SetsNullCacheTimeMinutes()
     {
         // Arrange
         var searchParams = new SearchParameter { BookTitle = "Test Book" };
@@ -31,8 +31,8 @@ public class RequestorTests
         // Act
         var requestor = new Requestor(searchParams);
 
-        // Assert
-        requestor.CacheTimeSpan.Should().Be(TimeSpan.FromDays(1));
+        // Assert - CacheTimeMinutes é null por default (usa valor do config)
+        requestor.CacheTimeMinutes.Should().BeNull();
     }
 
     [Fact]
@@ -54,18 +54,18 @@ public class RequestorTests
     }
 
     [Fact]
-    public void Constructor_WithCustomCacheTimeSpan_UsesProvidedValue()
+    public void Constructor_WithCustomCacheTimeMinutes_UsesProvidedValue()
     {
         // Arrange
         var searchParams = new SearchParameter { BookTitle = "Test Book" };
         var providers = new List<Provider>();
-        var cacheTime = TimeSpan.FromHours(6);
+        var cacheTimeMinutes = 60;
 
         // Act
-        var requestor = new Requestor(searchParams, providers, cacheTime);
+        var requestor = new Requestor(searchParams, providers, cacheTimeMinutes);
 
         // Assert
-        requestor.CacheTimeSpan.Should().Be(cacheTime);
+        requestor.CacheTimeMinutes.Should().Be(cacheTimeMinutes);
     }
 
     [Fact]

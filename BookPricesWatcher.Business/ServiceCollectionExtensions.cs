@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Sherlock.Business.Configuration;
 using Sherlock.Business.Core.Base;
 using Sherlock.Business.Core.Optimization;
 using Sherlock.Business.Core.Resilience;
@@ -9,8 +11,11 @@ namespace Sherlock.Business;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddBusiness(this IServiceCollection services)
+    public static IServiceCollection AddBusiness(this IServiceCollection services, IConfiguration configuration)
     {
+        // Configuration
+        services.Configure<QueryCacheSettings>(
+            configuration.GetSection(QueryCacheSettings.SectionName));
         // Services
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IBookService, BookService>();

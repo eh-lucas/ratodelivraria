@@ -53,8 +53,9 @@ public class TransactionPersistenceService : ITransactionPersistenceService
             // 2. Converter e salvar Queries
             if (searchResult.AllQueryResults.Count > 0)
             {
+                var isbn = searchParameter.Isbn;
                 var queries = searchResult.AllQueryResults
-                    .Select(qr => CreateQuery(qr, transaction.Id))
+                    .Select(qr => CreateQuery(qr, transaction.Id, isbn))
                     .ToList();
 
                 await _queryRepository.AddQueriesAsync(queries);
@@ -112,11 +113,9 @@ public class TransactionPersistenceService : ITransactionPersistenceService
         };
     }
 
-    private Query CreateQuery(QueryResult queryResult, int transactionId)
+    private Query CreateQuery(QueryResult queryResult, int transactionId, string? searchIsbn)
     {
-        var query = queryResult.ToEntity(transactionId);
-        query.FromCache = false; // QueryResult não tem esse campo, mas poderia ser adicionado
-        return query;
+        return queryResult.ToEntity(transactionId, searchIsbn);
     }
 
     private static int GetResultTypeId(TransactionResult resultType)

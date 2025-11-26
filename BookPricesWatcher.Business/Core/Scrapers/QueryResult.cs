@@ -79,6 +79,11 @@ public class QueryResult
     public DateTime QueriedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
+    /// Se o resultado veio do cache do banco (não executou scraping)
+    /// </summary>
+    public bool FromCache { get; set; }
+
+    /// <summary>
     /// Verifica se o resultado é válido (tem título e preço > 0)
     /// </summary>
     public bool HasValidResult => Success && !string.IsNullOrEmpty(Title) && Price > 0;
@@ -154,7 +159,9 @@ public class QueryResult
     /// <summary>
     /// Converte para entidade Query (para persistência)
     /// </summary>
-    public Query ToEntity(int transactionId)
+    /// <param name="transactionId">ID da transação</param>
+    /// <param name="searchIsbn">ISBN usado na busca (para cache por ISBN)</param>
+    public Query ToEntity(int transactionId, string? searchIsbn = null)
     {
         return new Query
         {
@@ -168,7 +175,9 @@ public class QueryResult
             Price = Price > 0 ? Price : null,
             Discount = Discount > 0 ? Discount : null,
             ProductUrl = ProductUrl,
-            ErrorMessage = ErrorMessage
+            ErrorMessage = ErrorMessage,
+            SearchIsbn = searchIsbn,
+            FromCache = FromCache
         };
     }
 }

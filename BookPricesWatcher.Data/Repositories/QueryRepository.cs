@@ -53,4 +53,17 @@ public class QueryRepository : RepositoryBase<Query>, IQueryRepository
         await _dbSet.AddRangeAsync(queries);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<Query?> GetCachedQueryAsync(string isbn, int providerId, int cacheTimeMinutes)
+    {
+        var cacheThreshold = DateTime.UtcNow.AddMinutes(-cacheTimeMinutes);
+
+        return await _dbSet
+            .Where(q => q.SearchIsbn == isbn
+                && q.ProviderId == providerId
+                && q.QueriedAt >= cacheThreshold
+                && q.Success)
+            .OrderByDescending(q => q.QueriedAt)
+            .FirstOrDefaultAsync();
+    }
 }

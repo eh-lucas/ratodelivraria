@@ -124,7 +124,7 @@ public class W16EngineTests
             .ReturnsAsync(cachedQueryResult);
 
         var provider = new Provider { Id = 1, Name = "Test Provider", Url = "http://test.com", ProviderCategoryEnum = ProviderCategoryEnum.Cedet };
-        var engine = new W16Engine(_loggerFactory, _loggerMock.Object, _cacheServiceMock.Object, null, null);
+        var engine = new W16Engine(_loggerFactory, _loggerMock.Object, _cacheServiceMock.Object, null, null, null, null);
         var searchParams = new SearchParameter { BookTitle = "Test Book" };
         var requestor = new Requestor(searchParams, new List<Provider> { provider });
 
@@ -140,7 +140,7 @@ public class W16EngineTests
     public async Task ExecuteTransaction_WithNoCacheService_DoesNotThrow()
     {
         // Arrange
-        var engine = new W16Engine(_loggerFactory, _loggerMock.Object, null, null, null);
+        var engine = new W16Engine(_loggerFactory, _loggerMock.Object, null, null, null, null, null);
         var searchParams = new SearchParameter { BookTitle = "Test" };
         var requestor = new Requestor(searchParams, new List<Provider>());
 

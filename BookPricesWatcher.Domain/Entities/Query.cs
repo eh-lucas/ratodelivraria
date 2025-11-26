@@ -19,6 +19,11 @@ public class Query
     public int ProviderId { get; set; }
 
     /// <summary>
+    /// ISBN usado na busca (para cache)
+    /// </summary>
+    public string? SearchIsbn { get; set; }
+
+    /// <summary>
     /// Livro encontrado (opcional, preenchido se houver match)
     /// </summary>
     public int? BookId { get; set; }

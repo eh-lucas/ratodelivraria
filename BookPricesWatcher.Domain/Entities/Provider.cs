@@ -64,7 +64,7 @@ public class Provider
         Id = 5,
         Name = "Livraria do Bernardo",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
-        Url = "https://livrariadobernardo.com.br/",
+        Url = "https://livrariadobernardo.com/",
         MinFreeShipping = 200m,
         BaseShippingCost = 15m
     };
