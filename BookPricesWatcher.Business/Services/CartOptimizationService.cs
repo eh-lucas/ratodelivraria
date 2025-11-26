@@ -13,22 +13,17 @@ public class CartOptimizationService : ICartOptimizationService
 {
     private readonly W16Engine _engine;
     private readonly CartOptimizer _optimizer;
-    private readonly ICacheService _cacheService;
     private readonly IQueryHistoryService _queryHistoryService;
     private readonly ILogger<CartOptimizationService> _logger;
-
-    private static readonly TimeSpan CartCacheDuration = TimeSpan.FromHours(1);
 
     public CartOptimizationService(
         W16Engine engine,
         CartOptimizer optimizer,
-        ICacheService cacheService,
         IQueryHistoryService queryHistoryService,
         ILogger<CartOptimizationService> logger)
     {
         _engine = engine;
         _optimizer = optimizer;
-        _cacheService = cacheService;
         _queryHistoryService = queryHistoryService;
         _logger = logger;
     }
@@ -44,19 +39,8 @@ public class CartOptimizationService : ICartOptimizationService
             "Iniciando otimização de carrinho com {BookCount} livros para usuário {UserId}",
             request.Books.Count, userId ?? 0);
 
-        // Verifica cache do carrinho completo
-        var cacheKey = GenerateCartCacheKey(request);
-        var cachedResult = await _cacheService.GetAsync<CartOptimizationResult>(cacheKey);
-        if (cachedResult != null)
-        {
-            cachedResult.FromCache = true;
-            cachedResult.ExecutionTimeMs = stopwatch.ElapsedMilliseconds;
-
-            _logger.LogInformation("Resultado de carrinho obtido do cache em {Elapsed}ms",
-                stopwatch.ElapsedMilliseconds);
-
-            return cachedResult;
-        }
+        // Nota: Transactions NÃO são cacheadas. Apenas as Queries individuais são cacheadas pelo W16Engine.
+        // Uma transação de carrinho com 3 livros em 10 providers = 30 queries (cada uma pode ser cacheada)
 
         // Busca preços para todos os livros
         var allPrices = new List<BookPriceOption>();
@@ -130,12 +114,6 @@ public class CartOptimizationService : ICartOptimizationService
         optimizationResult.ExecutionTimeMs = stopwatch.ElapsedMilliseconds;
         optimizationResult.CreditsUsed = creditsUsed;
 
-        // Cacheia resultado
-        if (optimizationResult.Success)
-        {
-            await _cacheService.SetAsync(cacheKey, optimizationResult, CartCacheDuration);
-        }
-
         stopwatch.Stop();
 
         _logger.LogInformation(
@@ -202,18 +180,4 @@ public class CartOptimizationService : ICartOptimizationService
         };
     }
 
-    private string GenerateCartCacheKey(CartOptimizationRequest request)
-    {
-        var bookKeys = request.Books
-            .OrderBy(b => b.Title)
-            .Select(b => $"{b.Title.ToLowerInvariant()}:{b.Quantity}")
-            .ToList();
-
-        var providersKey = request.ProviderUrls != null && request.ProviderUrls.Count > 0
-            ? string.Join(",", request.ProviderUrls.OrderBy(u => u))
-            : "all";
-
-        var hash = string.Join("|", bookKeys).GetHashCode();
-        return $"cart:optimization:{hash}:{request.Strategy}:{request.MaxProviders}:{providersKey.GetHashCode()}";
-    }
 }

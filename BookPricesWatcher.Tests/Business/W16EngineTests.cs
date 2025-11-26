@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Sherlock.Business.Core.Base;
 using Sherlock.Business.Core.Scrapers;
@@ -12,11 +13,13 @@ public class W16EngineTests
 {
     private readonly Mock<ILogger<W16Engine>> _loggerMock;
     private readonly Mock<ICacheService> _cacheServiceMock;
+    private readonly ILoggerFactory _loggerFactory;
 
     public W16EngineTests()
     {
         _loggerMock = new Mock<ILogger<W16Engine>>();
         _cacheServiceMock = new Mock<ICacheService>();
+        _loggerFactory = NullLoggerFactory.Instance;
     }
 
     [Fact]
@@ -121,7 +124,7 @@ public class W16EngineTests
             .ReturnsAsync(cachedQueryResult);
 
         var provider = new Provider { Id = 1, Name = "Test Provider", Url = "http://test.com", ProviderCategoryEnum = ProviderCategoryEnum.Cedet };
-        var engine = new W16Engine(_loggerMock.Object, _cacheServiceMock.Object, null);
+        var engine = new W16Engine(_loggerFactory, _loggerMock.Object, _cacheServiceMock.Object, null);
         var searchParams = new SearchParameter { BookTitle = "Test Book" };
         var requestor = new Requestor(searchParams, new List<Provider> { provider });
 
@@ -137,7 +140,7 @@ public class W16EngineTests
     public async Task ExecuteTransaction_WithNoCacheService_DoesNotThrow()
     {
         // Arrange
-        var engine = new W16Engine(_loggerMock.Object, null, null);
+        var engine = new W16Engine(_loggerFactory, _loggerMock.Object, null, null);
         var searchParams = new SearchParameter { BookTitle = "Test" };
         var requestor = new Requestor(searchParams, new List<Provider>());
 

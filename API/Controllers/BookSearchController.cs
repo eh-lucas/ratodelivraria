@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Sherlock.Business.Core.Base;
 using Sherlock.Business.Core.Scrapers;
+using Sherlock.Business.DTOs;
+using Sherlock.Business.Interfaces;
 using Sherlock.Domain.Entities;
 
 namespace SherlockAPI.Controllers;
@@ -13,10 +15,12 @@ namespace SherlockAPI.Controllers;
 public class BookSearchController : ControllerBase
 {
     private readonly W16Engine _engine;
+    private readonly ISingleBookSearchService _singleBookSearchService;
 
-    public BookSearchController(W16Engine engine)
+    public BookSearchController(W16Engine engine, ISingleBookSearchService singleBookSearchService)
     {
         _engine = engine;
+        _singleBookSearchService = singleBookSearchService;
     }
 
     /// <summary>
@@ -123,6 +127,25 @@ public class BookSearchController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new { error = $"Erro ao buscar preços: {ex.Message}" });
         }
+    }
+
+    /// <summary>
+    /// Busca preços de um livro único, retornando melhor opção e 2 alternativas
+    /// </summary>
+    /// <param name="request">Dados da busca</param>
+    /// <returns>Melhor opção e alternativas</returns>
+    [HttpPost("single")]
+    [ProducesResponseType(typeof(SingleBookSearchResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SingleBookSearch([FromBody] SingleBookSearchRequest request)
+    {
+        if (string.IsNullOrEmpty(request.Title))
+        {
+            return BadRequest(new { error = "Título do livro é obrigatório." });
+        }
+
+        var result = await _singleBookSearchService.SearchAsync(request);
+        return Ok(result);
     }
 
     private static List<Provider>? GetSelectedProviders(string? providerUrls)

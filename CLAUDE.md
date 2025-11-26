@@ -111,13 +111,26 @@ Scrapers in `BookPricesWatcher.Business/Core/Scrapers/`:
   - Polly retry policy (2 retries, exponential backoff)
   - Brazilian price format support (R$ 1.234,56)
 
-**Scraper Selection:** O scraper é definido pelo `ProviderCategoryEnum` do provider. Os 93 providers configurados são do tipo `Cedet` (lojas WooCommerce com estrutura HTML similar), por isso todos usam o `CedetSingleSearchHttpClient`. Para adicionar novos tipos de sites (ex: Amazon, MercadoLivre), basta criar um novo scraper e associá-lo à categoria correspondente no `ScraperFactory`.
+**Scraper Selection:** O scraper é definido pelo `ProviderCategoryEnum` do provider. Os 93 providers configurados são do tipo `Cedet` (lojas OpenCart com estrutura HTML similar), por isso todos usam o `CedetSingleSearchHttpClient`. Para adicionar novos tipos de sites (ex: Amazon, MercadoLivre), basta criar um novo scraper e associá-lo à categoria correspondente no `ScraperFactory`.
+
+**URL Templates:** Cada provider tem um `SearchUrlTemplate` que define o formato da URL de busca:
+- Default (OpenCart): `index.php?route=product/search&search={search}` - usado por 89/93 providers
+- WooCommerce: `?s={search}&post_type=product` - para lojas WordPress/WooCommerce
+- O placeholder `{search}` é substituído pelo termo de busca URL-encoded
 
 ### Caching & Resilience
 
 - Redis cache (optional, falls back to in-memory)
 - Polly for retry policies and circuit breaker
 - `ResilientScraperWrapper` for scraper resilience
+
+**IMPORTANTE - Regra de Cache:**
+- **Transactions NÃO são cacheadas** - cada transação é única e deve ser executada
+- **Queries SÃO cacheadas** - resultados individuais de busca em um provider específico
+- Exemplos:
+  - Transação "consultar 1 livro em 3 providers" = 3 queries (cada query pode ser cacheada)
+  - Transação "consultar 3 livros em 3 providers para melhor provider" = 9 queries (cada query pode ser cacheada)
+- O cache é por combinação livro+provider, não por transação completa
 
 ## API Endpoints
 
@@ -140,6 +153,7 @@ Scrapers in `BookPricesWatcher.Business/Core/Scrapers/`:
 ## Providers
 
 93 book retailers configured in `BookPricesWatcher.Domain/Entities/Provider.cs`:
-- Each has: Id, Name, Url, ProviderCategoryEnum, MinFreeShipping, BaseShippingCost, IsActive
-- Categories: Cedet (WooCommerce stores), Amazon, MercadoLivre, etc.
+- Each has: Id, Name, Url, ProviderCategoryEnum, MinFreeShipping, BaseShippingCost, IsActive, SearchUrlTemplate
+- Categories: Cedet (OpenCart stores), Amazon, MercadoLivre, etc.
 - Use `Provider.AllSources` to access the static list
+- SearchUrlTemplate permite configurar o formato da URL de busca por provider (default: OpenCart)

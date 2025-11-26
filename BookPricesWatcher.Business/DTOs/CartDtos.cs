@@ -190,16 +190,90 @@ public enum OptimizationStrategy
 }
 
 /// <summary>
-/// Preço de um livro em um provider específico (para uso interno)
+/// Preço de um livro em um provider específico
 /// </summary>
 public class BookPriceOption
 {
     public string BookTitle { get; set; } = string.Empty;
     public string? Isbn { get; set; }
+    public string? Author { get; set; }
     public int ProviderId { get; set; }
     public string ProviderName { get; set; } = string.Empty;
+    public string ProviderUrl { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public decimal? Discount { get; set; }
     public string? ProductUrl { get; set; }
     public bool Available { get; set; } = true;
+}
+
+/// <summary>
+/// Requisição para busca de carrinho com melhor provider único
+/// </summary>
+public class BestProviderCartRequest
+{
+    /// <summary>
+    /// Lista de livros a serem buscados
+    /// </summary>
+    public List<CartBookItem> Books { get; set; } = new();
+
+    /// <summary>
+    /// URLs dos providers específicos para buscar (null = todos ativos)
+    /// </summary>
+    public List<string>? ProviderUrls { get; set; }
+
+    /// <summary>
+    /// Considerar frete na otimização
+    /// </summary>
+    public bool IncludeShipping { get; set; } = true;
+}
+
+/// <summary>
+/// Resultado simplificado: melhor provider único para comprar todos os livros
+/// </summary>
+public class BestProviderCartResult
+{
+    /// <summary>
+    /// Indica se a busca foi bem-sucedida
+    /// </summary>
+    public bool Success { get; set; }
+
+    /// <summary>
+    /// Mensagem de status
+    /// </summary>
+    public string Message { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Melhor provider para comprar todos os livros
+    /// </summary>
+    public ProviderCart? BestProvider { get; set; }
+
+    /// <summary>
+    /// Segundo melhor provider (alternativa)
+    /// </summary>
+    public ProviderCart? SecondBestProvider { get; set; }
+
+    /// <summary>
+    /// Livros não encontrados em nenhum provider
+    /// </summary>
+    public List<string> BooksNotFound { get; set; } = new();
+
+    /// <summary>
+    /// Tempo de execução em ms
+    /// </summary>
+    public long ExecutionTimeMs { get; set; }
+
+    /// <summary>
+    /// Créditos consumidos
+    /// </summary>
+    public int CreditsUsed { get; set; }
+
+    /// <summary>
+    /// Se o resultado veio do cache
+    /// </summary>
+    public bool FromCache { get; set; }
+
+    /// <summary>
+    /// Total de providers consultados
+    /// </summary>
+    public int TotalProvidersSearched { get; set; }
 }
