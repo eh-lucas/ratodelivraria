@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sherlock.Business.Core.Base;
 using Sherlock.Business.Core.Scrapers;
 using Sherlock.Business.DTOs;
 using Sherlock.Business.Interfaces;
 using Sherlock.Domain.Entities;
+using System.Security.Claims;
 
 namespace SherlockAPI.Controllers;
 
@@ -12,6 +14,7 @@ namespace SherlockAPI.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class BookSearchController : ControllerBase
 {
     private readonly W16Engine _engine;
@@ -21,6 +24,19 @@ public class BookSearchController : ControllerBase
     {
         _engine = engine;
         _singleBookSearchService = singleBookSearchService;
+    }
+
+    private int GetUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value;
+
+        if (int.TryParse(userIdClaim, out var userId))
+        {
+            return userId;
+        }
+
+        throw new UnauthorizedAccessException("UserId não encontrado no token");
     }
 
     /// <summary>
@@ -63,7 +79,8 @@ public class BookSearchController : ControllerBase
             }
 
             var requestor = new Requestor(parameters, selectedProviders);
-            var result = await _engine.ExecuteTransaction(requestor);
+            var userId = GetUserId();
+            var result = await _engine.ExecuteTransaction(requestor, userId);
 
             return Ok(result);
         }
@@ -118,7 +135,8 @@ public class BookSearchController : ControllerBase
             }
 
             var requestor = new Requestor(search, selectedProviders);
-            var result = await _engine.ExecuteTransaction(requestor);
+            var userId = GetUserId();
+            var result = await _engine.ExecuteTransaction(requestor, userId);
 
             return Ok(result);
         }
@@ -144,7 +162,8 @@ public class BookSearchController : ControllerBase
             return BadRequest(new { error = "Título ou ISBN do livro é obrigatório." });
         }
 
-        var result = await _singleBookSearchService.SearchAsync(request);
+        var userId = GetUserId();
+        var result = await _singleBookSearchService.SearchAsync(request, userId);
         return Ok(result);
     }
 

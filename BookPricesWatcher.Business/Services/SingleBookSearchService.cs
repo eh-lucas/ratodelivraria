@@ -23,7 +23,7 @@ public class SingleBookSearchService : ISingleBookSearchService
 
     public async Task<SingleBookSearchResult> SearchAsync(
         SingleBookSearchRequest request,
-        int? userId = null,
+        int userId,
         CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -31,7 +31,7 @@ public class SingleBookSearchService : ISingleBookSearchService
         var searchTerm = !string.IsNullOrEmpty(request.Isbn) ? $"ISBN:{request.Isbn}" : request.Title;
         _logger.LogInformation(
             "Iniciando busca de livro único: {SearchTerm} para usuário {UserId}",
-            searchTerm, userId ?? 0);
+            searchTerm, userId);
 
         var result = new SingleBookSearchResult();
 
@@ -48,7 +48,7 @@ public class SingleBookSearchService : ISingleBookSearchService
             var sources = GetSourcesToSearch(request.ProviderUrls);
             var requestor = new Requestor(searchParam, sources);
 
-            var searchResult = await _engine.ExecuteTransaction(requestor, cancellationToken);
+            var searchResult = await _engine.ExecuteTransaction(requestor, userId, cancellationToken);
 
             result.TotalProvidersSearched = searchResult.TotalSourcesQueried;
             result.ProvidersWithResults = searchResult.SuccessfulQueries;

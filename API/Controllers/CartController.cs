@@ -10,6 +10,7 @@ namespace SherlockAPI.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class CartController : ControllerBase
 {
     private readonly ICartOptimizationService _cartService;
@@ -291,7 +292,7 @@ public class CartController : ControllerBase
         return Ok(strategies);
     }
 
-    private int? GetUserId()
+    private int GetUserId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? User.FindFirst("sub")?.Value;
@@ -301,7 +302,7 @@ public class CartController : ControllerBase
             return userId;
         }
 
-        return null;
+        throw new UnauthorizedAccessException("UserId não encontrado no token");
     }
 
     private static string GetStrategyDescription(OptimizationStrategy strategy)

@@ -23,6 +23,7 @@ public class W16Engine
     private readonly ILogger<W16Engine> _logger;
     private readonly ResilientScraperWrapper? _resilientWrapper;
     private readonly ICacheService? _cacheService;
+    private readonly ITransactionPersistenceService? _persistenceService;
 
     /// <summary>
     /// Nível de paralelismo para buscas. Ajuste este valor para encontrar o melhor desempenho.
@@ -30,11 +31,11 @@ public class W16Engine
     /// </summary>
     public int MaxDegreeOfParallelism { get; set; } = 10;
 
-    public W16Engine() : this(NullLoggerFactory.Instance, NullLogger<W16Engine>.Instance, null, null)
+    public W16Engine() : this(NullLoggerFactory.Instance, NullLogger<W16Engine>.Instance, null, null, null)
     {
     }
 
-    public W16Engine(ILogger<W16Engine> logger) : this(NullLoggerFactory.Instance, logger, null, null)
+    public W16Engine(ILogger<W16Engine> logger) : this(NullLoggerFactory.Instance, logger, null, null, null)
     {
     }
 
@@ -42,22 +43,29 @@ public class W16Engine
         ILoggerFactory loggerFactory,
         ILogger<W16Engine> logger,
         ICacheService? cacheService,
-        ResilientScraperWrapper? resilientWrapper)
+        ResilientScraperWrapper? resilientWrapper,
+        ITransactionPersistenceService? persistenceService)
     {
         _comparator = new Comparator();
         _scraperFactory = new ScraperFactory(loggerFactory);
         _logger = logger;
         _cacheService = cacheService;
         _resilientWrapper = resilientWrapper;
+        _persistenceService = persistenceService;
     }
 
-    public async Task<SearchResult> ExecuteTransaction(Requestor requestor, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Executa uma transação de busca de preços.
+    /// </summary>
+    /// <param name="requestor">Dados da requisição (parâmetros de busca e providers)</param>
+    /// <param name="userId">ID do usuário que está realizando a busca</param>
+    /// <param name="cancellationToken">Token de cancelamento</param>
+    /// <returns>Resultado da busca com preços e métricas</returns>
+    public async Task<SearchResult> ExecuteTransaction(Requestor requestor, int userId, CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
         var transactionId = GenerateTransactionId();
 
-        // criar transaction com valores iniciais
-        var transaction = new Transaction();
         LogTransactionStart(transactionId, requestor);
 
         var queryResults = new ConcurrentBag<QueryResult>();
@@ -122,7 +130,33 @@ public class W16Engine
             FinalizeTransaction(result, stopwatch);
         }
 
+        // Persistir transação e queries no banco
+        await PersistTransactionAsync(result, requestor.SearchParameters, userId, cancellationToken);
+
         return result;
+    }
+
+    private async Task PersistTransactionAsync(
+        SearchResult result,
+        SearchParameter searchParameter,
+        int userId,
+        CancellationToken cancellationToken)
+    {
+        if (_persistenceService == null)
+        {
+            _logger.LogWarning("Serviço de persistência não configurado - transação não será salva");
+            return;
+        }
+
+        try
+        {
+            await _persistenceService.PersistAsync(result, searchParameter, userId, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // Log do erro mas não falha a busca - persistência é secundária
+            _logger.LogError(ex, "Erro ao persistir transação - a busca foi realizada mas não foi salva no banco");
+        }
     }
 
     private static string GenerateTransactionId()
@@ -407,10 +441,6 @@ public class W16Engine
         result.FimConsulta = DateTime.Now;
     }
 
-    public async Task PersistQueryInDatabase()
-    {
-
-    }
     private void LogParallelismMetrics(string transactionId, ParallelismMetrics metrics, long totalElapsedMs, SearchResult result)
     {
         var responseTimes = metrics.ResponseTimes.OrderBy(r => r.ElapsedMs).ToList();

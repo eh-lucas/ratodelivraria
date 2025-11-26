@@ -30,14 +30,14 @@ public class CartOptimizationService : ICartOptimizationService
 
     public async Task<CartOptimizationResult> OptimizeCartAsync(
         CartOptimizationRequest request,
-        int? userId = null,
+        int userId,
         CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
 
         _logger.LogInformation(
             "Iniciando otimização de carrinho com {BookCount} livros para usuário {UserId}",
-            request.Books.Count, userId ?? 0);
+            request.Books.Count, userId);
 
         // Nota: Transactions NÃO são cacheadas. Apenas as Queries individuais são cacheadas pelo W16Engine.
         // Uma transação de carrinho com 3 livros em 10 providers = 30 queries (cada uma pode ser cacheada)
@@ -52,7 +52,7 @@ public class CartOptimizationService : ICartOptimizationService
 
         foreach (var book in request.Books)
         {
-            searchTasks.Add(SearchBookPricesAsync(book, sourcesToSearch, cancellationToken));
+            searchTasks.Add(SearchBookPricesAsync(book, sourcesToSearch, userId, cancellationToken));
         }
 
         var searchResults = await Task.WhenAll(searchTasks);
@@ -129,6 +129,7 @@ public class CartOptimizationService : ICartOptimizationService
     private async Task<(CartBookItem book, SearchResult result)> SearchBookPricesAsync(
         CartBookItem book,
         List<Provider> sources,
+        int userId,
         CancellationToken cancellationToken)
     {
         var requestor = new Requestor
@@ -142,7 +143,7 @@ public class CartOptimizationService : ICartOptimizationService
             SourcesToSearch = sources
         };
 
-        var result = await _engine.ExecuteTransaction(requestor, cancellationToken);
+        var result = await _engine.ExecuteTransaction(requestor, userId, cancellationToken);
         return (book, result);
     }
 

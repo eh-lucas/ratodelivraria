@@ -35,7 +35,7 @@ public class SingleBookSearchServiceTests
         };
 
         // Act
-        var result = await service.SearchAsync(request);
+        var result = await service.SearchAsync(request, userId: 1);
 
         // Assert
         result.Should().NotBeNull();
@@ -56,7 +56,7 @@ public class SingleBookSearchServiceTests
         };
 
         // Act
-        var result = await service.SearchAsync(request);
+        var result = await service.SearchAsync(request, userId: 1);
 
         // Assert
         result.Should().NotBeNull();
@@ -76,7 +76,7 @@ public class SingleBookSearchServiceTests
         };
 
         // Act
-        var result = await service.SearchAsync(request);
+        var result = await service.SearchAsync(request, userId: 1);
 
         // Assert
         result.ExecutionTimeMs.Should().BeGreaterOrEqualTo(0);
@@ -98,7 +98,7 @@ public class SingleBookSearchServiceTests
         };
 
         // Act
-        var result = await service.SearchAsync(request);
+        var result = await service.SearchAsync(request, userId: 1);
 
         // Assert
         result.Should().NotBeNull();
@@ -119,7 +119,7 @@ public class SingleBookSearchServiceTests
         };
 
         // Act
-        var result = await service.SearchAsync(request);
+        var result = await service.SearchAsync(request, userId: 1);
 
         // Assert
         result.Alternatives.Should().HaveCountLessOrEqualTo(2);
@@ -138,7 +138,7 @@ public class SingleBookSearchServiceTests
         };
 
         // Act
-        var result = await service.SearchAsync(request);
+        var result = await service.SearchAsync(request, userId: 1);
 
         // Assert
         if (result.Success && result.BestOption != null && result.Alternatives.Any())
@@ -168,7 +168,7 @@ public class SingleBookSearchServiceTests
         cts.Cancel();
 
         // Act
-        var result = await service.SearchAsync(request, cancellationToken: cts.Token);
+        var result = await service.SearchAsync(request, userId: 1, cancellationToken: cts.Token);
 
         // Assert - deve retornar sem exceção
         result.Should().NotBeNull();

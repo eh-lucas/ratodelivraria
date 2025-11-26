@@ -54,7 +54,7 @@ public class W16EngineTests
         var requestor = new Requestor(searchParams, new List<Provider>());
 
         // Act
-        var result = await engine.ExecuteTransaction(requestor);
+        var result = await engine.ExecuteTransaction(requestor, userId: 1);
 
         // Assert
         result.Should().NotBeNull();
@@ -76,7 +76,7 @@ public class W16EngineTests
         cts.Cancel();
 
         // Act
-        var result = await engine.ExecuteTransaction(requestor, cts.Token);
+        var result = await engine.ExecuteTransaction(requestor, userId: 1, cancellationToken: cts.Token);
 
         // Assert
         result.Should().NotBeNull();
@@ -93,7 +93,7 @@ public class W16EngineTests
         var beforeExecution = DateTime.Now;
 
         // Act
-        var result = await engine.ExecuteTransaction(requestor);
+        var result = await engine.ExecuteTransaction(requestor, userId: 1);
 
         var afterExecution = DateTime.Now;
 
@@ -124,12 +124,12 @@ public class W16EngineTests
             .ReturnsAsync(cachedQueryResult);
 
         var provider = new Provider { Id = 1, Name = "Test Provider", Url = "http://test.com", ProviderCategoryEnum = ProviderCategoryEnum.Cedet };
-        var engine = new W16Engine(_loggerFactory, _loggerMock.Object, _cacheServiceMock.Object, null);
+        var engine = new W16Engine(_loggerFactory, _loggerMock.Object, _cacheServiceMock.Object, null, null);
         var searchParams = new SearchParameter { BookTitle = "Test Book" };
         var requestor = new Requestor(searchParams, new List<Provider> { provider });
 
         // Act
-        var result = await engine.ExecuteTransaction(requestor);
+        var result = await engine.ExecuteTransaction(requestor, userId: 1);
 
         // Assert
         result.AllQueryResults.Should().HaveCount(1);
@@ -140,12 +140,12 @@ public class W16EngineTests
     public async Task ExecuteTransaction_WithNoCacheService_DoesNotThrow()
     {
         // Arrange
-        var engine = new W16Engine(_loggerFactory, _loggerMock.Object, null, null);
+        var engine = new W16Engine(_loggerFactory, _loggerMock.Object, null, null, null);
         var searchParams = new SearchParameter { BookTitle = "Test" };
         var requestor = new Requestor(searchParams, new List<Provider>());
 
         // Act
-        var action = async () => await engine.ExecuteTransaction(requestor);
+        var action = async () => await engine.ExecuteTransaction(requestor, userId: 1);
 
         // Assert
         await action.Should().NotThrowAsync();
@@ -160,7 +160,7 @@ public class W16EngineTests
         var requestor = new Requestor(searchParams, new List<Provider>());
 
         // Act
-        var result = await engine.ExecuteTransaction(requestor);
+        var result = await engine.ExecuteTransaction(requestor, userId: 1);
 
         // Assert
         // With no results (NoResults type), cost should be 0 (not billable)
