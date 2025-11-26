@@ -54,9 +54,9 @@ public class Query
     public decimal? Price { get; set; }
 
     /// <summary>
-    /// Desconto encontrado (percentual)
+    /// Desconto encontrado (percentual, pode ter casas decimais)
     /// </summary>
-    public int? Discount { get; set; }
+    public float? Discount { get; set; }
 
     /// <summary>
     /// URL do produto encontrado

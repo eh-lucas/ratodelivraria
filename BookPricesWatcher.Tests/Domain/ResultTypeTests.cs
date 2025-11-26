@@ -3,13 +3,13 @@ using Sherlock.Domain.Entities;
 
 namespace Sherlock.Tests.Domain;
 
-public class ResultTypeTests
+public class TransactionResultTests
 {
     [Fact]
     public void Success_HasCorrectProperties()
     {
         // Act
-        var result = ResultType.Success;
+        var result = TransactionResult.Success;
 
         // Assert
         result.Name.Should().Be("Success");
@@ -21,7 +21,7 @@ public class ResultTypeTests
     public void PartialSuccess_HasCorrectProperties()
     {
         // Act
-        var result = ResultType.PartialSuccess;
+        var result = TransactionResult.PartialSuccess;
 
         // Assert
         result.Name.Should().Be("PartialSuccess");
@@ -33,7 +33,7 @@ public class ResultTypeTests
     public void NoResults_HasCorrectProperties()
     {
         // Act
-        var result = ResultType.NoResults;
+        var result = TransactionResult.NoResults;
 
         // Assert
         result.Name.Should().Be("NoResults");
@@ -45,7 +45,7 @@ public class ResultTypeTests
     public void AllFailed_HasCorrectProperties()
     {
         // Act
-        var result = ResultType.AllFailed;
+        var result = TransactionResult.AllFailed;
 
         // Assert
         result.Name.Should().Be("AllFailed");
@@ -54,12 +54,12 @@ public class ResultTypeTests
     }
 
     [Fact]
-    public void AllResultTypes_HaveDescriptions()
+    public void AllTransactionResults_HaveDescriptions()
     {
         // Assert
-        ResultType.Success.Description.Should().NotBeNullOrEmpty();
-        ResultType.PartialSuccess.Description.Should().NotBeNullOrEmpty();
-        ResultType.NoResults.Description.Should().NotBeNullOrEmpty();
-        ResultType.AllFailed.Description.Should().NotBeNullOrEmpty();
+        TransactionResult.Success.Description.Should().NotBeNullOrEmpty();
+        TransactionResult.PartialSuccess.Description.Should().NotBeNullOrEmpty();
+        TransactionResult.NoResults.Description.Should().NotBeNullOrEmpty();
+        TransactionResult.AllFailed.Description.Should().NotBeNullOrEmpty();
     }
 }

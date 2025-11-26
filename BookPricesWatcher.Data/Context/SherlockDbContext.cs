@@ -18,7 +18,7 @@ public class SherlockDbContext : DbContext
     public DbSet<Query> Queries => Set<Query>();
 
     // Entidades de suporte
-    public DbSet<ResultType> ResultTypes => Set<ResultType>();
+    public DbSet<TransactionResult> TransactionResults => Set<TransactionResult>();
     public DbSet<Token> Tokens => Set<Token>();
     public DbSet<Scraper> Scrapers => Set<Scraper>();
 
@@ -76,7 +76,7 @@ public class SherlockDbContext : DbContext
                 .HasForeignKey(e => e.BookId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            entity.HasOne(e => e.ResultType)
+            entity.HasOne(e => e.TransactionResult)
                 .WithMany()
                 .HasForeignKey(e => e.ResultTypeId)
                 .OnDelete(DeleteBehavior.Restrict);
@@ -127,11 +127,12 @@ public class SherlockDbContext : DbContext
             entity.HasIndex(e => e.Username).IsUnique();
         });
 
-        // ResultType
-        modelBuilder.Entity<ResultType>(entity =>
+        // TransactionResult
+        modelBuilder.Entity<TransactionResult>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).HasMaxLength(50);
+            entity.ToTable("result_types"); // Mantém nome da tabela para compatibilidade
         });
     }
 }

@@ -464,7 +464,7 @@ public class W16Engine
 
     private void HandleFatalError(SearchResult result, Exception ex, string transactionId)
     {
-        result.ResultadoTransacao = ResultType.AllFailed;
+        result.ResultadoTransacao = TransactionResult.AllFailed;
         result.Errors.Add($"Erro fatal: {ex.Message}");
         _logger.LogError(ex, "Erro fatal na transação {TransactionId}", transactionId);
     }
@@ -591,18 +591,18 @@ public class W16Engine
         return sortedValues[index];
     }
 
-    private static ResultType DetermineResultType(SearchResult result, int validResults)
+    private static TransactionResult DetermineResultType(SearchResult result, int validResults)
     {
         if (result.FailedQueries == result.TotalSourcesQueried)
-            return ResultType.AllFailed;
+            return TransactionResult.AllFailed;
 
         if (validResults == 0)
-            return ResultType.NoResults;
+            return TransactionResult.NoResults;
 
         if (result.FailedQueries > 0)
-            return ResultType.PartialSuccess;
+            return TransactionResult.PartialSuccess;
 
-        return ResultType.Success;
+        return TransactionResult.Success;
     }
 
     private static int CalculateCost(SearchResult result)

@@ -81,7 +81,7 @@ public class Transaction
     // Navegação
     public User? User { get; set; }
     public Book? Book { get; set; }
-    public ResultType? ResultType { get; set; }
+    public TransactionResult? TransactionResult { get; set; }
     public Query? BestQuery { get; set; }
     public ICollection<Query> Queries { get; set; } = new List<Query>();
 }

@@ -1,5 +1,6 @@
 ﻿namespace Sherlock.Domain.Entities;
-public class ResultType
+
+public class TransactionResult
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -7,7 +8,7 @@ public class ResultType
     public bool IsSuccess { get; set; }
     public bool IsBillable { get; set; }
 
-    public static ResultType Success => new()
+    public static TransactionResult Success => new()
     {
         Name = "Success",
         Description = "Busca realizada com sucesso",
@@ -15,7 +16,7 @@ public class ResultType
         IsBillable = true
     };
 
-    public static ResultType PartialSuccess => new()
+    public static TransactionResult PartialSuccess => new()
     {
         Name = "PartialSuccess",
         Description = "Busca parcialmente realizada - alguns providers falharam",
@@ -23,7 +24,7 @@ public class ResultType
         IsBillable = true
     };
 
-    public static ResultType NoResults => new()
+    public static TransactionResult NoResults => new()
     {
         Name = "NoResults",
         Description = "Nenhum resultado encontrado",
@@ -31,7 +32,7 @@ public class ResultType
         IsBillable = false
     };
 
-    public static ResultType AllFailed => new()
+    public static TransactionResult AllFailed => new()
     {
         Name = "AllFailed",
         Description = "Todos os providers falharam",

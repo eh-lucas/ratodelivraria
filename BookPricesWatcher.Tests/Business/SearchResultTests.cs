@@ -77,7 +77,7 @@ public class SearchResultTests
             SuccessfulQueries = 45,
             FailedQueries = 5,
             FromCache = true,
-            ResultadoTransacao = ResultType.Success,
+            ResultadoTransacao = TransactionResult.Success,
             BookPriceResult = new BookPriceResult { Title = "Test", Price = 29.99m }
         };
 

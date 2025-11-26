@@ -8,7 +8,7 @@ public class SearchResult
     public DateTime FimConsulta { get; set; }
     public long TempoDecorrido { get; set; }
     public int CustoCreditos { get; set; }
-    public ResultType ResultadoTransacao { get; set; } = new ResultType();
+    public TransactionResult ResultadoTransacao { get; set; } = new TransactionResult();
     public BookPriceResult BookPriceResult { get; set; } = new BookPriceResult();
 
     // Métricas de execução
