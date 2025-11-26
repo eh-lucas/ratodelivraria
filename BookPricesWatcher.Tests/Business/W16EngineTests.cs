@@ -101,33 +101,36 @@ public class W16EngineTests
     }
 
     [Fact]
-    public async Task ExecuteTransaction_WithCachedResult_ReturnsCachedData()
+    public async Task ExecuteTransaction_WithCachedQueryResult_ReturnsCachedData()
     {
         // Arrange
-        var cachedResult = new SearchResult
+        var cachedQueryResult = new QueryResult
         {
-            BookPriceResult = new BookPriceResult { Title = "Cached Book", Price = 19.99m },
-            FromCache = false
+            Success = true,
+            Title = "Cached Book",
+            Price = 19.99m,
+            ProviderId = 1
         };
 
         _cacheServiceMock
-            .Setup(c => c.GenerateBookPriceKey(It.IsAny<string>(), It.IsAny<string?>()))
+            .Setup(c => c.GenerateBookProviderKey(It.IsAny<string>(), It.IsAny<int>()))
             .Returns("test-cache-key");
 
         _cacheServiceMock
-            .Setup(c => c.GetAsync<SearchResult>(It.IsAny<string>()))
-            .ReturnsAsync(cachedResult);
+            .Setup(c => c.GetAsync<QueryResult>(It.IsAny<string>()))
+            .ReturnsAsync(cachedQueryResult);
 
+        var provider = new Provider { Id = 1, Name = "Test Provider", Url = "http://test.com", ProviderCategoryEnum = ProviderCategoryEnum.Cedet };
         var engine = new W16Engine(_loggerMock.Object, _cacheServiceMock.Object, null);
         var searchParams = new SearchParameter { BookTitle = "Test Book" };
-        var requestor = new Requestor(searchParams, new List<Provider>());
+        var requestor = new Requestor(searchParams, new List<Provider> { provider });
 
         // Act
         var result = await engine.ExecuteTransaction(requestor);
 
         // Assert
-        result.FromCache.Should().BeTrue();
-        result.BookPriceResult.Title.Should().Be("Cached Book");
+        result.AllQueryResults.Should().HaveCount(1);
+        result.AllQueryResults.First().Title.Should().Be("Cached Book");
     }
 
     [Fact]

@@ -9,7 +9,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using Sherlock.Business.Services;
 
 namespace Sherlock.Business.Core.Base;
 
@@ -24,7 +23,6 @@ public class W16Engine
     private readonly ILogger<W16Engine> _logger;
     private readonly ResilientScraperWrapper? _resilientWrapper;
     private readonly ICacheService? _cacheService;
-    private readonly IQueryHistoryService? _queryHistoryService;
 
     /// <summary>
     /// Nível de paralelismo para buscas. Ajuste este valor para encontrar o melhor desempenho.
@@ -55,9 +53,10 @@ public class W16Engine
     public async Task<SearchResult> ExecuteTransaction(Requestor requestor, CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
-        var transaction = new Transaction();
         var transactionId = GenerateTransactionId();
 
+        // criar transaction com valores iniciais
+        var transaction = new Transaction();
         LogTransactionStart(transactionId, requestor);
 
         var queryResults = new ConcurrentBag<QueryResult>();
@@ -66,17 +65,52 @@ public class W16Engine
 
         try
         {
-            var cachedResult = await TryGetFromCacheAsync(requestor, transactionId, stopwatch);
-            if (cachedResult != null)
-                return cachedResult;
+            var sourcesByCategory = GroupSourcesByCategory(requestor.SourcesToSearch);
 
-            await ExecuteScrapersAsync(requestor, queryResults, metrics, cancellationToken);
+            foreach (var (category, sources) in sourcesByCategory)
+            {
+                var scraper = _scraperFactory.CreateScraper(category);
+                if (scraper == null)
+                {
+                    _logger.LogWarning("Scraper não encontrado para categoria {Category}", category);
+                    Interlocked.Add(ref metrics.FailedCount, sources.Count);
+                    continue;
+                }
+
+                var semaphore = new SemaphoreSlim(MaxDegreeOfParallelism);
+                var tasks = new List<Task>();
+
+                foreach (var source in sources)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                        break;
+
+                    // Verifica cache Redis se disponível
+                    if (_cacheService != null)
+                    {
+                        var cacheKey = _cacheService.GenerateBookProviderKey(requestor.SearchParameters.BookTitle, source.Id);
+                        var cachedResult = await _cacheService.GetAsync<QueryResult>(cacheKey);
+
+                        if (cachedResult != null)
+                        {
+                            _logger.LogInformation("Resultado em cache para {BookTitle} no provider {ProviderId}", requestor.SearchParameters.BookTitle, source.Id);
+                            queryResults.Add(cachedResult);
+                            continue;
+                        }
+                    }
+
+                    await semaphore.WaitAsync(cancellationToken);
+
+                    tasks.Add(ExecuteSingleScrapingAsync(scraper, source, requestor.SearchParameters, queryResults, metrics, semaphore, cancellationToken));
+                }
+
+                await Task.WhenAll(tasks);
+            }
 
             stopwatch.Stop();
 
             FinalizeSearchResult(result, queryResults, metrics);
             LogParallelismMetrics(transactionId, metrics, stopwatch.ElapsedMilliseconds, result);
-            await TryCacheResultAsync(requestor, result);
         }
         catch (Exception ex)
         {
@@ -117,74 +151,6 @@ public class W16Engine
         };
     }
 
-    private async Task<SearchResult?> TryGetFromCacheAsync(Requestor requestor, string transactionId, Stopwatch stopwatch)
-    {
-        if (_cacheService == null)
-            return null;
-
-        var cacheKey = _cacheService.GenerateBookPriceKey(
-            requestor.SearchParameters.BookTitle,
-            requestor.SearchParameters.Isbn);
-
-        var cachedResult = await _cacheService.GetAsync<SearchResult>(cacheKey);
-        if (cachedResult != null)
-        {
-            _logger.LogInformation(
-                "Transação {TransactionId} resolvida via cache em {Elapsed}ms",
-                transactionId, stopwatch.ElapsedMilliseconds);
-
-            cachedResult.FromCache = true;
-            return cachedResult;
-        }
-
-        return null;
-    }
-
-    private async Task<SearchResult?> TryGetFromDatabaseCachedAsync(Requestor requestor, string transactionId, Stopwatch stopwatch)
-    {
-        if (_cacheService == null)
-            return null;
-
-        var cacheKey = _cacheService.GenerateBookPriceKey(
-            requestor.SearchParameters.BookTitle,
-            requestor.SearchParameters.Isbn);
-
-        var cachedResult = await _cacheService.GetAsync<SearchResult>(cacheKey);
-        if (cachedResult != null)
-        {
-            _logger.LogInformation(
-                "Transação {TransactionId} resolvida via cache em {Elapsed}ms",
-                transactionId, stopwatch.ElapsedMilliseconds);
-
-            cachedResult.FromCache = true;
-            return cachedResult;
-        }
-
-        return null;
-    }
-
-    private async Task ExecuteScrapersAsync(
-        Requestor requestor,
-        ConcurrentBag<QueryResult> queryResults,
-        ParallelismMetrics metrics,
-        CancellationToken cancellationToken)
-    {
-        var sourcesByCategory = GroupSourcesByCategory(requestor.SourcesToSearch);
-
-        foreach (var (category, sources) in sourcesByCategory)
-        {
-            var scraper = _scraperFactory.CreateScraper(category);
-            if (scraper == null)
-            {
-                _logger.LogWarning("Scraper não encontrado para categoria {Category}", category);
-                Interlocked.Add(ref metrics.FailedCount, sources.Count);
-                continue;
-            }
-
-            await ExecuteCategoryScrapingAsync(scraper, sources, requestor.SearchParameters, queryResults, metrics, cancellationToken);
-        }
-    }
-
     private static Dictionary<ProviderCategoryEnum, List<Provider>> GroupSourcesByCategory(IEnumerable<Provider> sources)
     {
         return sources
@@ -192,30 +158,6 @@ public class W16Engine
             .ToDictionary(g => g.Key, g => g.ToList());
     }
 
-    private async Task ExecuteCategoryScrapingAsync(
-        IScraper scraper,
-        List<Provider> sources,
-        SearchParameter baseParameters,
-        ConcurrentBag<QueryResult> queryResults,
-        ParallelismMetrics metrics,
-        CancellationToken cancellationToken)
-    {
-        var semaphore = new SemaphoreSlim(MaxDegreeOfParallelism);
-        var tasks = new List<Task>();
-
-        foreach (var source in sources)
-        {
-            if (cancellationToken.IsCancellationRequested)
-                break;
-
-            await semaphore.WaitAsync(cancellationToken);
-
-            tasks.Add(ExecuteSingleScrapingAsync(scraper, source, baseParameters, queryResults, metrics, semaphore, cancellationToken));
-        }
-
-        await Task.WhenAll(tasks);
-    }
- 
 
     private Task ExecuteSingleScrapingAsync(
         IScraper scraper,
@@ -234,7 +176,7 @@ public class W16Engine
             try
             {
                 var parameters = CreateSearchParameter(baseParameters, source);
-                var queryResult = await ExecuteScraperAsync(scraper, parameters, cancellationToken);
+                var queryResult = await scraper.ExecuteSearch(parameters);
 
                 queryResults.Add(queryResult);
                 RecordQueryResult(metrics, queryResult);
@@ -448,18 +390,6 @@ public class W16Engine
 
         result.ResultadoTransacao = DetermineResultType(result, validResults.Count);
         result.CustoCreditos = CalculateCost(result);
-    }
-
-    private async Task TryCacheResultAsync(Requestor requestor, SearchResult result)
-    {
-        if (_cacheService == null || !result.ResultadoTransacao.IsSuccess)
-            return;
-
-        var cacheKey = _cacheService.GenerateBookPriceKey(
-            requestor.SearchParameters.BookTitle,
-            requestor.SearchParameters.Isbn);
-
-        await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromHours(2));
     }
 
     private void HandleFatalError(SearchResult result, Exception ex, string transactionId)
