@@ -30,6 +30,9 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 # Copy published app
 COPY --from=build /app/publish .
 
+# Copy Docker-specific appsettings from build stage
+COPY --from=build /src/API/appsettings.Docker.json ./appsettings.Docker.json
+
 # Create logs directory
 RUN mkdir -p /app/logs
 
@@ -38,7 +41,7 @@ EXPOSE 8080
 
 # Set environment variables
 ENV ASPNETCORE_URLS=http://+:8080
-ENV ASPNETCORE_ENVIRONMENT=Production
+ENV ASPNETCORE_ENVIRONMENT=Docker
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
