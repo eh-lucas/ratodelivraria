@@ -113,7 +113,7 @@ public class W16Engine
     public async Task ExecuteSearch(Requestor requestor, ParallelismMetrics metrics,
         ConcurrentBag<QueryResult> queryResults, CancellationToken cancellationToken = default)
     {
-        var parallel = false;
+        var parallel = true;
 
         try
         {
@@ -165,13 +165,13 @@ public class W16Engine
 
     private async Task<bool> GetCacheFromRedis(Requestor requestor, ConcurrentBag<QueryResult> queryResults, Provider source)
     {
-        var cacheKey = _cacheService.GenerateBookProviderKey(requestor.SearchParameters.BookTitle, source.Id);
+        var cacheKey = _cacheService.GenerateBookProviderKey(requestor.SearchParameters.Isbn, source.Id);
         var cachedResult = await _cacheService.GetAsync<QueryResult>(cacheKey);
 
         if (cachedResult != null)
         {
-            _logger.LogInformation("Cache hit (Redis): {BookTitle} no provider {ProviderId}",
-                requestor.SearchParameters.BookTitle, source.Id);
+            _logger.LogInformation("Cache hit (Redis): {Isbn} no provider {ProviderId}",
+                requestor.SearchParameters.Isbn, source.Id);
             queryResults.Add(cachedResult);
             return true;
         }
@@ -182,6 +182,9 @@ public class W16Engine
     private async Task ExecuteParallely(Requestor requestor, ConcurrentBag<QueryResult> queryResults, List<Provider> sources, IScraper scraper,
         ParallelismMetrics metrics, CancellationToken cancellationToken)
     {
+        var semaphore = new SemaphoreSlim(MaxDegreeOfParallelism);
+        var tasks = new List<Task>();
+
         foreach (var source in sources)
         {
             // Determina tempo de cache (usa valor do requestor ou default)
@@ -203,9 +206,6 @@ public class W16Engine
                 if (hasCache) continue;
             }
 
-            var semaphore = new SemaphoreSlim(MaxDegreeOfParallelism);
-            var tasks = new List<Task>();
-
             if (cancellationToken.IsCancellationRequested)
                 return;
 
@@ -214,9 +214,9 @@ public class W16Engine
             // Se chegou ate aqui eh porque nao encontrou cache - decide se executa em paralelo ou nao
             tasks.Add(ExecuteSingleScrapingAsync(scraper, source, requestor.SearchParameters, queryResults,
                 metrics, semaphore, cancellationToken));
-
-            await Task.WhenAll(tasks);
         }
+
+        await Task.WhenAll(tasks);
     }
 
 
@@ -282,11 +282,11 @@ public class W16Engine
     {
         _logger.LogInformation(
             "========== TRANSAÇÃO {TransactionId} INICIADA ==========\n" +
-            "  Livro: \"{BookTitle}\"\n" +
+            "  Livro: \"{Isbn}\"\n" +
             "  Providers: {SourceCount}\n" +
             "  Paralelismo: {Parallelism}",
             transactionId,
-            requestor.SearchParameters.BookTitle,
+            requestor.SearchParameters.Isbn,
             requestor.SourcesToSearch.Count,
             MaxDegreeOfParallelism);
     }
@@ -507,10 +507,10 @@ public class W16Engine
     {
         return new SearchParameter
         {
-            BookTitle = baseParameters.BookTitle,
+            //BookTitle = baseParameters.BookTitle,
             Isbn = baseParameters.Isbn,
-            AuthorName = baseParameters.AuthorName,
-            IsExactSearch = baseParameters.IsExactSearch,
+            //AuthorName = baseParameters.AuthorName,
+            //IsExactSearch = baseParameters.IsExactSearch,
             Source = source
         };
     }

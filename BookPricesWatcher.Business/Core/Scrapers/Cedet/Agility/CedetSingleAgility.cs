@@ -21,7 +21,7 @@ public class CedetSingleAgility : IScraper
 
         try
         {
-            var bookTitle = parameters.BookTitle;
+            var searchTerm = parameters.Isbn;
 
             var web = new HtmlWeb();
             var doc = web.Load(provider.Url);
@@ -36,8 +36,8 @@ public class CedetSingleAgility : IScraper
                 return QueryResult.CreateNoResult(provider, stopwatch.ElapsedMilliseconds);
             }
 
-            var possibleBooks = GetReturnedBooksByTitle(products, bookTitle);
-            var result = ChooseBestBookOption(possibleBooks, bookTitle, parameters.IsExactSearch);
+            var possibleBooks = GetReturnedBooksByTitle(products, searchTerm);
+            var result = ChooseBestBookOption(possibleBooks, searchTerm, false);
 
             if (result != null && !string.IsNullOrEmpty(result.Title) && result.Price > 0)
             {

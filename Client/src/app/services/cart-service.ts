@@ -4,9 +4,7 @@ import { Observable } from 'rxjs';
 import { AuthService } from './auth-service';
 
 export interface CartBookItem {
-  title: string;
-  isbn?: string;
-  author?: string;
+  isbn: string;
   quantity: number;
 }
 
@@ -76,6 +74,37 @@ export interface ProviderOption {
   isActive: boolean;
 }
 
+// ========================================
+// Interfaces para BookSearch (nova API)
+// ========================================
+
+export interface QueryResultItem {
+  providerId: number;
+  providerName: string;
+  providerUrl: string;
+  title: string | null;
+  author: string | null;
+  price: number | null;
+  discount: number | null;
+  productUrl: string | null;
+  success: boolean;
+  errorMessage: string | null;
+  errorType: string | null;
+  responseTimeMs: number;
+  credits: number;
+}
+
+export interface BookSearchResponse {
+  bestResult: QueryResultItem | null;
+  allResults: QueryResultItem[];
+  totalProviders: number;
+  successCount: number;
+  errorCount: number;
+  totalCredits: number;
+  executionTimeMs: number;
+  searchedIsbn: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -103,15 +132,27 @@ export class CartService {
     );
   }
 
-  searchBook(title: string, isbn?: string, author?: string, providerUrls?: string[]): Observable<CartOptimizationResult> {
-    let url = `${this.apiUrl}/search?title=${encodeURIComponent(title)}`;
-    if (isbn) url += `&isbn=${encodeURIComponent(isbn)}`;
-    if (author) url += `&author=${encodeURIComponent(author)}`;
+  searchBook(isbn: string, providerUrls?: string[]): Observable<CartOptimizationResult> {
+    const params: string[] = [`isbn=${encodeURIComponent(isbn)}`];
     if (providerUrls && providerUrls.length > 0) {
-      url += `&providerUrls=${encodeURIComponent(providerUrls.join(','))}`;
+      params.push(`providerUrls=${encodeURIComponent(providerUrls.join(','))}`);
     }
 
+    const url = `${this.apiUrl}/search?${params.join('&')}`;
     return this.http.get<CartOptimizationResult>(url, { headers: this.getHeaders() });
+  }
+
+  /**
+   * Busca livro por ISBN usando a nova API com resultados detalhados
+   */
+  searchBookByIsbn(isbn: string, providerUrls?: string[]): Observable<BookSearchResponse> {
+    const params: string[] = [`isbn=${encodeURIComponent(isbn)}`];
+    if (providerUrls && providerUrls.length > 0) {
+      params.push(`providerUrls=${encodeURIComponent(providerUrls.join(','))}`);
+    }
+
+    const url = `http://localhost:5177/api/BookSearch?${params.join('&')}`;
+    return this.http.get<BookSearchResponse>(url, { headers: this.getHeaders() });
   }
 
   getStrategies(): Observable<StrategyOption[]> {

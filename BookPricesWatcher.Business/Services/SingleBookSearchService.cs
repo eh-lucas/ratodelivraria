@@ -28,10 +28,9 @@ public class SingleBookSearchService : ISingleBookSearchService
     {
         var stopwatch = Stopwatch.StartNew();
 
-        var searchTerm = !string.IsNullOrEmpty(request.Isbn) ? $"ISBN:{request.Isbn}" : request.Title;
         _logger.LogInformation(
-            "Iniciando busca de livro único: {SearchTerm} para usuário {UserId}",
-            searchTerm, userId);
+            "Iniciando busca de livro único: ISBN:{Isbn} para usuário {UserId}",
+            request.Isbn, userId);
 
         var result = new SingleBookSearchResult();
 
@@ -39,10 +38,7 @@ public class SingleBookSearchService : ISingleBookSearchService
         {
             var searchParam = new SearchParameter
             {
-                BookTitle = request.Title ?? string.Empty,
-                Isbn = request.Isbn,
-                AuthorName = request.Author,
-                IsExactSearch = false
+                Isbn = request.Isbn
             };
 
             var sources = GetSourcesToSearch(request.ProviderUrls);
@@ -56,7 +52,7 @@ public class SingleBookSearchService : ISingleBookSearchService
             result.FromCache = searchResult.FromCache;
 
             // Converte resultados para BookPriceOption ordenados por preço
-            var allOptions = ConvertToBookPriceOptions(searchResult, request.Title ?? string.Empty);
+            var allOptions = ConvertToBookPriceOptions(searchResult, request.Isbn);
 
             if (allOptions.Count > 0)
             {
@@ -73,7 +69,7 @@ public class SingleBookSearchService : ISingleBookSearchService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao buscar livro: {Title}", request.Title);
+            _logger.LogError(ex, "Erro ao buscar livro com ISBN: {Isbn}", request.Isbn);
             result.Success = false;
             result.Message = $"Erro na busca: {ex.Message}";
         }

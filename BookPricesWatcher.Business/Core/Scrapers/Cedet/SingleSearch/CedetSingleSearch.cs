@@ -28,12 +28,12 @@ public class CedetSingleSearch : IScraper
         try
         {
             driver = InitiateWebDriver();
-            var bookTitle = parameters.BookTitle;
+            var searchTerm = parameters.Isbn;
 
-            SearchBookInBox(driver, provider.Url, bookTitle);
+            SearchBookInBox(driver, provider.Url, searchTerm);
 
             var grid = driver.FindElement(By.XPath(GridXPath));
-            var book = CreateBook(grid, bookTitle);
+            var book = CreateBook(grid, searchTerm);
 
             stopwatch.Stop();
             driver.Quit();

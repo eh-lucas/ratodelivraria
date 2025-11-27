@@ -136,10 +136,7 @@ public class TransactionPersistenceService : ITransactionPersistenceService
     {
         var parameters = new
         {
-            bookTitle = searchParameter.BookTitle,
-            isbn = searchParameter.Isbn,
-            author = searchParameter.AuthorName,
-            isExactSearch = searchParameter.IsExactSearch
+            isbn = searchParameter.Isbn
         };
 
         return JsonSerializer.Serialize(parameters, JsonOptions);

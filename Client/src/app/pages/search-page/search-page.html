@@ -16,31 +16,12 @@
       <div class="book-form">
         <div class="form-row">
           <div class="form-group flex-2">
-            <label>Título do Livro *</label>
-            <input
-              type="text"
-              [(ngModel)]="newBook.title"
-              placeholder="Ex: O Senhor dos Anéis"
-              (keyup.enter)="addBook()"
-            />
-          </div>
-          <div class="form-group flex-1">
-            <label>ISBN (opcional)</label>
+            <label>ISBN *</label>
             <input
               type="text"
               [(ngModel)]="newBook.isbn"
               placeholder="978-..."
-            />
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group flex-2">
-            <label>Autor (opcional)</label>
-            <input
-              type="text"
-              [(ngModel)]="newBook.author"
-              placeholder="Ex: J.R.R. Tolkien"
+              (keyup.enter)="addBook()"
             />
           </div>
           <div class="form-group flex-1">
@@ -105,16 +86,10 @@
         </div>
 
         <div class="cart-items">
-          @for (book of books; track book.title; let i = $index) {
+          @for (book of books; track book.isbn; let i = $index) {
             <div class="cart-item">
               <div class="item-info">
-                <span class="item-title">{{ book.title }}</span>
-                @if (book.author) {
-                  <span class="item-author">{{ book.author }}</span>
-                }
-                @if (book.isbn) {
-                  <span class="item-isbn">ISBN: {{ book.isbn }}</span>
-                }
+                <span class="item-isbn">ISBN: {{ book.isbn }}</span>
               </div>
               <div class="item-quantity">x{{ book.quantity }}</div>
               <button class="btn-remove" (click)="removeBook(i)">✕</button>
@@ -164,7 +139,140 @@
       </section>
     }
 
-    <!-- Resultados -->
+    <!-- Resultados da Busca por ISBN -->
+    @if (searchResult) {
+      <section class="search-results-panel">
+        <div class="results-header">
+          <h2>Resultados da Busca</h2>
+          <span class="search-info">ISBN: {{ searchResult.searchedIsbn }}</span>
+        </div>
+
+        <!-- Melhor Resultado -->
+        @if (searchResult.bestResult) {
+          <div class="best-result">
+            <div class="best-result-header">
+              <span class="best-badge">MELHOR PREÇO</span>
+            </div>
+            <div class="best-result-content">
+              <div class="best-result-info">
+                <h3 class="book-title">{{ searchResult.bestResult.title || 'Título não disponível' }}</h3>
+                @if (searchResult.bestResult.author) {
+                  <p class="book-author">{{ searchResult.bestResult.author }}</p>
+                }
+                <p class="provider-name">{{ searchResult.bestResult.providerName }}</p>
+              </div>
+              <div class="best-result-price">
+                <span class="price">R$ {{ searchResult.bestResult.price?.toFixed(2) }}</span>
+                @if (searchResult.bestResult.discount) {
+                  <span class="discount-badge">-{{ searchResult.bestResult.discount }}%</span>
+                }
+              </div>
+              @if (searchResult.bestResult.productUrl) {
+                <a
+                  [href]="searchResult.bestResult.productUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="btn btn-primary visit-btn"
+                >
+                  Ir para o site
+                </a>
+              }
+            </div>
+          </div>
+        } @else {
+          <div class="no-results">
+            <p>Nenhum resultado encontrado para este ISBN.</p>
+          </div>
+        }
+
+        <!-- Resumo -->
+        <div class="search-summary">
+          <span class="summary-item">
+            <strong>{{ searchResult.totalProviders }}</strong> sites consultados
+          </span>
+          <span class="summary-item success">
+            <strong>{{ searchResult.successCount }}</strong> com sucesso
+          </span>
+          <span class="summary-item error">
+            <strong>{{ searchResult.errorCount }}</strong> com erro
+          </span>
+          <span class="summary-item">
+            <strong>{{ searchResult.totalCredits }}</strong> créditos
+          </span>
+          <span class="summary-item">
+            <strong>{{ searchResult.executionTimeMs }}ms</strong>
+          </span>
+        </div>
+
+        <!-- Tabela de Todas as Consultas -->
+        <div class="queries-table-container">
+          <h3>Todas as Consultas</h3>
+          <table class="queries-table">
+            <thead>
+              <tr>
+                <th>Site</th>
+                <th>Título</th>
+                <th>Preço</th>
+                <th>Link</th>
+                <th>Tempo</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (query of searchResult.allResults; track query.providerId) {
+                <tr [class.error-row]="!query.success">
+                  <td class="provider-cell">{{ query.providerName }}</td>
+                  <td class="title-cell">
+                    @if (query.title) {
+                      {{ query.title }}
+                    } @else {
+                      <span class="no-data">-</span>
+                    }
+                  </td>
+                  <td class="price-cell">
+                    @if (query.price) {
+                      R$ {{ query.price.toFixed(2) }}
+                      @if (query.discount) {
+                        <span class="discount-tag">-{{ query.discount }}%</span>
+                      }
+                    } @else {
+                      <span class="no-data">-</span>
+                    }
+                  </td>
+                  <td class="link-cell">
+                    @if (query.productUrl) {
+                      <a
+                        [href]="query.productUrl"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="product-link"
+                        title="Abrir produto"
+                      >
+                        Abrir
+                      </a>
+                    } @else {
+                      <span class="no-data">-</span>
+                    }
+                  </td>
+                  <td class="time-cell">{{ query.responseTimeMs }}ms</td>
+                  <td class="status-cell">
+                    @if (query.success) {
+                      <span class="status-success">OK</span>
+                    } @else {
+                      <span class="status-error" [title]="query.errorMessage || ''">
+                        {{ query.errorType || 'Erro' }}
+                      </span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+
+    <!-- Resultados da Otimização -->
     @if (result) {
       <section class="results-panel">
         <div class="results-header">

@@ -6,19 +6,9 @@ namespace Sherlock.Business.DTOs;
 public class SingleBookSearchRequest
 {
     /// <summary>
-    /// Título do livro (obrigatório)
+    /// ISBN do livro (obrigatório)
     /// </summary>
-    public string Title { get; set; } = string.Empty;
-
-    /// <summary>
-    /// ISBN do livro (opcional)
-    /// </summary>
-    public string? Isbn { get; set; }
-
-    /// <summary>
-    /// Autor do livro (opcional)
-    /// </summary>
-    public string? Author { get; set; }
+    public string Isbn { get; set; } = string.Empty;
 
     /// <summary>
     /// URLs dos providers específicos para buscar (null = todos ativos)

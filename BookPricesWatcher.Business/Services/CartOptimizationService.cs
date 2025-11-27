@@ -67,8 +67,9 @@ public class CartOptimizationService : ICartOptimizationService
                 {
                     allPrices.Add(new BookPriceOption
                     {
-                        BookTitle = book.Title,
+                        BookTitle = priceResult.Title ?? book.Isbn,
                         Isbn = book.Isbn,
+                        Author = priceResult.Author,
                         ProviderId = GetProviderId(priceResult.Website),
                         ProviderName = priceResult.Website,
                         Price = priceResult.Price,
@@ -85,15 +86,16 @@ public class CartOptimizationService : ICartOptimizationService
                 result.BookPriceResult.Price > 0)
             {
                 var existing = allPrices.FirstOrDefault(p =>
-                    p.BookTitle.Equals(book.Title, StringComparison.OrdinalIgnoreCase) &&
+                    p.Isbn == book.Isbn &&
                     p.ProviderName == result.BookPriceResult.Website);
 
                 if (existing == null)
                 {
                     allPrices.Add(new BookPriceOption
                     {
-                        BookTitle = book.Title,
+                        BookTitle = result.BookPriceResult.Title ?? book.Isbn,
                         Isbn = book.Isbn,
+                        Author = result.BookPriceResult.Author,
                         ProviderId = GetProviderId(result.BookPriceResult.Website),
                         ProviderName = result.BookPriceResult.Website,
                         Price = result.BookPriceResult.Price,
@@ -136,9 +138,7 @@ public class CartOptimizationService : ICartOptimizationService
         {
             SearchParameters = new SearchParameter
             {
-                BookTitle = book.Title,
-                Isbn = book.Isbn,
-                AuthorName = book.Author
+                Isbn = book.Isbn
             },
             SourcesToSearch = sources
         };

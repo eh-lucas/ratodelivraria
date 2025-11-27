@@ -1,11 +1,19 @@
 ﻿using Sherlock.Domain.Entities;
 
 namespace Sherlock.Business.Core.Scrapers;
+
+/// <summary>
+/// Parâmetros de busca - apenas ISBN é usado como termo de consulta
+/// </summary>
 public class SearchParameter
 {
-    public string BookTitle { get; set; } = string.Empty;
-    public string? AuthorName { get; set; }
-    public string? Isbn { get; set; }
-    public bool IsExactSearch { get; set; } = true;
+    /// <summary>
+    /// ISBN do livro (parâmetro obrigatório de busca)
+    /// </summary>
+    public string Isbn { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Provider onde será feita a busca
+    /// </summary>
     public Provider? Source { get; set; }
 }

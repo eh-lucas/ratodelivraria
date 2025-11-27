@@ -36,9 +36,14 @@ public class CartOptimizationRequest
 /// </summary>
 public class CartBookItem
 {
-    public string Title { get; set; } = string.Empty;
-    public string? Isbn { get; set; }
-    public string? Author { get; set; }
+    /// <summary>
+    /// ISBN do livro (obrigatório para busca)
+    /// </summary>
+    public string Isbn { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Quantidade desejada
+    /// </summary>
     public int Quantity { get; set; } = 1;
 }
 

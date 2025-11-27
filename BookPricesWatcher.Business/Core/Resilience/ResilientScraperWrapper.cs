@@ -41,14 +41,14 @@ public class ResilientScraperWrapper
         var stopwatch = Stopwatch.StartNew();
 
         // Tenta buscar do cache primeiro
-        var cacheKey = _cacheService.GenerateBookProviderKey(parameters.BookTitle, provider.Id);
+        var cacheKey = _cacheService.GenerateBookProviderKey(parameters.Isbn, provider.Id);
         var cachedResult = await _cacheService.GetAsync<QueryResult>(cacheKey);
 
         if (cachedResult != null)
         {
             _logger.LogInformation(
-                "Resultado em cache para {BookTitle} no provider {ProviderId}",
-                parameters.BookTitle, provider.Id);
+                "Resultado em cache para ISBN {Isbn} no provider {ProviderId}",
+                parameters.Isbn, provider.Id);
             return cachedResult;
         }
 
@@ -70,8 +70,8 @@ public class ResilientScraperWrapper
                 await _cacheService.SetAsync(cacheKey, result, CacheDuration);
 
                 _logger.LogDebug(
-                    "Resultado cacheado para {BookTitle} no provider {ProviderId} por {Duration}",
-                    parameters.BookTitle, provider.Id, CacheDuration);
+                    "Resultado cacheado para ISBN {Isbn} no provider {ProviderId} por {Duration}",
+                    parameters.Isbn, provider.Id, CacheDuration);
             }
 
             return result;
@@ -81,8 +81,8 @@ public class ResilientScraperWrapper
             stopwatch.Stop();
 
             _logger.LogError(ex,
-                "Falha ao executar scraper {ScraperName} para {BookTitle}",
-                scraperName, parameters.BookTitle);
+                "Falha ao executar scraper {ScraperName} para ISBN {Isbn}",
+                scraperName, parameters.Isbn);
 
             return QueryResult.CreateFailure(
                 provider,

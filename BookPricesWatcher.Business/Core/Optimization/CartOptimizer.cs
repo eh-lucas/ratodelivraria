@@ -54,22 +54,23 @@ public class CartOptimizer
         List<BookPriceOption> allPrices,
         CartOptimizationRequest request)
     {
-        var bookTitles = request.Books.Select(b => b.Title.ToLowerInvariant()).ToList();
+        var bookIsbns = request.Books.Select(b => b.Isbn.ToLowerInvariant()).ToList();
         var quantities = request.Books.ToDictionary(
-            b => b.Title.ToLowerInvariant(),
+            b => b.Isbn.ToLowerInvariant(),
             b => b.Quantity);
 
-        // Agrupa preços por livro
-        var pricesByBook = allPrices
-            .GroupBy(p => p.BookTitle.ToLowerInvariant())
+        // Agrupa preços por ISBN
+        var pricesByIsbn = allPrices
+            .Where(p => !string.IsNullOrEmpty(p.Isbn))
+            .GroupBy(p => p.Isbn!.ToLowerInvariant())
             .ToDictionary(g => g.Key, g => g.ToList());
 
         // Identifica livros não encontrados
-        var booksNotFound = bookTitles
-            .Where(b => !pricesByBook.ContainsKey(b) || !pricesByBook[b].Any())
+        var booksNotFound = bookIsbns
+            .Where(b => !pricesByIsbn.ContainsKey(b) || !pricesByIsbn[b].Any())
             .ToList();
 
-        var booksFound = bookTitles.Except(booksNotFound).ToList();
+        var booksFound = bookIsbns.Except(booksNotFound).ToList();
 
         if (!booksFound.Any())
         {
@@ -81,11 +82,11 @@ public class CartOptimizer
             };
         }
 
-        // Para cada livro, encontra o melhor preço em cada provider
+        // Para cada livro (ISBN), encontra o melhor preço em cada provider
         var bestPricePerBookPerProvider = new Dictionary<string, Dictionary<int, BookPriceOption>>();
-        foreach (var book in booksFound)
+        foreach (var isbn in booksFound)
         {
-            bestPricePerBookPerProvider[book] = pricesByBook[book]
+            bestPricePerBookPerProvider[isbn] = pricesByIsbn[isbn]
                 .GroupBy(p => p.ProviderId)
                 .ToDictionary(
                     g => g.Key,
@@ -167,13 +168,14 @@ public class CartOptimizer
         CartOptimizationRequest request)
     {
         // Primeiro tenta com frete grátis
-        var bookTitles = request.Books.Select(b => b.Title.ToLowerInvariant()).ToList();
+        var bookIsbns = request.Books.Select(b => b.Isbn.ToLowerInvariant()).ToList();
         var quantities = request.Books.ToDictionary(
-            b => b.Title.ToLowerInvariant(),
+            b => b.Isbn.ToLowerInvariant(),
             b => b.Quantity);
 
-        var pricesByBook = allPrices
-            .GroupBy(p => p.BookTitle.ToLowerInvariant())
+        var pricesByIsbn = allPrices
+            .Where(p => !string.IsNullOrEmpty(p.Isbn))
+            .GroupBy(p => p.Isbn!.ToLowerInvariant())
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var allProviders = allPrices.Select(p => p.ProviderId).Distinct().ToList();
@@ -185,22 +187,22 @@ public class CartOptimizer
             decimal total = 0;
             bool hasAllBooks = true;
 
-            foreach (var book in bookTitles)
+            foreach (var isbn in bookIsbns)
             {
-                if (!pricesByBook.ContainsKey(book))
+                if (!pricesByIsbn.ContainsKey(isbn))
                 {
                     hasAllBooks = false;
                     break;
                 }
 
-                var price = pricesByBook[book].FirstOrDefault(p => p.ProviderId == providerId);
+                var price = pricesByIsbn[isbn].FirstOrDefault(p => p.ProviderId == providerId);
                 if (price == null)
                 {
                     hasAllBooks = false;
                     break;
                 }
 
-                total += price.Price * quantities[book];
+                total += price.Price * quantities[isbn];
             }
 
             if (hasAllBooks)

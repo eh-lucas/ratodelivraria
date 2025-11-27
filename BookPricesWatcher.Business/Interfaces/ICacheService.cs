@@ -10,5 +10,5 @@ public interface ICacheService
     /// <summary>
     /// Gera chave de cache para provider específico
     /// </summary>
-    string GenerateBookProviderKey(string bookTitle, int providerId);
+    string GenerateBookProviderKey(string isbn, int providerId);
 }

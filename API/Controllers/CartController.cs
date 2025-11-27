@@ -51,9 +51,9 @@ public class CartController : ControllerBase
         // Valida cada livro
         foreach (var book in request.Books)
         {
-            if (string.IsNullOrWhiteSpace(book.Title))
+            if (string.IsNullOrWhiteSpace(book.Isbn))
             {
-                return BadRequest(new { error = "Todos os livros devem ter um título." });
+                return BadRequest(new { error = "Todos os livros devem ter um ISBN." });
             }
 
             if (book.Quantity <= 0)
@@ -63,7 +63,7 @@ public class CartController : ControllerBase
 
             if (book.Quantity > AppConstants.Cart.MaxQuantityPerBook)
             {
-                return BadRequest(new { error = $"Quantidade máxima de {AppConstants.Cart.MaxQuantityPerBook} unidades por livro. Livro: {book.Title}" });
+                return BadRequest(new { error = $"Quantidade máxima de {AppConstants.Cart.MaxQuantityPerBook} unidades por livro. ISBN: {book.Isbn}" });
             }
         }
 
@@ -103,15 +103,13 @@ public class CartController : ControllerBase
     [ProducesResponseType(typeof(CartOptimizationResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> SearchBook(
-        [FromQuery] string title,
-        [FromQuery] string? isbn = null,
-        [FromQuery] string? author = null,
+        [FromQuery] string isbn,
         [FromQuery] string? providerUrls = null,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(title))
+        if (string.IsNullOrWhiteSpace(isbn))
         {
-            return BadRequest(new { error = "O título do livro é obrigatório." });
+            return BadRequest(new { error = "O ISBN do livro é obrigatório." });
         }
 
         // Parse provider URLs se fornecido
@@ -130,9 +128,7 @@ public class CartController : ControllerBase
             {
                 new CartBookItem
                 {
-                    Title = title,
                     Isbn = isbn,
-                    Author = author,
                     Quantity = 1
                 }
             },
@@ -150,7 +146,7 @@ public class CartController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao buscar livro '{Title}'", title);
+            _logger.LogError(ex, "Erro ao buscar livro com ISBN '{Isbn}'", isbn);
             return StatusCode(StatusCodes.Status500InternalServerError, new
             {
                 error = "Ocorreu um erro ao buscar o livro. Tente novamente."
@@ -183,9 +179,9 @@ public class CartController : ControllerBase
 
         foreach (var book in request.Books)
         {
-            if (string.IsNullOrWhiteSpace(book.Title))
+            if (string.IsNullOrWhiteSpace(book.Isbn))
             {
-                return BadRequest(new { error = "Todos os livros devem ter um título." });
+                return BadRequest(new { error = "Todos os livros devem ter um ISBN." });
             }
             if (book.Quantity <= 0) book.Quantity = 1;
         }

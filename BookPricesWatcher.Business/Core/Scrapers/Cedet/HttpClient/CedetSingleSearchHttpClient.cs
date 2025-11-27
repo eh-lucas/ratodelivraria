@@ -1,14 +1,14 @@
 using HtmlAgilityPack;
-using Sherlock.Domain.Entities;
-using System.Globalization;
-using System.Diagnostics;
-using System.Text.RegularExpressions;
-using Sherlock.Domain.Enums;
-using Sherlock.Business.Interfaces;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Polly;
 using Polly.Retry;
+using Sherlock.Business.Interfaces;
+using Sherlock.Domain.Entities;
+using Sherlock.Domain.Enums;
+using System.Diagnostics;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace Sherlock.Business.Core.Scrapers.Cedet.HttpClient;
 
@@ -26,14 +26,10 @@ public class CedetSingleSearchHttpClient : IScraper
         var handler = new SocketsHttpHandler
         {
             AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
-            // Permite mais conexões simultâneas
             MaxConnectionsPerServer = 100,
-            // Conexões podem ser reutilizadas
             PooledConnectionLifetime = TimeSpan.FromMinutes(5),
             PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-            // Timeout para estabelecer conexão
             ConnectTimeout = TimeSpan.FromSeconds(10),
-            // Segue redirects automaticamente (301, 302, 307, 308)
             AllowAutoRedirect = true,
             MaxAutomaticRedirections = 5
         };
@@ -43,7 +39,6 @@ public class CedetSingleSearchHttpClient : IScraper
             Timeout = RequestTimeout
         };
 
-        // Retry policy com Polly: 2 retries com exponential backoff
         _retryPolicy = Policy
             .HandleResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode && (int)r.StatusCode >= 500)
             .Or<HttpRequestException>()
@@ -51,15 +46,9 @@ public class CedetSingleSearchHttpClient : IScraper
             .WaitAndRetryAsync(
                 retryCount: 2,
                 sleepDurationProvider: retryAttempt => TimeSpan.FromMilliseconds(200 * Math.Pow(2, retryAttempt)),
-                onRetry: (outcome, timespan, retryCount, context) =>
-                {
-                    // Log será feito no método principal
-                });
+                onRetry: (outcome, timespan, retryCount, context) => { });
     }
 
-    /// <summary>
-    /// Cria um HttpRequestMessage com headers apropriados (thread-safe)
-    /// </summary>
     private static HttpRequestMessage CreateRequest(string url)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -90,62 +79,42 @@ public class CedetSingleSearchHttpClient : IScraper
 
         try
         {
-            // Aceita busca por título OU ISBN
-            if (string.IsNullOrEmpty(parameters.BookTitle) && string.IsNullOrEmpty(parameters.Isbn))
+            // ISBN é obrigatório
+            if (string.IsNullOrEmpty(parameters.Isbn))
             {
-                _logger.LogDebug("[{Provider}] Título e ISBN vazios, ignorando busca", provider.Name);
+                _logger.LogDebug("[{Provider}] ISBN vazio, ignorando busca", provider.Name);
                 return QueryResult.CreateNoResult(provider, stopwatch.ElapsedMilliseconds);
             }
 
-            var searchTerm = SetSearchingParameter(parameters);
-            // Normaliza a URL removendo www. para evitar redirects
+            var searchTerm = Uri.EscapeDataString(parameters.Isbn);
             var baseUrl = NormalizeUrl(provider.Url);
-            // Usa o template de URL do provider (permite WooCommerce, OpenCart, etc)
             var searchPath = provider.SearchUrlTemplate.Replace("{search}", searchTerm);
-            var url = $"{baseUrl.TrimEnd('/')}/{searchPath.TrimStart('/')}";
+            var searchUrl = $"{baseUrl.TrimEnd('/')}/{searchPath.TrimStart('/')}";
 
-            _logger.LogDebug("[{Provider}] Iniciando busca: {Url}", provider.Name, url);
+            _logger.LogDebug("[{Provider}] Iniciando busca: {Url}", provider.Name, searchUrl);
 
-            HttpResponseMessage response;
-            try
-            {
-                response = await _retryPolicy.ExecuteAsync(async () =>
-                {
-                    using var request = CreateRequest(url);
-                    _logger.LogDebug("[{Provider}] Enviando requisição para {Url}", provider.Name, url);
-                    return await _httpClient.SendAsync(request);
-                });
-            }
-            catch (Exception ex)
+            // ******************************
+            // ETAPA 1: Busca pelo ISBN na página de busca
+            // ******************************
+            var searchResponse = await SendAsync(searchUrl, provider, stopwatch);
+
+            if (!searchResponse.IsSuccessStatusCode)
             {
                 stopwatch.Stop();
-                _logger.LogWarning(ex, "[{Provider}] Exceção durante requisição HTTP após {ElapsedMs}ms: {Message}",
-                    provider.Name, stopwatch.ElapsedMilliseconds, ex.Message);
-                throw;
-            }
-
-            stopwatch.Stop();
-
-            if (!response.IsSuccessStatusCode)
-            {
-                // Log detalhado para diagnóstico de redirects
-                var locationHeader = response.Headers.Location?.ToString() ?? "N/A";
-                var finalUrl = response.RequestMessage?.RequestUri?.ToString() ?? "N/A";
-                _logger.LogWarning("[{Provider}] HTTP {StatusCode} em {ElapsedMs}ms - Location: {Location} - FinalUrl: {FinalUrl} - OriginalUrl: {OriginalUrl}",
-                    provider.Name, (int)response.StatusCode, stopwatch.ElapsedMilliseconds, locationHeader, finalUrl, url);
+                var locationHeader = searchResponse.Headers.Location?.ToString() ?? "N/A";
+                _logger.LogWarning("[{Provider}] HTTP {StatusCode} em {ElapsedMs}ms - Location: {Location}",
+                    provider.Name, (int)searchResponse.StatusCode, stopwatch.ElapsedMilliseconds, locationHeader);
 
                 return QueryResult.CreateFailure(
                     provider,
                     QueryErrorType.HttpError,
-                    $"HTTP {(int)response.StatusCode}",
+                    $"HTTP {(int)searchResponse.StatusCode}",
                     stopwatch.ElapsedMilliseconds,
-                    (int)response.StatusCode);
+                    (int)searchResponse.StatusCode);
             }
 
-            var html = await response.Content.ReadAsStringAsync();
-
-            _logger.LogDebug("[{Provider}] Resposta recebida em {ElapsedMs}ms ({Size} bytes)",
-                provider.Name, stopwatch.ElapsedMilliseconds, html.Length);
+            var html = await searchResponse.Content.ReadAsStringAsync();
+            _logger.LogDebug("[{Provider}] Resposta da busca recebida ({Size} bytes)", provider.Name, html.Length);
 
             var doc = new HtmlDocument();
             doc.LoadHtml(html);
@@ -153,101 +122,210 @@ public class CedetSingleSearchHttpClient : IScraper
             var products = ExtractProducts(doc);
             if (products == null || products.Count == 0)
             {
-                _logger.LogDebug("[{Provider}] Nenhum produto encontrado", provider.Name);
+                stopwatch.Stop();
+                _logger.LogDebug("[{Provider}] Nenhum produto encontrado na busca", provider.Name);
                 return QueryResult.CreateNoResult(provider, stopwatch.ElapsedMilliseconds);
             }
 
             var possibleBooks = ParseProducts(products, provider);
-
-            _logger.LogDebug("[{Provider}] {Count} produtos parseados", provider.Name, possibleBooks.Count);
-
-            // Quando busca por ISBN (sem título), retorna o primeiro resultado com preço válido
-            // Quando busca por título, usa a lógica de comparação normal
-            var searchTerm2 = !string.IsNullOrEmpty(parameters.BookTitle) ? parameters.BookTitle : string.Empty;
-            var useExactSearch = !string.IsNullOrEmpty(parameters.BookTitle) && parameters.IsExactSearch;
-            var bestBook = ChooseBestBookOption(possibleBooks, searchTerm2, useExactSearch);
-
-            if (bestBook != null && !string.IsNullOrEmpty(bestBook.Title) && bestBook.Price > 0)
+            if (!possibleBooks.Any())
             {
-                _logger.LogInformation("[{Provider}] Encontrado: \"{Title}\" - R${Price:F2} em {ElapsedMs}ms",
-                    provider.Name, bestBook.Title, bestBook.Price, stopwatch.ElapsedMilliseconds);
-
-                return QueryResult.CreateSuccess(
-                    provider,
-                    bestBook.Title,
-                    bestBook.Author,
-                    bestBook.Price,
-                    bestBook.Discount,
-                    stopwatch.ElapsedMilliseconds,
-                    bestBook.ProductUrl);
+                stopwatch.Stop();
+                _logger.LogDebug("[{Provider}] Nenhum produto parseado com sucesso", provider.Name);
+                return QueryResult.CreateNoResult(provider, stopwatch.ElapsedMilliseconds);
             }
 
+            _logger.LogDebug("[{Provider}] {Count} produtos encontrados, validando ISBN...", provider.Name, possibleBooks.Count);
+
+            // ******************************
+            // ETAPA 2: Acessa página de cada produto para validar ISBN
+            // ******************************
+            foreach (var possibleBook in possibleBooks)
+            {
+                try
+                {
+                    // Monta URL absoluta se necessário
+                    var productUrl = possibleBook.ProductUrl;
+                    if (string.IsNullOrEmpty(productUrl))
+                        continue;
+
+                    if (!productUrl.StartsWith("http"))
+                    {
+                        productUrl = $"{baseUrl.TrimEnd('/')}/{productUrl.TrimStart('/')}";
+                    }
+
+                    _logger.LogDebug("[{Provider}] Acessando página do produto: {Url}", provider.Name, productUrl);
+
+                    var productResponse = await SendAsync(productUrl, provider, stopwatch);
+                    if (!productResponse.IsSuccessStatusCode)
+                    {
+                        _logger.LogDebug("[{Provider}] Falha ao acessar produto (HTTP {StatusCode})",
+                            provider.Name, (int)productResponse.StatusCode);
+                        continue;
+                    }
+
+                    var productHtml = await productResponse.Content.ReadAsStringAsync();
+                    var productDoc = new HtmlDocument();
+                    productDoc.LoadHtml(productHtml);
+
+                    // Extrai ISBN da página do produto
+                    var extractedIsbn = ExtractProductIsbn(productDoc);
+
+                    if (!string.IsNullOrEmpty(extractedIsbn))
+                    {
+                        // Compara ISBN extraído com o buscado
+                        if (IsbnMatches(extractedIsbn, parameters.Isbn))
+                        {
+                            stopwatch.Stop();
+                            _logger.LogInformation("[{Provider}] ISBN validado! \"{Title}\" - R${Price:F2} em {ElapsedMs}ms",
+                                provider.Name, possibleBook.Title, possibleBook.Price, stopwatch.ElapsedMilliseconds);
+
+                            return QueryResult.CreateSuccess(
+                                provider,
+                                possibleBook.Title,
+                                possibleBook.Author,
+                                possibleBook.Price,
+                                possibleBook.Discount,
+                                stopwatch.ElapsedMilliseconds,
+                                productUrl);
+                        }
+                        else
+                        {
+                            _logger.LogDebug("[{Provider}] ISBN não corresponde. Esperado: {Expected}, Encontrado: {Found}",
+                                provider.Name, parameters.Isbn, extractedIsbn);
+                        }
+                    }
+                    else
+                    {
+                        // Verifica se é um kit (não terá ISBN único)
+                        if (IsKitProduct(productDoc))
+                        {
+                            _logger.LogDebug("[{Provider}] Produto é um kit, ignorando: {Title}", provider.Name, possibleBook.Title);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("[{Provider}] ISBN não encontrado na página do produto: {Url}",
+                                provider.Name, productUrl);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug("[{Provider}] Erro ao validar produto: {Message}", provider.Name, ex.Message);
+                    continue;
+                }
+            }
+
+            // Nenhum produto com ISBN válido encontrado
+            stopwatch.Stop();
+            _logger.LogDebug("[{Provider}] Nenhum produto com ISBN correspondente em {ElapsedMs}ms",
+                provider.Name, stopwatch.ElapsedMilliseconds);
             return QueryResult.CreateNoResult(provider, stopwatch.ElapsedMilliseconds);
         }
         catch (TaskCanceledException)
         {
             stopwatch.Stop();
             _logger.LogWarning("[{Provider}] Timeout após {ElapsedMs}ms", provider.Name, stopwatch.ElapsedMilliseconds);
-
-            return QueryResult.CreateFailure(
-                provider,
-                QueryErrorType.Timeout,
-                "Request timeout",
-                stopwatch.ElapsedMilliseconds);
+            return QueryResult.CreateFailure(provider, QueryErrorType.Timeout, "Request timeout", stopwatch.ElapsedMilliseconds);
         }
         catch (HttpRequestException ex)
         {
             stopwatch.Stop();
-            _logger.LogWarning("[{Provider}] Erro de rede após {ElapsedMs}ms: {Message}",
-                provider.Name, stopwatch.ElapsedMilliseconds, ex.Message);
-
-            return QueryResult.CreateFailure(
-                provider,
-                QueryErrorType.Network,
-                ex.Message,
-                stopwatch.ElapsedMilliseconds);
+            _logger.LogWarning("[{Provider}] Erro de rede: {Message}", provider.Name, ex.Message);
+            return QueryResult.CreateFailure(provider, QueryErrorType.Network, ex.Message, stopwatch.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
-            _logger.LogError(ex, "[{Provider}] Erro inesperado após {ElapsedMs}ms",
-                provider.Name, stopwatch.ElapsedMilliseconds);
-
-            return QueryResult.CreateFailure(
-                provider,
-                QueryErrorType.Unknown,
-                ex.Message,
-                stopwatch.ElapsedMilliseconds);
+            _logger.LogError(ex, "[{Provider}] Erro inesperado", provider.Name);
+            return QueryResult.CreateFailure(provider, QueryErrorType.Unknown, ex.Message, stopwatch.ElapsedMilliseconds);
         }
     }
 
-    private string SetSearchingParameter(SearchParameter parameters)
+    /// <summary>
+    /// Extrai ISBN da página do produto usando Regex
+    /// </summary>
+    private string? ExtractProductIsbn(HtmlDocument doc)
     {
-        // Sempre usa o título do livro como termo de busca
-        if (!string.IsNullOrEmpty(parameters.Isbn))
-            return Uri.EscapeDataString(parameters.Isbn);
+        var bodyText = doc.DocumentNode.InnerText;
 
-        return Uri.EscapeDataString(parameters.BookTitle);
+        // Regex para ISBN (10 ou 13 dígitos, com ou sem hífen/espaço)
+        // Padrões: "ISBN: 9788584911516", "ISBN9788584911516", "ISBN 978-85-849-1151-6"
+        var isbnPattern = @"ISBN[:\s]*(\d{3}[-\s]?\d{1,5}[-\s]?\d{1,7}[-\s]?\d{1,6}[-\s]?\d{1}|\d{13}|\d{10})";
+        var match = Regex.Match(bodyText, isbnPattern, RegexOptions.IgnoreCase);
+
+        if (match.Success)
+        {
+            var isbn = match.Groups[1].Value;
+            return NormalizeIsbn(isbn);
+        }
+
+        return null;
     }
 
     /// <summary>
-    /// Normaliza a URL removendo www. para evitar redirects HTTPS->HTTP
-    /// que o HttpClient não segue por segurança
+    /// Verifica se o produto é um kit/combo (não terá ISBN único)
+    /// </summary>
+    private bool IsKitProduct(HtmlDocument doc)
+    {
+        var title = doc.DocumentNode.SelectSingleNode("//h1")?.InnerText?.ToLowerInvariant() ?? "";
+        var bodyText = doc.DocumentNode.InnerText.ToLowerInvariant();
+
+        return title.Contains("kit") ||
+               title.Contains("combo") ||
+               title.Contains("coleção") ||
+               bodyText.Contains("kit de livros") ||
+               bodyText.Contains("combo de livros");
+    }
+
+    /// <summary>
+    /// Normaliza ISBN removendo hífens e espaços
+    /// </summary>
+    private static string NormalizeIsbn(string isbn)
+    {
+        return Regex.Replace(isbn, @"[\s\-]", "");
+    }
+
+    /// <summary>
+    /// Compara dois ISBNs (normalizados)
+    /// </summary>
+    private static bool IsbnMatches(string? extracted, string searched)
+    {
+        if (string.IsNullOrEmpty(extracted))
+            return false;
+
+        var normalizedExtracted = NormalizeIsbn(extracted);
+        var normalizedSearched = NormalizeIsbn(searched);
+
+        return normalizedExtracted == normalizedSearched;
+    }
+
+    /// <summary>
+    /// Envia requisição HTTP com retry policy
+    /// </summary>
+    private async Task<HttpResponseMessage> SendAsync(string url, Provider provider, Stopwatch stopwatch)
+    {
+        return await _retryPolicy.ExecuteAsync(async () =>
+        {
+            using var request = CreateRequest(url);
+            _logger.LogDebug("[{Provider}] Enviando requisição para {Url}", provider.Name, url);
+            return await _httpClient.SendAsync(request);
+        });
+    }
+
+    /// <summary>
+    /// Normaliza a URL removendo www. para evitar redirects
     /// </summary>
     private static string NormalizeUrl(string url)
     {
         if (string.IsNullOrEmpty(url))
             return url;
 
-        // Remove www. do host
         var uri = new Uri(url);
         if (uri.Host.StartsWith("www.", StringComparison.OrdinalIgnoreCase))
         {
             var newHost = uri.Host.Substring(4);
-            var builder = new UriBuilder(uri)
-            {
-                Host = newHost
-            };
+            var builder = new UriBuilder(uri) { Host = newHost };
             return builder.Uri.ToString();
         }
 
@@ -255,18 +333,15 @@ public class CedetSingleSearchHttpClient : IScraper
     }
 
     /// <summary>
-    /// Extrai produtos usando múltiplos seletores CSS para maior robustez
+    /// Extrai produtos da página de busca
     /// </summary>
     private HtmlNodeCollection? ExtractProducts(HtmlDocument doc)
     {
-        // Tenta múltiplos seletores em ordem de preferência
         string[] selectors = new[]
         {
-            // Cedet - estrutura principal (item-product é a classe correta!)
             "//div[contains(@class, 'item-product')]",
             "//div[contains(@class, 'product-item')]",
             "//li[contains(@class, 'product')]//div[contains(@class, 'item-product')]",
-            // WooCommerce padrão
             "//ul[contains(@class, 'products')]//li[contains(@class, 'product')]",
             "//div[@class='product']",
             "//article[contains(@class, 'product')]"
@@ -277,17 +352,16 @@ public class CedetSingleSearchHttpClient : IScraper
             var products = doc.DocumentNode.SelectNodes(selector);
             if (products != null && products.Count > 0)
             {
-                _logger.LogDebug("Produtos encontrados com seletor: {Selector} ({Count} produtos)", selector, products.Count);
+                _logger.LogDebug("Produtos encontrados com seletor: {Selector} ({Count})", selector, products.Count);
                 return products;
             }
         }
 
-        _logger.LogDebug("Nenhum produto encontrado no HTML");
         return null;
     }
 
     /// <summary>
-    /// Parseia produtos usando seletores CSS robustos ao invés de índices fixos
+    /// Parseia lista de produtos
     /// </summary>
     private List<ParsedProduct> ParseProducts(HtmlNodeCollection products, Provider provider)
     {
@@ -313,20 +387,16 @@ public class CedetSingleSearchHttpClient : IScraper
     }
 
     /// <summary>
-    /// Parseia um único produto usando múltiplos seletores CSS
+    /// Parseia um único produto da listagem
     /// </summary>
     private ParsedProduct? ParseSingleProduct(HtmlNode product, Provider provider)
     {
-        // Extrai título - Cedet usa a.product-name ou div.name/a
         var title = ExtractText(product, new[]
         {
-            // Cedet - seletores corretos identificados no HTML
             ".//a[contains(@class, 'product-name')]",
             ".//div[contains(@class, 'name')]//a",
             ".//div[contains(@class, 'name')]",
-            // WooCommerce
             ".//h2[contains(@class, 'woocommerce-loop-product__title')]",
-            ".//a[contains(@class, 'woocommerce-LoopProduct-link')]//h2",
             ".//h2//a",
             ".//h3//a"
         });
@@ -334,37 +404,25 @@ public class CedetSingleSearchHttpClient : IScraper
         if (string.IsNullOrEmpty(title))
             return null;
 
-        // Extrai autor - Cedet usa p.author ou p.author/a
         var author = ExtractText(product, new[]
         {
-            // Cedet - seletores corretos identificados no HTML
             ".//p[contains(@class, 'author')]//a",
             ".//p[contains(@class, 'author')]",
-            ".//a[contains(@href, 'author')]",
-            ".//span[contains(@class, 'author')]",
-            ".//div[contains(@class, 'author')]"
+            ".//span[contains(@class, 'author')]"
         }) ?? "";
 
-        // Extrai preço atual - Cedet usa span.price-new
         var newPrice = ExtractPrice(product, new[]
         {
-            // Cedet - seletores corretos identificados no HTML
             ".//span[contains(@class, 'price-new')]",
             ".//span[contains(@class, 'sale-price')]",
-            ".//span[contains(@class, 'special')]",
-            // WooCommerce
-            ".//ins//span[contains(@class, 'woocommerce-Price-amount')]//bdi",
-            ".//ins//span[contains(@class, 'woocommerce-Price-amount')]",
-            ".//ins//bdi"
+            ".//ins//span[contains(@class, 'woocommerce-Price-amount')]//bdi"
         });
 
-        // Se não achou preço com desconto, tenta preço normal
         if (newPrice <= 0)
         {
             newPrice = ExtractPrice(product, new[]
             {
                 ".//span[contains(@class, 'woocommerce-Price-amount')]//bdi",
-                ".//span[contains(@class, 'woocommerce-Price-amount')]",
                 ".//span[contains(@class, 'price')]//bdi",
                 ".//bdi"
             });
@@ -373,34 +431,23 @@ public class CedetSingleSearchHttpClient : IScraper
         if (newPrice <= 0)
             return null;
 
-        // Extrai preço antigo - Cedet usa span.price-old
         var oldPrice = ExtractPrice(product, new[]
         {
-            // Cedet - seletores corretos identificados no HTML
             ".//span[contains(@class, 'price-old')]",
-            ".//span[contains(@class, 'price-of')]",
-            ".//span[contains(@class, 'original-price')]",
-            // WooCommerce
-            ".//del//span[contains(@class, 'woocommerce-Price-amount')]//bdi",
-            ".//del//span[contains(@class, 'woocommerce-Price-amount')]",
-            ".//del//bdi"
+            ".//del//span[contains(@class, 'woocommerce-Price-amount')]//bdi"
         });
 
-        // Calcula desconto
         int discount = 0;
         if (oldPrice > 0 && oldPrice > newPrice)
         {
             discount = (int)Math.Round(100 * (1 - (newPrice / oldPrice)));
         }
 
-        // Tenta extrair URL do produto
-        // Cedet: a.product-name ou a.link-card
         var productUrl = ExtractHref(product, new[]
         {
             ".//a[contains(@class, 'product-name')]",
             ".//a[contains(@class, 'link-card')]",
             ".//div[contains(@class, 'name')]//a",
-            ".//a[contains(@class, 'woocommerce-LoopProduct-link')]",
             ".//h2//a",
             ".//a"
         });
@@ -415,9 +462,6 @@ public class CedetSingleSearchHttpClient : IScraper
         };
     }
 
-    /// <summary>
-    /// Extrai texto usando múltiplos seletores XPath
-    /// </summary>
     private string? ExtractText(HtmlNode node, string[] selectors)
     {
         foreach (var selector in selectors)
@@ -427,17 +471,12 @@ public class CedetSingleSearchHttpClient : IScraper
             {
                 var text = element.InnerText?.Trim();
                 if (!string.IsNullOrWhiteSpace(text))
-                {
                     return System.Net.WebUtility.HtmlDecode(text);
-                }
             }
         }
         return null;
     }
 
-    /// <summary>
-    /// Extrai href usando múltiplos seletores XPath
-    /// </summary>
     private string? ExtractHref(HtmlNode node, string[] selectors)
     {
         foreach (var selector in selectors)
@@ -447,17 +486,12 @@ public class CedetSingleSearchHttpClient : IScraper
             {
                 var href = element.GetAttributeValue("href", null);
                 if (!string.IsNullOrWhiteSpace(href))
-                {
                     return href;
-                }
             }
         }
         return null;
     }
 
-    /// <summary>
-    /// Extrai preço usando múltiplos seletores XPath
-    /// </summary>
     private decimal ExtractPrice(HtmlNode node, string[] selectors)
     {
         foreach (var selector in selectors)
@@ -477,143 +511,44 @@ public class CedetSingleSearchHttpClient : IScraper
         return 0;
     }
 
-    /// <summary>
-    /// Parseia preço de string para decimal, tratando múltiplos formatos
-    /// </summary>
     private decimal ParsePrice(string priceText)
     {
         try
         {
-            // Remove caracteres não numéricos exceto vírgula e ponto
             priceText = priceText.Replace("R$", "").Replace("$", "").Trim();
-
-            // Remove espaços
             priceText = Regex.Replace(priceText, @"\s+", "");
 
-            // Detecta formato brasileiro (1.234,56) vs americano (1,234.56)
             bool hasBrazilianFormat = priceText.Contains(",") &&
                 (priceText.LastIndexOf(',') > priceText.LastIndexOf('.') || !priceText.Contains("."));
 
             if (hasBrazilianFormat)
             {
-                // Remove pontos de milhar e troca vírgula por ponto
                 priceText = priceText.Replace(".", "").Replace(",", ".");
             }
             else
             {
-                // Remove vírgulas de milhar
                 priceText = priceText.Replace(",", "");
             }
 
-            // Remove qualquer caractere restante que não seja número ou ponto
             priceText = Regex.Replace(priceText, @"[^\d.]", "");
 
             if (decimal.TryParse(priceText, NumberStyles.Any, CultureInfo.InvariantCulture, out var price))
-            {
                 return price;
-            }
         }
-        catch
-        {
-            // Ignora erros de parsing
-        }
+        catch { }
 
         return 0;
     }
 
-    /// <summary>
-    /// Limpa texto removendo espaços extras e caracteres especiais
-    /// </summary>
     private string CleanText(string? text)
     {
         if (string.IsNullOrWhiteSpace(text))
             return "";
 
-        // Remove espaços múltiplos
         text = Regex.Replace(text, @"\s+", " ");
-
         return text.Trim();
     }
 
-    /// <summary>
-    /// Escolhe o melhor livro baseado no título buscado
-    /// </summary>
-    private static ParsedProduct? ChooseBestBookOption(List<ParsedProduct> possibleBooks, string bookTitle, bool isExactSearch)
-    {
-        if (possibleBooks.Count == 0)
-            return null;
-
-        var normalizedSearch = NormalizeForComparison(bookTitle);
-
-        if (isExactSearch)
-        {
-            var exactMatch = possibleBooks.FirstOrDefault(b =>
-                NormalizeForComparison(b.Title) == normalizedSearch);
-
-            return exactMatch;
-        }
-
-        // Primeiro tenta match exato
-        var exact = possibleBooks.FirstOrDefault(b =>
-            NormalizeForComparison(b.Title) == normalizedSearch);
-
-        if (exact != null)
-            return exact;
-
-        // Depois tenta match que contém o termo buscado
-        var contains = possibleBooks
-            .Where(b => NormalizeForComparison(b.Title).Contains(normalizedSearch) ||
-                       normalizedSearch.Contains(NormalizeForComparison(b.Title)))
-            .OrderBy(b => b.Price)
-            .FirstOrDefault();
-
-        if (contains != null)
-            return contains;
-
-        // Por último, retorna o de menor preço
-        return possibleBooks
-            .Where(b => b.Price > 0)
-            .OrderBy(b => b.Price)
-            .FirstOrDefault();
-    }
-
-    /// <summary>
-    /// Normaliza texto para comparação (remove acentos, lowercase, etc)
-    /// </summary>
-    private static string NormalizeForComparison(string? text)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-            return "";
-
-        text = text.ToLowerInvariant().Trim();
-
-        // Remove acentos
-        var normalizedString = text.Normalize(System.Text.NormalizationForm.FormD);
-        var stringBuilder = new System.Text.StringBuilder();
-
-        foreach (var c in normalizedString)
-        {
-            var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
-            if (unicodeCategory != UnicodeCategory.NonSpacingMark)
-            {
-                stringBuilder.Append(c);
-            }
-        }
-
-        text = stringBuilder.ToString().Normalize(System.Text.NormalizationForm.FormC);
-
-        // Remove caracteres especiais
-        text = Regex.Replace(text, @"[^\w\s]", " ");
-
-        // Remove espaços múltiplos
-        text = Regex.Replace(text, @"\s+", " ");
-
-        return text.Trim();
-    }
-
-    /// <summary>
-    /// Classe interna para armazenar dados parseados antes de criar QueryResult
-    /// </summary>
     private class ParsedProduct
     {
         public string Title { get; set; } = string.Empty;

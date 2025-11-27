@@ -87,10 +87,10 @@ public class CacheService : ICacheService
         }
     }
 
-    public string GenerateBookProviderKey(string bookTitle, int providerId)
+    public string GenerateBookProviderKey(string isbn, int providerId)
     {
-        var normalizedTitle = NormalizeString(bookTitle);
-        return $"book:price:{GenerateHash(normalizedTitle)}:provider:{providerId}";
+        var normalizedIsbn = NormalizeString(isbn);
+        return $"book:price:{GenerateHash(normalizedIsbn)}:provider:{providerId}";
     }
 
     private static string NormalizeString(string input)

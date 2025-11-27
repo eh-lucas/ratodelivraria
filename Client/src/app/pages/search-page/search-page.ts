@@ -8,7 +8,9 @@ import {
   CartOptimizationResult,
   OptimizationStrategy,
   StrategyOption,
-  ProviderOption
+  ProviderOption,
+  BookSearchResponse,
+  QueryResultItem
 } from '../../services/cart-service';
 import { AuthService } from '../../services/auth-service';
 
@@ -25,9 +27,7 @@ export class SearchPage implements OnInit {
 
   // Formulário de novo livro
   newBook: CartBookItem = {
-    title: '',
     isbn: '',
-    author: '',
     quantity: 1
   };
 
@@ -43,6 +43,7 @@ export class SearchPage implements OnInit {
 
   // Resultado
   result: CartOptimizationResult | null = null;
+  searchResult: BookSearchResponse | null = null;
 
   // Estado
   isLoading: boolean = false;
@@ -111,23 +112,21 @@ export class SearchPage implements OnInit {
   }
 
   addBook(): void {
-    if (!this.newBook.title.trim()) {
-      this.errorMessage = 'Digite o título do livro';
+    const isbn = this.newBook.isbn?.trim();
+
+    if (!isbn) {
+      this.errorMessage = 'Digite o ISBN do livro';
       return;
     }
 
     this.books.push({
-      title: this.newBook.title.trim(),
-      isbn: this.newBook.isbn?.trim() || undefined,
-      author: this.newBook.author?.trim() || undefined,
+      isbn: isbn,
       quantity: this.newBook.quantity || 1
     });
 
     // Limpa formulário
     this.newBook = {
-      title: '',
       isbn: '',
-      author: '',
       quantity: 1
     };
     this.errorMessage = '';
@@ -140,6 +139,7 @@ export class SearchPage implements OnInit {
   clearCart(): void {
     this.books = [];
     this.result = null;
+    this.searchResult = null;
     this.errorMessage = '';
   }
 
@@ -174,8 +174,10 @@ export class SearchPage implements OnInit {
   }
 
   quickSearch(): void {
-    if (!this.newBook.title.trim()) {
-      this.errorMessage = 'Digite o título do livro para buscar';
+    const isbn = this.newBook.isbn?.trim();
+
+    if (!isbn) {
+      this.errorMessage = 'Digite o ISBN do livro para buscar';
       return;
     }
 
@@ -186,15 +188,12 @@ export class SearchPage implements OnInit {
 
     this.isLoading = true;
     this.errorMessage = '';
+    this.searchResult = null;
+    this.result = null;
 
-    this.cartService.searchBook(
-      this.newBook.title.trim(),
-      this.newBook.isbn?.trim(),
-      this.newBook.author?.trim(),
-      this.selectedProviderUrls
-    ).subscribe({
+    this.cartService.searchBookByIsbn(isbn, this.selectedProviderUrls).subscribe({
       next: (result) => {
-        this.result = result;
+        this.searchResult = result;
         this.isLoading = false;
       },
       error: (err) => {

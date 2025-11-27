@@ -42,34 +42,27 @@ public class BookSearchController : ControllerBase
     /// <summary>
     /// Busca preços de um livro em todos os providers ou providers específicos
     /// </summary>
-    /// <param name="title">Título do livro (obrigatório se ISBN não informado)</param>
-    /// <param name="isbn">ISBN do livro (obrigatório se título não informado)</param>
-    /// <param name="author">Autor do livro (opcional)</param>
+    /// <param name="isbn">ISBN do livro (obrigatório)</param>
     /// <param name="providerUrls">URLs dos providers separadas por vírgula (opcional)</param>
     /// <returns>Resultado da busca com preços de todos os providers</returns>
     [HttpGet]
-    [ProducesResponseType(typeof(SearchResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BookSearchResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> BookSearch(
-        [FromQuery] string? title,
-        [FromQuery] string? isbn,
-        [FromQuery] string? author,
+        [FromQuery] string isbn,
         [FromQuery] string? providerUrls)
     {
-        if (string.IsNullOrEmpty(title) && string.IsNullOrEmpty(isbn))
+        if (string.IsNullOrEmpty(isbn))
         {
-            return BadRequest(new { error = "Título ou ISBN do livro é obrigatório." });
+            return BadRequest(new { error = "ISBN do livro é obrigatório." });
         }
 
         try
         {
             var parameters = new SearchParameter
             {
-                BookTitle = title ?? string.Empty,
-                Isbn = isbn,
-                AuthorName = author,
-                IsExactSearch = false  // Busca flexível para encontrar resultados similares
+                Isbn = isbn
             };
 
             var selectedProviders = GetSelectedProviders(providerUrls);
@@ -82,7 +75,8 @@ public class BookSearchController : ControllerBase
             var userId = GetUserId();
             var result = await _engine.ExecuteTransaction(requestor, userId);
 
-            return Ok(result);
+            var response = BookSearchResponseDto.FromSearchResult(result, isbn);
+            return Ok(response);
         }
         catch (Exception ex)
         {
@@ -97,23 +91,21 @@ public class BookSearchController : ControllerBase
     /// <param name="request">Dados da busca</param>
     /// <returns>Resultado da busca com preços de todos os providers</returns>
     [HttpPost]
-    [ProducesResponseType(typeof(SearchResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BookSearchResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> BookSearchPost([FromBody] BookSearchRequest request)
     {
-        if (string.IsNullOrEmpty(request.Title) && string.IsNullOrEmpty(request.Isbn))
+        if (string.IsNullOrEmpty(request.Isbn))
         {
-            return BadRequest(new { error = "Título ou ISBN do livro é obrigatório." });
+            return BadRequest(new { error = "ISBN do livro é obrigatório." });
         }
 
         try
         {
             var search = new SearchParameter
             {
-                BookTitle = request.Title ?? string.Empty,
-                Isbn = request.Isbn,
-                AuthorName = request.Author
+                Isbn = request.Isbn
             };
 
             List<Provider> selectedProviders;
@@ -138,7 +130,8 @@ public class BookSearchController : ControllerBase
             var userId = GetUserId();
             var result = await _engine.ExecuteTransaction(requestor, userId);
 
-            return Ok(result);
+            var response = BookSearchResponseDto.FromSearchResult(result, request.Isbn);
+            return Ok(response);
         }
         catch (Exception ex)
         {
@@ -157,9 +150,9 @@ public class BookSearchController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> SingleBookSearch([FromBody] SingleBookSearchRequest request)
     {
-        if (string.IsNullOrEmpty(request.Title) && string.IsNullOrEmpty(request.Isbn))
+        if (string.IsNullOrEmpty(request.Isbn))
         {
-            return BadRequest(new { error = "Título ou ISBN do livro é obrigatório." });
+            return BadRequest(new { error = "ISBN do livro é obrigatório." });
         }
 
         var userId = GetUserId();
@@ -192,19 +185,9 @@ public class BookSearchController : ControllerBase
 public class BookSearchRequest
 {
     /// <summary>
-    /// Título do livro (obrigatório)
+    /// ISBN do livro (obrigatório)
     /// </summary>
-    public string Title { get; set; } = string.Empty;
-
-    /// <summary>
-    /// ISBN do livro (opcional)
-    /// </summary>
-    public string? Isbn { get; set; }
-
-    /// <summary>
-    /// Autor do livro (opcional)
-    /// </summary>
-    public string? Author { get; set; }
+    public string Isbn { get; set; } = string.Empty;
 
     /// <summary>
     /// Lista de URLs de providers específicos para buscar (opcional)
