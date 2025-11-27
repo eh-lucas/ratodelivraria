@@ -2,7 +2,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, Validators, FormBuilder, FormGroup } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 //Services
 import { AuthService } from '../../services/auth-service';
 //Components
@@ -11,7 +11,7 @@ import { InputComponent } from '../../components/input-component/input-component
 @Component({
   selector: 'login-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, InputComponent, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, InputComponent, ReactiveFormsModule, RouterLink],
   templateUrl: './login-page.html',
   styleUrl: './login-page.scss'
 })

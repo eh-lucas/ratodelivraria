@@ -116,7 +116,7 @@
         }
       }
 
-      .sign-in-button {
+      .register-link {
         background: transparent;
         color: #264AFF;
         border: none;
@@ -124,8 +124,13 @@
         font-weight: 500;
         cursor: pointer;
         text-decoration: none;
-        transition: background-color 0.2s ease;
+        transition: color 0.2s ease;
         border-radius: 4px;
+
+        &:hover {
+          color: #1a3ad4;
+          text-decoration: underline;
+        }
       }
     }
   }

@@ -1,65 +1,194 @@
-.register-wrapper {
-  width: 100%;
+:host {
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding-top: 5vh;
+  height: 100vh;
+  background-color: #06172b;
+
+  .register-card {
+    background: linear-gradient(to top right, #d4d8dd 0%, #ffffff 90%);
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3), 0 4px 8px rgba(60, 64, 67, 0.15);
+    width: 70%;
+    max-width: 900px;
+    min-height: 80%;
+    padding: 2rem 2.5rem;
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+    align-items: center;
+    flex-wrap: wrap;
+
+    .card-header {
+      width: 100%;
+      text-align: center;
+      margin-bottom: 1rem;
+
+      .title-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+        justify-content: flex-start;
+      }
+
+      .bookfin-logo {
+        width: 4rem;
+        height: auto;
+      }
+
+      h1 {
+        color: #06172b;
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0;
+      }
+
+      .divider {
+        width: 100%;
+        height: 1px;
+        background-color: #06172b;
+        border-radius: 4px;
+        margin: 0 auto;
+      }
+    }
+
+    .text-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding-left: 2rem;
+      min-width: 200px;
+
+      .title {
+        color: #06172b;
+        font-size: 2rem;
+        font-weight: 600;
+        text-align: left;
+      }
+    }
+
+    form {
+      flex: 1.5;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding-right: 2rem;
+      min-width: 300px;
+
+      .wrapper-input-field {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+      }
+
+      .button-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1rem;
+      }
+
+      .register-button {
+        background: #06172b;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 10px 24px;
+        font-size: 0.95rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+
+        &:hover {
+          background-color: #332f2f;
+        }
+
+        &:disabled {
+          background: #ccc;
+          cursor: not-allowed;
+        }
+      }
+
+      .sign-in-link {
+        background: transparent;
+        color: #264aff;
+        border: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        transition: color 0.2s ease;
+
+        &:hover {
+          color: #1a3ad4;
+          text-decoration: underline;
+        }
+      }
+    }
+  }
+
+  .error-message {
+    color: #d93025;
+    font-size: 0.875rem;
+    margin-top: 4px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    small {
+      background: rgba(217, 48, 37, 0.1);
+      padding: 3px 8px;
+      border-radius: 6px;
+      color: #d93025;
+    }
+
+    &.api-error {
+      margin-top: 0.5rem;
+
+      small {
+        padding: 6px 12px;
+      }
+    }
+  }
 }
 
-.card {
-  width: 380px;
-  padding: 30px;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-  background: #fff;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
+@media (max-width: 768px) {
+  :host .register-card {
+    width: 90%;
+    padding: 1.5rem;
+    flex-direction: column;
 
-h2 {
-  margin: 0;
-  font-size: 24px;
-}
+    .text-section {
+      padding-left: 0;
+      text-align: center;
 
-.field {
-  display: flex;
-  flex-direction: column;
-}
+      .title {
+        text-align: center;
+        font-size: 1.5rem;
+      }
+    }
 
-.field input {
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 14px;
-}
+    form {
+      padding-right: 0;
+      width: 100%;
+    }
 
-button {
-  width: 100%;
-  padding: 12px;
-  background: #1a73e8;
-  border: none;
-  border-radius: 6px;
-  color: white;
-  cursor: pointer;
-  font-size: 15px;
-  transition: 0.2s;
-}
+    .button-container {
+      flex-direction: column;
+      gap: 1rem;
 
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+      .sign-in-link {
+        order: 2;
+      }
 
-button:hover:not(:disabled) {
-  background: #1557b0;
-}
-
-.error {
-  color: #d93025;
-  font-size: 13px;
-}
-
-.success {
-  color: #0e8f2a;
-  font-size: 14px;
+      .register-button {
+        width: 100%;
+        order: 1;
+      }
+    }
+  }
 }
