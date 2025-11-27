@@ -1,0 +1,40 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.vs
+.vscode
+.idea
+*.user
+*.suo
+
+# Build outputs
+**/bin
+**/obj
+**/out
+
+# Node
+**/node_modules
+
+# Logs
+**/logs
+*.log
+
+# Tests
+**/TestResults
+**/*.Tests
+
+# Documentation
+*.md
+!README.md
+
+# Docker
+**/Dockerfile*
+**/.dockerignore
+docker-compose*.yml
+
+# Misc
+.env
+*.local
+nul

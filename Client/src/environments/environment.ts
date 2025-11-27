@@ -1,5 +1,5 @@
 export const environment = {
   production: false,
-  apiUrl: 'https://localhost:5001/api',
-  appName: 'Book Scraper',
+  apiUrl: 'http://localhost:5177/api',
+  appName: 'BookFin',
 };

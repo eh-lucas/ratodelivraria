@@ -1,0 +1,36 @@
+version: '3.8'
+
+# Docker Compose para desenvolvimento
+# Apenas banco de dados e Redis - API e Client rodam localmente
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: bookfin-postgres-dev
+    environment:
+      POSTGRES_USER: sherlock_admin
+      POSTGRES_PASSWORD: SuperSecure123!
+      POSTGRES_DB: sherlock_dev_db
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sherlock_admin -d sherlock_dev_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: bookfin-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+
+volumes:
+  postgres_data_dev:
+  redis_data_dev:

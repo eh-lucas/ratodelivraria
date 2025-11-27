@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { AuthService } from './auth-service';
+import { environment } from '../../environments/environment';
 
 export interface CartBookItem {
   isbn: string;
@@ -109,7 +110,7 @@ export interface BookSearchResponse {
   providedIn: 'root'
 })
 export class CartService {
-  private apiUrl = 'http://localhost:5177/api/cart';
+  private apiUrl = `${environment.apiUrl}/cart`;
 
   constructor(
     private http: HttpClient,
@@ -151,7 +152,7 @@ export class CartService {
       params.push(`providerUrls=${encodeURIComponent(providerUrls.join(','))}`);
     }
 
-    const url = `http://localhost:5177/api/BookSearch?${params.join('&')}`;
+    const url = `${environment.apiUrl}/BookSearch?${params.join('&')}`;
     return this.http.get<BookSearchResponse>(url, { headers: this.getHeaders() });
   }
 
@@ -160,10 +161,10 @@ export class CartService {
   }
 
   getProviders(): Observable<ProviderOption[]> {
-    return this.http.get<ProviderOption[]>('http://localhost:5177/api/providers');
+    return this.http.get<ProviderOption[]>(`${environment.apiUrl}/providers`);
   }
 
   getActiveProviders(): Observable<ProviderOption[]> {
-    return this.http.get<ProviderOption[]>('http://localhost:5177/api/providers/active');
+    return this.http.get<ProviderOption[]>(`${environment.apiUrl}/providers/active`);
   }
 }
