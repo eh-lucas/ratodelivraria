@@ -88,6 +88,12 @@ public class CartOptimizationResult
     public List<string> BooksNotFound { get; set; } = new();
 
     /// <summary>
+    /// Tabela comparativa de todos os providers com seus totais
+    /// Ordenada do mais barato ao mais caro
+    /// </summary>
+    public List<ProviderComparison> ProviderComparisons { get; set; } = new();
+
+    /// <summary>
     /// Tempo de execução em ms
     /// </summary>
     public long ExecutionTimeMs { get; set; }
@@ -101,6 +107,16 @@ public class CartOptimizationResult
     /// Se o resultado veio do cache
     /// </summary>
     public bool FromCache { get; set; }
+
+    /// <summary>
+    /// Total de livros buscados
+    /// </summary>
+    public int TotalBooksRequested { get; set; }
+
+    /// <summary>
+    /// Total de queries executadas (livros × providers)
+    /// </summary>
+    public int TotalQueriesExecuted { get; set; }
 }
 
 /// <summary>
@@ -246,4 +262,67 @@ public class BestProviderCartResult
     /// Total de providers consultados
     /// </summary>
     public int TotalProvidersSearched { get; set; }
+}
+
+/// <summary>
+/// Comparação de um provider para a otimização de carrinho
+/// </summary>
+public class ProviderComparison
+{
+    /// <summary>
+    /// ID do provider
+    /// </summary>
+    public int ProviderId { get; set; }
+
+    /// <summary>
+    /// Nome do provider
+    /// </summary>
+    public string ProviderName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// URL do provider
+    /// </summary>
+    public string ProviderUrl { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Total de livros encontrados neste provider
+    /// </summary>
+    public int BooksFound { get; set; }
+
+    /// <summary>
+    /// Total de livros requisitados
+    /// </summary>
+    public int TotalBooksRequested { get; set; }
+
+    /// <summary>
+    /// Se o provider tem todos os livros requisitados
+    /// </summary>
+    public bool HasAllBooks => BooksFound == TotalBooksRequested;
+
+    /// <summary>
+    /// Preço total de todos os livros neste provider
+    /// </summary>
+    public decimal TotalPrice { get; set; }
+
+    /// <summary>
+    /// Lista de preços por livro
+    /// </summary>
+    public List<BookPriceDetail> BookPrices { get; set; } = new();
+
+    /// <summary>
+    /// ISBNs não encontrados neste provider
+    /// </summary>
+    public List<string> MissingIsbns { get; set; } = new();
+}
+
+/// <summary>
+/// Detalhe do preço de um livro em um provider
+/// </summary>
+public class BookPriceDetail
+{
+    public string Isbn { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public int Quantity { get; set; } = 1;
+    public decimal TotalPrice => Price * Quantity;
 }

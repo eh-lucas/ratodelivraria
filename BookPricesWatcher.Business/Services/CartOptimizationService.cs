@@ -107,14 +107,18 @@ public class CartOptimizationService : ICartOptimizationService
             }
         }
 
+        // Conta total de queries executadas
+        int totalQueries = searchResults.Sum(r => r.result.TotalSourcesQueried);
+
         _logger.LogInformation(
-            "Encontrados {PriceCount} preços para {BookCount} livros",
-            allPrices.Count, request.Books.Count);
+            "Encontrados {PriceCount} preços para {BookCount} livros ({TotalQueries} queries executadas)",
+            allPrices.Count, request.Books.Count, totalQueries);
 
         // Executa otimização
         var optimizationResult = _optimizer.Optimize(allPrices, request);
         optimizationResult.ExecutionTimeMs = stopwatch.ElapsedMilliseconds;
         optimizationResult.CreditsUsed = creditsUsed;
+        optimizationResult.TotalQueriesExecuted = totalQueries;
 
         stopwatch.Stop();
 
