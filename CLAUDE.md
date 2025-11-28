@@ -60,6 +60,33 @@ dotnet test --filter "FullyQualifiedName~AuthControllerTests"
 
 Test project: `BookPricesWatcher.Tests/` using xUnit, FluentAssertions, Moq
 
+### Docker
+
+```bash
+# Start all containers (PostgreSQL, Redis, API, Client)
+docker-compose up -d
+
+# Rebuild and start specific container
+docker-compose build client && docker-compose up -d
+
+# View logs
+docker-compose logs -f api
+docker-compose logs --tail=50 client
+
+# Stop all containers
+docker-compose down
+
+# Execute SQL in PostgreSQL container
+docker exec bookfin-postgres psql -U sherlock_admin -d sherlock_dev_db -c "SELECT * FROM users;"
+```
+
+**Container names:** `bookfin-postgres`, `bookfin-redis`, `bookfin-api`, `bookfin-client`
+
+**URLs when running with Docker:**
+- Frontend: http://localhost:4200
+- API: http://localhost:5177
+- Swagger: http://localhost:5177/swagger
+
 ## Architecture
 
 The solution follows Clean Architecture with these layers:
@@ -78,10 +105,48 @@ The solution follows Clean Architecture with these layers:
 - JWT Bearer authentication configured in `API/Configurations/Configurator.cs`
 - Angular auth service manages tokens in localStorage with @auth0/angular-jwt
 - Snake_case naming convention for database tables and columns (EF Core UseSnakeCaseNamingConvention)
+- **DbContextFactory** for concurrent database operations (required for parallel searches)
+
+### DbContextFactory Pattern
+
+Para operações paralelas de banco de dados (ex: buscar preços em múltiplos providers simultaneamente), usamos `IDbContextFactory<SherlockDbContext>` ao invés do DbContext injetado diretamente.
+
+**Por quê?** O DbContext não é thread-safe. Quando `Task.WhenAll` executa múltiplas queries em paralelo, cada task precisa de sua própria instância do DbContext.
+
+**Configuração em `ServiceCollectionExtensions.cs`:**
+```csharp
+services.AddDbContextFactory<SherlockDbContext>(options =>
+    options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention());
+```
+
+**Uso nos repositórios:**
+```csharp
+public class QueryRepository : BaseRepository<Query>, IQueryRepository
+{
+    private readonly IDbContextFactory<SherlockDbContext> _contextFactory;
+
+    public async Task<Query?> GetCachedQueryAsync(string isbn, int providerId, int cacheTimeMinutes)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Set<Query>()...
+    }
+}
+```
+
+**Repositórios que usam DbContextFactory:** `QueryRepository`, `TransactionRepository`
 
 ### Database
 
 PostgreSQL connection configured in `API/appsettings.json`. DbContext: `BookPricesWatcher.Data/Context/SherlockDbContext.cs`
+
+**Auto-Migration:** O `Program.cs` aplica migrations automaticamente no startup:
+```csharp
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<SherlockDbContext>();
+    db.Database.Migrate();
+}
+```
 
 #### Key Tables
 
@@ -90,7 +155,9 @@ PostgreSQL connection configured in `API/appsettings.json`. DbContext: `BookPric
 - **providers** - Book retailers (93 providers configured in Provider.cs)
 - **books** - Book catalog
 - **book_prices** - Historical price data
-- **users** - User accounts
+- **users** - User accounts (com available_credits, total_credits_used)
+- **credit_packages** - Pacotes de créditos disponíveis para compra
+- **credit_transactions** - Histórico de compras/uso de créditos
 
 #### Transaction/Query Model
 
@@ -168,6 +235,37 @@ Scrapers in `BookPricesWatcher.Business/Core/Scrapers/`:
 - `POST /api/Cart/best-provider` - Encontra melhor provider único para todos os livros
 - `GET /api/Cart/search?title={title}` - Busca preço de um livro
 
+#### Cart Optimization Flow
+
+O endpoint `/api/Cart/optimize` recebe uma lista de livros (ISBN + quantidade) e retorna:
+
+1. **providerComparisons**: Tabela comparativa de TODOS os providers, ordenada por:
+   - Providers com todos os livros primeiro (ordenados por menor preço total)
+   - Providers parciais depois (ordenados por menor preço total)
+
+2. **providerCarts**: Melhor opção de compra (provider com menor preço total que tem todos os livros)
+
+3. **Métricas**: totalCost, booksCost, savings, savingsPercent, executionTimeMs, creditsUsed
+
+**Exemplo de request:**
+```json
+{
+  "books": [
+    {"isbn": "9788535914849", "quantity": 1},
+    {"isbn": "9788532530790", "quantity": 1}
+  ],
+  "strategy": 0,
+  "maxProviders": 0,
+  "includeShipping": true
+}
+```
+
+**Lógica em `CartOptimizer.cs`:**
+- Agrupa preços por provider
+- Calcula total por provider para TODOS os livros
+- Identifica quais providers têm todos os livros vs parciais
+- Ordena e retorna comparação completa
+
 ### Providers (públicos)
 - `GET /api/Providers` - List all providers
 - `GET /api/Providers/active` - List active providers only
@@ -178,6 +276,15 @@ Scrapers in `BookPricesWatcher.Business/Core/Scrapers/`:
 - Frontend: `Client/src/app/app.ts` with routes in `app.routes.ts`
 - Auth flow: `API/Controllers/AuthController.cs` ↔ `Client/src/app/services/auth-service.ts`
 - Search flow: `BookSearchController` → `W16Engine.ExecuteTransaction()` → `Scrapers`
+- Cart optimization: `CartController` → `CartOptimizationService` → `CartOptimizer`
+
+### Frontend Pages
+
+- **SearchPage** (`Client/src/app/pages/search-page/`) - Página principal de busca e otimização de carrinho
+  - Busca rápida por ISBN (mostra resultados de todos os providers)
+  - Carrinho de ISBNs para otimização (encontra melhor provider único)
+  - Tabela comparativa de providers com preços totais
+  - Seleção de providers para busca
 
 ## Providers
 
