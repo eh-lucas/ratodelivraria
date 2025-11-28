@@ -1,5 +1,7 @@
 using System.Threading.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Sherlock.Data.Context;
 using SherlockAPI.Configurations;
 
 Log.Logger = new LoggerConfiguration()
@@ -113,6 +115,15 @@ try
     }
 
     var app = builder.Build();
+
+    // Aplicar migrations automaticamente
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<SherlockDbContext>();
+        Log.Information("Aplicando migrations do banco de dados...");
+        db.Database.Migrate();
+        Log.Information("Migrations aplicadas com sucesso");
+    }
 
     if (app.Environment.IsDevelopment())
     {
