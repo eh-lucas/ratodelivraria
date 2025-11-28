@@ -278,84 +278,126 @@
           <div class="results-summary">
             <div class="summary-card total">
               <span class="label">Total</span>
-              <span class="value">R$ {{ result.totalCost.toFixed(2) }}</span>
+              <span class="value">R$ {{ result.totalCost?.toFixed(2) || '0.00' }}</span>
             </div>
             <div class="summary-card">
               <span class="label">Livros</span>
-              <span class="value">R$ {{ result.booksCost.toFixed(2) }}</span>
+              <span class="value">R$ {{ result.booksCost?.toFixed(2) || '0.00' }}</span>
             </div>
-            <div class="summary-card">
-              <span class="label">Frete</span>
-              <span class="value">R$ {{ result.shippingCost.toFixed(2) }}</span>
-            </div>
-            @if (result.savings > 0) {
+            @if (result.shippingCost && result.shippingCost > 0) {
+              <div class="summary-card">
+                <span class="label">Frete</span>
+                <span class="value">R$ {{ result.shippingCost.toFixed(2) }}</span>
+              </div>
+            }
+            @if (result.savings && result.savings > 0) {
               <div class="summary-card savings">
                 <span class="label">Economia</span>
-                <span class="value">R$ {{ result.savings.toFixed(2) }} ({{ result.savingsPercent.toFixed(1) }}%)</span>
+                <span class="value">R$ {{ result.savings.toFixed(2) }} ({{ result.savingsPercent?.toFixed(1) || '0' }}%)</span>
               </div>
             }
           </div>
 
-          <!-- Carrinhos por Provider -->
-          <div class="provider-carts">
-            @for (cart of result.providerCarts; track cart.providerId) {
-              <div class="provider-cart">
-                <div class="provider-header">
-                  <h3>{{ cart.providerName }}</h3>
-                  @if (cart.hasFreeShipping) {
-                    <span class="free-shipping-badge">Frete Grátis!</span>
-                  }
-                </div>
-
-                <div class="provider-items">
-                  @for (item of cart.items; track item.title) {
-                    <div class="provider-item">
-                      <div class="item-details">
-                        <span class="item-title">{{ item.title }}</span>
-                        @if (item.author) {
-                          <span class="item-author">{{ item.author }}</span>
-                        }
-                      </div>
-                      <div class="item-pricing">
-                        <span class="quantity">{{ item.quantity }}x</span>
-                        <span class="price">R$ {{ item.unitPrice.toFixed(2) }}</span>
-                        @if (item.discount && item.discount > 0) {
-                          <span class="discount">-{{ item.discount.toFixed(0) }}%</span>
-                        }
-                      </div>
-                    </div>
-                  }
-                </div>
-
-                <div class="provider-totals">
-                  <div class="total-row">
-                    <span>Subtotal:</span>
-                    <span>R$ {{ cart.subtotal.toFixed(2) }}</span>
-                  </div>
-                  <div class="total-row">
-                    <span>Frete:</span>
-                    <span>R$ {{ cart.shippingCost.toFixed(2) }}</span>
-                  </div>
-                  @if (cart.freeShippingThreshold && !cart.hasFreeShipping) {
-                    <div class="free-shipping-hint">
-                      Frete grátis a partir de R$ {{ cart.freeShippingThreshold.toFixed(2) }}
-                    </div>
-                  }
-                  <div class="total-row total">
-                    <span>Total:</span>
-                    <span>R$ {{ cart.total.toFixed(2) }}</span>
-                  </div>
-                </div>
+          <!-- Tabela Comparativa de Providers -->
+          @if (result.providerComparisons && result.providerComparisons.length > 0) {
+            <div class="comparison-table-container">
+              <h3>Comparação de Providers</h3>
+              <p class="comparison-subtitle">
+                {{ result.totalQueriesExecuted }} consultas em {{ result.providerComparisons.length }} sites
+              </p>
+              <div class="table-wrapper">
+                <table class="comparison-table">
+                  <thead>
+                    <tr>
+                      <th class="rank-col">#</th>
+                      <th class="provider-col">Site</th>
+                      <th class="books-col">Livros</th>
+                      <th class="price-col">Total</th>
+                      <th class="status-col">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (provider of result.providerComparisons; track $index; let i = $index) {
+                      <tr [class.best-provider]="i === 0" [class.incomplete]="!provider.hasAllBooks">
+                        <td class="rank-col">{{ i + 1 }}</td>
+                        <td class="provider-col">
+                          <span class="provider-name">{{ provider.providerName }}</span>
+                        </td>
+                        <td class="books-col">
+                          <span [class.all-books]="provider.hasAllBooks" [class.partial-books]="!provider.hasAllBooks">
+                            {{ provider.booksFound }}/{{ provider.totalBooksRequested }}
+                          </span>
+                        </td>
+                        <td class="price-col">
+                          <span class="price">R$ {{ provider.totalPrice?.toFixed(2) || '0.00' }}</span>
+                        </td>
+                        <td class="status-col">
+                          @if (provider.hasAllBooks) {
+                            <span class="status-complete">Completo</span>
+                          } @else {
+                            <span class="status-partial" [title]="'Faltando: ' + (provider.missingIsbns?.join(', ') || '')">
+                              Parcial
+                            </span>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
               </div>
-            }
-          </div>
+            </div>
+          }
+
+          <!-- Melhor Provider (Carrinho Recomendado) -->
+          @if (result.providerCarts && result.providerCarts.length > 0) {
+            <div class="provider-carts">
+              <h3>Melhor Opção</h3>
+              @for (cart of result.providerCarts; track $index) {
+                <div class="provider-cart recommended">
+                  <div class="provider-header">
+                    <h4>{{ cart.providerName }}</h4>
+                    @if (cart.hasFreeShipping) {
+                      <span class="free-shipping-badge">Frete Grátis!</span>
+                    }
+                  </div>
+
+                  <div class="provider-items">
+                    @for (item of cart.items; track $index) {
+                      <div class="provider-item">
+                        <div class="item-details">
+                          <span class="item-title">{{ item.title || 'Título não disponível' }}</span>
+                          @if (item.author) {
+                            <span class="item-author">{{ item.author }}</span>
+                          }
+                        </div>
+                        <div class="item-pricing">
+                          <span class="quantity">{{ item.quantity }}x</span>
+                          <span class="price">R$ {{ item.unitPrice?.toFixed(2) || '0.00' }}</span>
+                          @if (item.discount && item.discount > 0) {
+                            <span class="discount">-{{ item.discount.toFixed(0) }}%</span>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+
+                  <div class="provider-totals">
+                    <div class="total-row total">
+                      <span>Total:</span>
+                      <span>R$ {{ cart.total?.toFixed(2) || '0.00' }}</span>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
 
           <!-- Livros não encontrados -->
-          @if (result.booksNotFound.length > 0) {
+          @if (result.booksNotFound && result.booksNotFound.length > 0) {
             <div class="not-found">
               <h4>Livros não encontrados:</h4>
               <ul>
-                @for (book of result.booksNotFound; track book) {
+                @for (book of result.booksNotFound; track $index) {
                   <li>{{ book }}</li>
                 }
               </ul>
@@ -370,7 +412,7 @@
         } @else {
           <div class="error-result">
             <p>{{ result.message }}</p>
-            @if (result.booksNotFound.length > 0) {
+            @if (result.booksNotFound && result.booksNotFound.length > 0) {
               <p>Livros não encontrados: {{ result.booksNotFound.join(', ') }}</p>
             }
           </div>

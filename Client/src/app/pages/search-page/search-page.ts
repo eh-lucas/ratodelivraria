@@ -10,7 +10,8 @@ import {
   StrategyOption,
   ProviderOption,
   BookSearchResponse,
-  QueryResultItem
+  QueryResultItem,
+  ProviderComparison
 } from '../../services/cart-service';
 
 @Component({

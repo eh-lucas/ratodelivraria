@@ -16,6 +16,11 @@ public static class ServiceCollectionExtensions
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"))
                    .UseSnakeCaseNamingConvention());
 
+        // DbContextFactory para operações concorrentes (permite criar DbContexts sob demanda)
+        services.AddDbContextFactory<SherlockDbContext>(options =>
+            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"))
+                   .UseSnakeCaseNamingConvention(), ServiceLifetime.Scoped);
+
         // Repositories
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IBookRepository, BookRepository>();

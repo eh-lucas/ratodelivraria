@@ -942,4 +942,176 @@
   .queries-table {
     min-width: 600px;
   }
+
+  .comparison-table {
+    min-width: 500px;
+  }
+}
+
+// Comparison Table
+.comparison-table-container {
+  margin-bottom: 2rem;
+
+  h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .comparison-subtitle {
+    margin: 0 0 1rem 0;
+    font-size: 0.875rem;
+    color: #6b7280;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+  }
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  th, td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  th {
+    background: #f9fafb;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: sticky;
+    top: 0;
+  }
+
+  .rank-col {
+    width: 50px;
+    text-align: center;
+  }
+
+  .provider-col {
+    min-width: 150px;
+
+    .provider-name {
+      font-weight: 500;
+      color: #111827;
+    }
+  }
+
+  .books-col {
+    width: 80px;
+    text-align: center;
+
+    .all-books {
+      color: #059669;
+      font-weight: 600;
+    }
+
+    .partial-books {
+      color: #f59e0b;
+      font-weight: 500;
+    }
+  }
+
+  .price-col {
+    width: 120px;
+
+    .price {
+      font-weight: 600;
+      color: #111827;
+    }
+  }
+
+  .status-col {
+    width: 100px;
+
+    .status-complete {
+      color: #059669;
+      font-weight: 500;
+      padding: 0.25rem 0.5rem;
+      background: #ecfdf5;
+      border-radius: 4px;
+      font-size: 0.75rem;
+    }
+
+    .status-partial {
+      color: #f59e0b;
+      font-weight: 500;
+      padding: 0.25rem 0.5rem;
+      background: #fffbeb;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      cursor: help;
+    }
+  }
+
+  tbody tr {
+    transition: background 0.2s;
+
+    &:hover {
+      background: #f9fafb;
+    }
+
+    &:last-child td {
+      border-bottom: none;
+    }
+
+    &.best-provider {
+      background: #ecfdf5;
+
+      &:hover {
+        background: #d1fae5;
+      }
+
+      td:first-child {
+        font-weight: 700;
+        color: #059669;
+      }
+
+      .price {
+        color: #059669;
+      }
+    }
+
+    &.incomplete {
+      opacity: 0.8;
+    }
+  }
+}
+
+// Recommended Provider Cart
+.provider-carts {
+  h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .provider-cart.recommended {
+    border: 2px solid #10b981;
+    background: linear-gradient(135deg, #ecfdf5 0%, #fff 100%);
+
+    .provider-header {
+      background: #d1fae5;
+      border-color: #a7f3d0;
+
+      h4 {
+        margin: 0;
+        color: #059669;
+        font-size: 1rem;
+      }
+    }
+  }
 }

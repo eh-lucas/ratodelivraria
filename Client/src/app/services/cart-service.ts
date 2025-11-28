@@ -46,6 +46,26 @@ export interface ProviderCart {
   hasFreeShipping: boolean;
 }
 
+export interface BookPriceDetail {
+  isbn: string;
+  title: string;
+  price: number;
+  quantity: number;
+  totalPrice: number;
+}
+
+export interface ProviderComparison {
+  providerId: number;
+  providerName: string;
+  providerUrl: string;
+  booksFound: number;
+  totalBooksRequested: number;
+  hasAllBooks: boolean;
+  totalPrice: number;
+  bookPrices: BookPriceDetail[];
+  missingIsbns: string[];
+}
+
 export interface CartOptimizationResult {
   success: boolean;
   message: string;
@@ -56,9 +76,12 @@ export interface CartOptimizationResult {
   savingsPercent: number;
   providerCarts: ProviderCart[];
   booksNotFound: string[];
+  providerComparisons: ProviderComparison[];
   executionTimeMs: number;
   creditsUsed: number;
   fromCache: boolean;
+  totalBooksRequested: number;
+  totalQueriesExecuted: number;
 }
 
 export interface StrategyOption {
