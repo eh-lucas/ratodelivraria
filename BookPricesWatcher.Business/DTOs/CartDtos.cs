@@ -21,11 +21,6 @@ public class CartOptimizationRequest
     public int MaxProviders { get; set; } = 0;
 
     /// <summary>
-    /// Considerar frete na otimização
-    /// </summary>
-    public bool IncludeShipping { get; set; } = true;
-
-    /// <summary>
     /// URLs dos providers específicos para buscar (null = todos ativos)
     /// </summary>
     public List<string>? ProviderUrls { get; set; }
@@ -63,19 +58,14 @@ public class CartOptimizationResult
     public string Message { get; set; } = string.Empty;
 
     /// <summary>
-    /// Custo total otimizado (livros + frete)
+    /// Custo total otimizado
     /// </summary>
     public decimal TotalCost { get; set; }
 
     /// <summary>
-    /// Custo total dos livros (sem frete)
+    /// Custo total dos livros
     /// </summary>
     public decimal BooksCost { get; set; }
-
-    /// <summary>
-    /// Custo total de frete
-    /// </summary>
-    public decimal ShippingCost { get; set; }
 
     /// <summary>
     /// Economia comparada a comprar tudo no site mais caro
@@ -133,24 +123,9 @@ public class ProviderCart
     public decimal Subtotal { get; set; }
 
     /// <summary>
-    /// Custo de frete estimado
-    /// </summary>
-    public decimal ShippingCost { get; set; }
-
-    /// <summary>
-    /// Total (subtotal + frete)
+    /// Total
     /// </summary>
     public decimal Total { get; set; }
-
-    /// <summary>
-    /// Valor mínimo para frete grátis (se aplicável)
-    /// </summary>
-    public decimal? FreeShippingThreshold { get; set; }
-
-    /// <summary>
-    /// Se atingiu frete grátis
-    /// </summary>
-    public bool HasFreeShipping { get; set; }
 }
 
 /// <summary>
@@ -174,7 +149,7 @@ public class ProviderCartItem
 public enum OptimizationStrategy
 {
     /// <summary>
-    /// Menor custo total (livros + frete)
+    /// Menor custo total
     /// </summary>
     LowestTotal,
 
@@ -182,11 +157,6 @@ public enum OptimizationStrategy
     /// Menor número de pedidos (menos sites)
     /// </summary>
     FewestOrders,
-
-    /// <summary>
-    /// Prioriza frete grátis
-    /// </summary>
-    PrioritizeFreeShipping,
 
     /// <summary>
     /// Apenas um site (sem divisão)
@@ -225,11 +195,6 @@ public class BestProviderCartRequest
     /// URLs dos providers específicos para buscar (null = todos ativos)
     /// </summary>
     public List<string>? ProviderUrls { get; set; }
-
-    /// <summary>
-    /// Considerar frete na otimização
-    /// </summary>
-    public bool IncludeShipping { get; set; } = true;
 }
 
 /// <summary>

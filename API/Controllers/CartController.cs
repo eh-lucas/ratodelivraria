@@ -133,7 +133,6 @@ public class CartController : ControllerBase
                 }
             },
             Strategy = OptimizationStrategy.LowestTotal,
-            IncludeShipping = false,
             ProviderUrls = parsedProviderUrls
         };
 
@@ -199,7 +198,6 @@ public class CartController : ControllerBase
             {
                 Books = request.Books,
                 Strategy = OptimizationStrategy.SingleProvider,
-                IncludeShipping = request.IncludeShipping,
                 ProviderUrls = request.ProviderUrls,
                 MaxProviders = 1
             };
@@ -230,7 +228,6 @@ public class CartController : ControllerBase
                     {
                         Books = request.Books,
                         Strategy = OptimizationStrategy.SingleProvider,
-                        IncludeShipping = request.IncludeShipping,
                         ProviderUrls = request.ProviderUrls?.Where(u => u != bestProviderUrl).ToList(),
                         MaxProviders = 1
                     };
@@ -305,9 +302,8 @@ public class CartController : ControllerBase
     {
         return strategy switch
         {
-            OptimizationStrategy.LowestTotal => "Menor custo total (livros + frete)",
+            OptimizationStrategy.LowestTotal => "Menor custo total",
             OptimizationStrategy.FewestOrders => "Menor número de pedidos",
-            OptimizationStrategy.PrioritizeFreeShipping => "Prioriza frete grátis",
             OptimizationStrategy.SingleProvider => "Comprar tudo em um único site",
             _ => "Estratégia desconhecida"
         };

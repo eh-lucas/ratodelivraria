@@ -22,6 +22,10 @@ public class SherlockDbContext : DbContext
     public DbSet<Token> Tokens => Set<Token>();
     public DbSet<Scraper> Scrapers => Set<Scraper>();
 
+    // Entidades de créditos
+    public DbSet<CreditTransaction> CreditTransactions => Set<CreditTransaction>();
+    public DbSet<CreditPackage> CreditPackages => Set<CreditPackage>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -69,11 +73,6 @@ public class SherlockDbContext : DbContext
             entity.HasIndex(e => e.UserId);
 
             // Relacionamentos
-            entity.HasOne(e => e.User)
-                .WithMany()
-                .HasForeignKey(e => e.UserId)
-                .OnDelete(DeleteBehavior.SetNull);
-
             entity.HasOne(e => e.TransactionResult)
                 .WithMany()
                 .HasForeignKey(e => e.ResultTypeId)
@@ -125,7 +124,55 @@ public class SherlockDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Email).HasMaxLength(200);
+            entity.Property(e => e.AvailableCredits).HasDefaultValue(100);
+            entity.Property(e => e.TotalCreditsUsed).HasDefaultValue(0);
             entity.HasIndex(e => e.Username).IsUnique();
+
+            entity.HasMany(e => e.Transactions)
+                .WithOne(e => e.User)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasMany(e => e.CreditTransactions)
+                .WithOne(e => e.User)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // CreditTransaction
+        modelBuilder.Entity<CreditTransaction>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.ExternalPaymentId).HasMaxLength(200);
+
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.Type);
+
+            entity.HasOne(e => e.CreditPackage)
+                .WithMany()
+                .HasForeignKey(e => e.CreditPackageId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.SearchTransaction)
+                .WithMany()
+                .HasForeignKey(e => e.SearchTransactionId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // CreditPackage
+        modelBuilder.Entity<CreditPackage>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(500);
+
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.DisplayOrder);
+
+            // Seed data com pacotes padrão
+            entity.HasData(CreditPackage.DefaultPackages.ToArray());
         });
 
         // TransactionResult

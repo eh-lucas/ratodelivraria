@@ -24,6 +24,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICartOptimizationService, CartOptimizationService>();
         services.AddScoped<ISingleBookSearchService, SingleBookSearchService>();
         services.AddScoped<ITransactionPersistenceService, TransactionPersistenceService>();
+        services.AddScoped<ICreditService, CreditService>();
 
         // Cache
         services.AddScoped<ICacheService, CacheService>();

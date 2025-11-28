@@ -12,7 +12,6 @@ import {
   BookSearchResponse,
   QueryResultItem
 } from '../../services/cart-service';
-import { AuthService } from '../../services/auth-service';
 
 @Component({
   selector: 'search-page',
@@ -49,10 +48,7 @@ export class SearchPage implements OnInit {
   isLoading: boolean = false;
   errorMessage: string = '';
 
-  constructor(
-    private cartService: CartService,
-    private authService: AuthService
-  ) {}
+  constructor(private cartService: CartService) {}
 
   ngOnInit(): void {
     this.loadStrategies();
@@ -202,10 +198,6 @@ export class SearchPage implements OnInit {
         this.isLoading = false;
       }
     });
-  }
-
-  logout(): void {
-    this.authService.logout();
   }
 
   getStrategyName(value: number): string {

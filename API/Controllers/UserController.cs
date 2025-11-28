@@ -1,0 +1,111 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Sherlock.Business.DTOs;
+using Sherlock.Business.Interfaces;
+using System.Security.Claims;
+
+namespace SherlockAPI.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+[Authorize]
+public class UserController : ControllerBase
+{
+    private readonly ICreditService _creditService;
+    private readonly ILogger<UserController> _logger;
+
+    public UserController(ICreditService creditService, ILogger<UserController> logger)
+    {
+        _creditService = creditService;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Obtém informações do usuário atual, incluindo saldo de créditos
+    /// </summary>
+    [HttpGet("me")]
+    [ProducesResponseType(typeof(UserCreditsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetCurrentUser()
+    {
+        try
+        {
+            var userId = GetUserId();
+            var userCredits = await _creditService.GetUserCreditsAsync(userId);
+            return Ok(userCredits);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Usuário não encontrado ao buscar informações");
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter informações do usuário");
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new { error = "Erro ao obter informações do usuário" });
+        }
+    }
+
+    /// <summary>
+    /// Obtém o saldo de créditos do usuário atual
+    /// </summary>
+    [HttpGet("credits")]
+    [ProducesResponseType(typeof(UserCreditsDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCredits()
+    {
+        try
+        {
+            var userId = GetUserId();
+            var credits = await _creditService.GetUserCreditsAsync(userId);
+            return Ok(credits);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter créditos do usuário");
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new { error = "Erro ao obter saldo de créditos" });
+        }
+    }
+
+    /// <summary>
+    /// Obtém o histórico de transações de créditos do usuário
+    /// </summary>
+    [HttpGet("credits/history")]
+    [ProducesResponseType(typeof(PagedResult<CreditTransactionDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCreditHistory(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        try
+        {
+            var userId = GetUserId();
+
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+            if (pageSize > 100) pageSize = 100;
+
+            var history = await _creditService.GetCreditHistoryAsync(userId, page, pageSize);
+            return Ok(history);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter histórico de créditos");
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new { error = "Erro ao obter histórico de créditos" });
+        }
+    }
+
+    private int GetUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value;
+
+        if (int.TryParse(userIdClaim, out var userId))
+        {
+            return userId;
+        }
+
+        throw new UnauthorizedAccessException("UserId não encontrado no token");
+    }
+}

@@ -15,7 +15,6 @@ public class BestProviderCartTests
         request.Books.Should().NotBeNull();
         request.Books.Should().BeEmpty();
         request.ProviderUrls.Should().BeNull();
-        request.IncludeShipping.Should().BeTrue();
     }
 
     [Fact]
@@ -24,21 +23,19 @@ public class BestProviderCartTests
         // Arrange
         var books = new List<CartBookItem>
         {
-            new() { Title = "Clean Code", Quantity = 1 },
-            new() { Title = "Clean Architecture", Quantity = 2 }
+            new() { Isbn = "978-0132350884", Quantity = 1 },
+            new() { Isbn = "978-0134494166", Quantity = 2 }
         };
 
         var request = new BestProviderCartRequest
         {
-            Books = books,
-            IncludeShipping = false
+            Books = books
         };
 
         // Assert
         request.Books.Should().HaveCount(2);
-        request.Books[0].Title.Should().Be("Clean Code");
+        request.Books[0].Isbn.Should().Be("978-0132350884");
         request.Books[1].Quantity.Should().Be(2);
-        request.IncludeShipping.Should().BeFalse();
     }
 
     [Fact]
@@ -70,9 +67,7 @@ public class BestProviderCartTests
             ProviderName = "Amazon",
             ProviderUrl = "http://amazon.com.br",
             Subtotal = 150.00m,
-            ShippingCost = 0m,
-            Total = 150.00m,
-            HasFreeShipping = true
+            Total = 150.00m
         };
 
         var result = new BestProviderCartResult
@@ -87,7 +82,6 @@ public class BestProviderCartTests
         result.BestProvider.Should().NotBeNull();
         result.BestProvider!.ProviderName.Should().Be("Amazon");
         result.BestProvider.Total.Should().Be(150.00m);
-        result.BestProvider.HasFreeShipping.Should().BeTrue();
     }
 
     [Fact]
@@ -177,13 +171,12 @@ public class BestProviderCartTests
             ProviderName = "Amazon",
             Items = items,
             Subtotal = 289.70m,
-            ShippingCost = 15.00m,
-            Total = 304.70m
+            Total = 289.70m
         };
 
         // Assert
         cart.Items.Should().HaveCount(2);
         cart.Subtotal.Should().Be(289.70m);
-        cart.Total.Should().Be(304.70m);
+        cart.Total.Should().Be(289.70m);
     }
 }

@@ -50,7 +50,7 @@ public class W16EngineTests
     {
         // Arrange
         var engine = new W16Engine(_loggerMock.Object);
-        var searchParams = new SearchParameter { BookTitle = "Test Book" };
+        var searchParams = new SearchParameter { Isbn = "9780132350884" };
         var requestor = new Requestor(searchParams, new List<Provider>());
 
         // Act
@@ -68,7 +68,7 @@ public class W16EngineTests
     {
         // Arrange
         var engine = new W16Engine(_loggerMock.Object);
-        var searchParams = new SearchParameter { BookTitle = "Test Book" };
+        var searchParams = new SearchParameter { Isbn = "9780132350884" };
         var providers = Provider.AllSources.Take(5).ToList();
         var requestor = new Requestor(searchParams, providers);
 
@@ -87,7 +87,7 @@ public class W16EngineTests
     {
         // Arrange
         var engine = new W16Engine(_loggerMock.Object);
-        var searchParams = new SearchParameter { BookTitle = "Test" };
+        var searchParams = new SearchParameter { Isbn = "9780132350884" };
         var requestor = new Requestor(searchParams, new List<Provider>());
 
         var beforeExecution = DateTime.Now;
@@ -125,7 +125,7 @@ public class W16EngineTests
 
         var provider = new Provider { Id = 1, Name = "Test Provider", Url = "http://test.com", ProviderCategoryEnum = ProviderCategoryEnum.Cedet };
         var engine = new W16Engine(_loggerFactory, _loggerMock.Object, _cacheServiceMock.Object, null, null, null, null);
-        var searchParams = new SearchParameter { BookTitle = "Test Book" };
+        var searchParams = new SearchParameter { Isbn = "9780132350884" };
         var requestor = new Requestor(searchParams, new List<Provider> { provider });
 
         // Act
@@ -141,7 +141,7 @@ public class W16EngineTests
     {
         // Arrange
         var engine = new W16Engine(_loggerFactory, _loggerMock.Object, null, null, null, null, null);
-        var searchParams = new SearchParameter { BookTitle = "Test" };
+        var searchParams = new SearchParameter { Isbn = "9780132350884" };
         var requestor = new Requestor(searchParams, new List<Provider>());
 
         // Act
@@ -156,7 +156,7 @@ public class W16EngineTests
     {
         // Arrange
         var engine = new W16Engine(_loggerMock.Object);
-        var searchParams = new SearchParameter { BookTitle = "Test" };
+        var searchParams = new SearchParameter { Isbn = "9780132350884" };
         var requestor = new Requestor(searchParams, new List<Provider>());
 
         // Act

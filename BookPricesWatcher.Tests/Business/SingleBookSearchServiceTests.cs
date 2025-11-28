@@ -31,7 +31,7 @@ public class SingleBookSearchServiceTests
 
         var request = new SingleBookSearchRequest
         {
-            Title = "Clean Code"
+            Isbn = "9780132350884"
         };
 
         // Act
@@ -51,7 +51,7 @@ public class SingleBookSearchServiceTests
 
         var request = new SingleBookSearchRequest
         {
-            Title = "Livro que não existe 123456789",
+            Isbn = "0000000000000",
             ProviderUrls = new List<string>() // Lista vazia força nenhum provider
         };
 
@@ -72,7 +72,7 @@ public class SingleBookSearchServiceTests
 
         var request = new SingleBookSearchRequest
         {
-            Title = "Test"
+            Isbn = "9780132350884"
         };
 
         // Act
@@ -93,7 +93,7 @@ public class SingleBookSearchServiceTests
 
         var request = new SingleBookSearchRequest
         {
-            Title = "Test Book",
+            Isbn = "9780132350884",
             ProviderUrls = specificProviders
         };
 
@@ -115,7 +115,7 @@ public class SingleBookSearchServiceTests
 
         var request = new SingleBookSearchRequest
         {
-            Title = "Test"
+            Isbn = "9780132350884"
         };
 
         // Act
@@ -134,7 +134,7 @@ public class SingleBookSearchServiceTests
 
         var request = new SingleBookSearchRequest
         {
-            Title = "Test"
+            Isbn = "9780132350884"
         };
 
         // Act
@@ -161,7 +161,7 @@ public class SingleBookSearchServiceTests
 
         var request = new SingleBookSearchRequest
         {
-            Title = "Test"
+            Isbn = "9780132350884"
         };
 
         using var cts = new CancellationTokenSource();

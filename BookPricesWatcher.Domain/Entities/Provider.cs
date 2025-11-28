@@ -7,8 +7,6 @@ public class Provider
     public ProviderCategoryEnum ProviderCategoryEnum { get; set; }
     public string Name { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
-    public decimal? MinFreeShipping { get; set; }
-    public decimal? BaseShippingCost { get; set; }
 
     /// <summary>
     /// Template da URL de busca. Use {search} como placeholder para o termo de busca.
@@ -25,8 +23,6 @@ public class Provider
         Name = "Livraria Alexandre Costa",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariaalexandrecosta.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaAnaCampagnolo = new()
@@ -35,8 +31,6 @@ public class Provider
         Name = "Livraria Ana Campagnolo",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariacampagnolo.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaAraceli = new()
@@ -45,8 +39,6 @@ public class Provider
         Name = "Livraria da Araceli",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadaaraceli.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaBeneBarbosa = new()
@@ -55,8 +47,6 @@ public class Provider
         Name = "Livraria do Bene Barbosa",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadobene.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaBernardo = new()
@@ -65,8 +55,6 @@ public class Provider
         Name = "Livraria do Bernardo",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadobernardo.com/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaBrodbeck = new()
@@ -75,8 +63,6 @@ public class Provider
         Name = "Livraria Brodbeck",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariabrodbeck.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaBrunaTorlay = new()
@@ -85,8 +71,6 @@ public class Provider
         Name = "Livraria Bruna Torlay",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariabrunatorlay.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaCatolikids = new()
@@ -95,8 +79,6 @@ public class Provider
         Name = "Livraria Catolikids",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariacatolikids.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaCazarre = new()
@@ -105,8 +87,6 @@ public class Provider
         Name = "Livraria Cazarre",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariacazarre.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaChesterton = new()
@@ -115,8 +95,6 @@ public class Provider
         Name = "Livraria Chesterton Brasil",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariachestertonbrasil.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaConstantino = new()
@@ -125,8 +103,6 @@ public class Provider
         Name = "Livraria do Constantino",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadoconsta.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaContraAcademicos = new()
@@ -135,8 +111,6 @@ public class Provider
         Name = "Livraria Contra os Acadêmicos",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariacontraosacademicos.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaDanielLopez = new()
@@ -145,8 +119,6 @@ public class Provider
         Name = "Livraria Daniel Lopez",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livraria.daniellopez.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaDeiaTiba = new()
@@ -155,8 +127,6 @@ public class Provider
         Name = "Livraria Déia e Tiba",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livraria.deiaetiba.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaEdmilson = new()
@@ -165,8 +135,6 @@ public class Provider
         Name = "Livraria Edmilson Cruz",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariaedmilsoncruz.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaFormacaoImaginario = new()
@@ -175,8 +143,6 @@ public class Provider
         Name = "Livraria Formação do Imaginário",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://afilivraria.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaGuilhermeFreire = new()
@@ -185,8 +151,6 @@ public class Provider
         Name = "Livraria Guilherme Freire",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariaguilhermefreire.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaGurgel = new()
@@ -195,8 +159,6 @@ public class Provider
         Name = "Livraria Rodrigo Gurgel",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livraria.rodrigogurgel.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaInstitutoBorborema = new()
@@ -205,8 +167,6 @@ public class Provider
         Name = "Livraria Instituto Borborema",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariaib.com/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaKogos = new()
@@ -215,8 +175,6 @@ public class Provider
         Name = "Livraria Paulo Kogos",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariapaulokogos.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaLacombe = new()
@@ -225,8 +183,6 @@ public class Provider
         Name = "Livraria do Lacombe",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadolacombe.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaMarcela = new()
@@ -235,8 +191,6 @@ public class Provider
         Name = "Livraria da Marcela",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadamarcela.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaNikolas = new()
@@ -245,8 +199,6 @@ public class Provider
         Name = "Livraria do Nikolas",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadonikolas.com/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaPadreLucas = new()
@@ -255,8 +207,6 @@ public class Provider
         Name = "Livraria do Padre Lucas",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadopadrelucas.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaPedroAugusto = new()
@@ -265,8 +215,6 @@ public class Provider
         Name = "Livraria Pedro Augusto",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariapedroaugusto.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaRasta = new()
@@ -275,8 +223,6 @@ public class Provider
         Name = "Livraria do Rasta",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadorasta.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaRobertoMotta = new()
@@ -285,8 +231,6 @@ public class Provider
         Name = "Livraria Roberto Motta",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadorobertomotta.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaSabedoriaCatolica = new()
@@ -295,8 +239,6 @@ public class Provider
         Name = "Livraria Sabedoria Católica",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariasabedoriacatolica.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaThomas = new()
@@ -305,8 +247,6 @@ public class Provider
         Name = "Livraria do Thomas",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadothomas.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaVictorSales = new()
@@ -315,8 +255,6 @@ public class Provider
         Name = "Livraria Victor Sales",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariavictorsales.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaVistaPatria = new()
@@ -325,8 +263,6 @@ public class Provider
         Name = "Livraria Vista Pátria",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariavistapatria.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     // ========== NOVOS PROVIDERS ==========
@@ -337,8 +273,6 @@ public class Provider
         Name = "Livraria do Luis Enrique",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://www.livrariadoluisenrique.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaAnalia = new()
@@ -347,8 +281,6 @@ public class Provider
         Name = "Livraria Anália",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://analigialivraria.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaSilvioNavarro = new()
@@ -357,8 +289,6 @@ public class Provider
         Name = "Livraria do Silvio Navarro",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadosilvionavarro.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaCrisCorrea = new()
@@ -367,8 +297,6 @@ public class Provider
         Name = "Livraria Cris Corrêa",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://www.livrariacriscorrea.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaPsZerado = new()
@@ -377,8 +305,6 @@ public class Provider
         Name = "Livraria PS Zerado",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariapszerado.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaVandressa = new()
@@ -387,8 +313,6 @@ public class Provider
         Name = "Livraria da Vandressa",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadavandressa.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaForaDaCaixinha = new()
@@ -397,8 +321,6 @@ public class Provider
         Name = "Livraria Fora da Caixinha",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://www.livrariaforadacaixinha.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaBrunaGutstein = new()
@@ -407,8 +329,6 @@ public class Provider
         Name = "Livraria Bruna Gutstein",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariabrunagutstein.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaDantas = new()
@@ -417,8 +337,6 @@ public class Provider
         Name = "Livraria do Dantas",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadodantas.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaFioDiario = new()
@@ -427,8 +345,6 @@ public class Provider
         Name = "Livraria Fio Diário",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livraria.fiodiario.com/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaLaraBrenner = new()
@@ -437,8 +353,6 @@ public class Provider
         Name = "Livraria Lara Brenner",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrarialarabrenner.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaInstitutoLiberal = new()
@@ -447,8 +361,6 @@ public class Provider
         Name = "Livraria Instituto Liberal",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariainstitutoliberal.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaNfc = new()
@@ -457,8 +369,6 @@ public class Provider
         Name = "Livraria NFC",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrarianfc.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaRosaly = new()
@@ -467,8 +377,6 @@ public class Provider
         Name = "Livraria da Rosaly",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadarosaly.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaInstitutoMises = new()
@@ -477,8 +385,6 @@ public class Provider
         Name = "Livraria Instituto Mises",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariainstitutomises.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaArno = new()
@@ -487,8 +393,6 @@ public class Provider
         Name = "Livraria do Arno",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadoarno.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaRevistaOeste = new()
@@ -497,8 +401,6 @@ public class Provider
         Name = "Livraria Revista Oeste",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariarevistaoeste.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaEdisonCarlos = new()
@@ -507,8 +409,6 @@ public class Provider
         Name = "Livraria do Edison Carlos",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadoedisoncarlos.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaDiacono = new()
@@ -517,8 +417,6 @@ public class Provider
         Name = "Livraria do Diácono",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadodiacono.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaRafaelNogueira = new()
@@ -527,8 +425,6 @@ public class Provider
         Name = "Livraria Rafael Nogueira",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariarafaelnogueira.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaDaLiberdade = new()
@@ -537,8 +433,6 @@ public class Provider
         Name = "Livraria da Liberdade",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadaliberdade.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaSeuFilhoLeitor = new()
@@ -547,8 +441,6 @@ public class Provider
         Name = "Livraria Seu Filho Leitor",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariaseufilholeitor.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaRebelo = new()
@@ -557,8 +449,6 @@ public class Provider
         Name = "Livraria Rebelo",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariarebelo.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaJulia = new()
@@ -567,8 +457,6 @@ public class Provider
         Name = "Livraria da Julia",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadajulia.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaCamila = new()
@@ -577,8 +465,6 @@ public class Provider
         Name = "Livraria da Camila",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadacamila.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaCatolicosDeVerdade = new()
@@ -587,8 +473,6 @@ public class Provider
         Name = "Livraria Católicos de Verdade",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariacatolicosdeverdade.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaLorenzo = new()
@@ -597,8 +481,6 @@ public class Provider
         Name = "Livraria do Lorenzo",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadolorenzo.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaRaphaelTonon = new()
@@ -607,8 +489,6 @@ public class Provider
         Name = "Livraria Raphael Tonon",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariaraphaeltonon.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaBbp = new()
@@ -617,8 +497,6 @@ public class Provider
         Name = "Livraria BBP",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariabbp.com/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaLaise = new()
@@ -627,8 +505,6 @@ public class Provider
         Name = "Livraria da Laíse",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://www.livrariadalaise.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaGrimaldo = new()
@@ -637,8 +513,6 @@ public class Provider
         Name = "Livraria do Grimaldo",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadogrimaldo.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaPatthy = new()
@@ -647,8 +521,6 @@ public class Provider
         Name = "Livraria da Patthy",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadapatthy.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaPeregrino = new()
@@ -657,8 +529,6 @@ public class Provider
         Name = "Livraria do Peregrino",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadoperegrino.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaFamiliaCatolica = new()
@@ -667,8 +537,6 @@ public class Provider
         Name = "Livraria da Família Católica",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadafamiliacatolica.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaGrandeFamilia = new()
@@ -677,8 +545,6 @@ public class Provider
         Name = "Livraria Grande Família",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariagrandefamilia.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaTati = new()
@@ -687,8 +553,6 @@ public class Provider
         Name = "Livraria da Tati",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadatati.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaDanilo = new()
@@ -697,8 +561,6 @@ public class Provider
         Name = "Livraria do Danilo",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadodanilo.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaSantaCarona = new()
@@ -707,8 +569,6 @@ public class Provider
         Name = "Livraria Santa Carona",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariasantacarona.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaMarize = new()
@@ -717,8 +577,6 @@ public class Provider
         Name = "Livraria da Marize",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadamarize.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaPriAntunes = new()
@@ -727,8 +585,6 @@ public class Provider
         Name = "Livraria Pri Antunes",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariapriantunes.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaPaulaMarisa = new()
@@ -737,8 +593,6 @@ public class Provider
         Name = "Livraria Paula Marisa",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livraria.paulamarisa.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaNuzioNeto = new()
@@ -747,8 +601,6 @@ public class Provider
         Name = "Livraria da Nuzio Neto",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadanuzioneto.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaPietra = new()
@@ -757,8 +609,6 @@ public class Provider
         Name = "Livraria da Pietra",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadapietra.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaDoutorPacheco = new()
@@ -767,8 +617,6 @@ public class Provider
         Name = "Livraria Doutor Pacheco",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadoutorpacheco.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaEduardoBolsonaro = new()
@@ -777,8 +625,6 @@ public class Provider
         Name = "Livraria Eduardo Bolsonaro",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariaeduardobolsonaro.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaCep = new()
@@ -787,8 +633,6 @@ public class Provider
         Name = "Livraria CEP",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariacep.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaZapparoli = new()
@@ -797,8 +641,6 @@ public class Provider
         Name = "Livraria Zapparoli",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariazapparoli.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaBoraSerSanto = new()
@@ -807,8 +649,6 @@ public class Provider
         Name = "Livraria Bora Ser Santo",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariaborasersanto.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaCassia = new()
@@ -817,8 +657,6 @@ public class Provider
         Name = "Livraria da Cássia",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadacassia.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaFran = new()
@@ -827,8 +665,6 @@ public class Provider
         Name = "Livraria da Fran",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadafran.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaProf = new()
@@ -837,8 +673,6 @@ public class Provider
         Name = "Livraria da Prof",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadaprof.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaSaulo = new()
@@ -847,8 +681,6 @@ public class Provider
         Name = "Livraria do Saulo",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadosaulo.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaMarieBruno = new()
@@ -857,8 +689,6 @@ public class Provider
         Name = "Livraria Marie Bruno",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://mariebrunobookshop.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaRodrigo = new()
@@ -867,8 +697,6 @@ public class Provider
         Name = "Livraria do Rodrigo",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadorodrigo.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaAmandaButtchevits = new()
@@ -877,8 +705,6 @@ public class Provider
         Name = "Livraria Amanda Buttchevits",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariaamandabuttchevits.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaTeAtualizei = new()
@@ -887,8 +713,6 @@ public class Provider
         Name = "Livraria Te Atualizei",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariateatualizei.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaAlam = new()
@@ -897,8 +721,6 @@ public class Provider
         Name = "Livraria do Alam",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadoalam.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider BibliotecaDoLuiz = new()
@@ -907,8 +729,6 @@ public class Provider
         Name = "Biblioteca do Luiz",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://bibliotecadoluiz.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider LivrariaSensoIncomum = new()
@@ -917,8 +737,6 @@ public class Provider
         Name = "Livraria Senso Incomum",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livraria.sensoincomum.org/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider Kirion = new()
@@ -927,8 +745,6 @@ public class Provider
         Name = "Kirion",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://www.kirion.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider VideEditorial = new()
@@ -937,8 +753,6 @@ public class Provider
         Name = "Vide Editorial",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://videeditorial.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static Provider EditoraSetimoSelo = new()
@@ -947,8 +761,6 @@ public class Provider
         Name = "Editora Setimo Selo",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://editorasetimoselo.com.br/",
-        MinFreeShipping = 200m,
-        BaseShippingCost = 15m
     };
 
     public static List<Provider> AllSources = new()

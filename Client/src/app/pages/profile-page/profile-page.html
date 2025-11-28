@@ -1,0 +1,132 @@
+<div class="profile-container">
+  <div class="profile-content">
+    <!-- Header -->
+    <div class="profile-header">
+      <h1>Meu Perfil</h1>
+      <p>Gerencie suas informacoes e creditos</p>
+    </div>
+
+    <!-- Loading -->
+    @if (loading) {
+      <div class="loading-container">
+        <div class="spinner"></div>
+      </div>
+    }
+
+    <!-- Error -->
+    @if (error) {
+      <div class="error-message">
+        {{ error }}
+        <button (click)="loadUserData()">Tentar novamente</button>
+      </div>
+    }
+
+    <!-- User Info & Credits -->
+    @if (userCredits && !loading) {
+      <div class="cards-grid">
+        <!-- User Info Card -->
+        <div class="card">
+          <h2>Informacoes do Usuario</h2>
+          <div class="info-list">
+            <div class="info-row">
+              <span class="label">Nome:</span>
+              <span class="value">{{ userCredits.username }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Email:</span>
+              <span class="value">{{ userCredits.email }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Credits Card -->
+        <div class="card">
+          <h2>Meus Creditos</h2>
+          <div class="credits-display">
+            <span class="credits-amount">{{ userCredits.availableCredits }}</span>
+            <p class="credits-label">creditos disponiveis</p>
+          </div>
+          <div class="credits-stats">
+            <div class="stat-row">
+              <span>Total utilizado:</span>
+              <span>{{ userCredits.totalCreditsUsed }} creditos</span>
+            </div>
+            <div class="stat-row">
+              <span>Custo estimado por busca:</span>
+              <span>~{{ userCredits.estimatedCostPerSearch }} creditos</span>
+            </div>
+            <div class="stat-row">
+              <span>Buscas restantes (estimado):</span>
+              <span>~{{ userCredits.estimatedSearchesRemaining }}</span>
+            </div>
+          </div>
+          <a routerLink="/credits" class="btn-buy-credits">Comprar Creditos</a>
+        </div>
+      </div>
+
+      <!-- Credit History -->
+      <div class="history-card">
+        <h2>Historico de Creditos</h2>
+
+        @if (historyLoading) {
+          <div class="loading-container">
+            <div class="spinner"></div>
+          </div>
+        }
+
+        @if (!historyLoading && creditHistory.length === 0) {
+          <p class="empty-history">Nenhuma transacao encontrada.</p>
+        }
+
+        @if (!historyLoading && creditHistory.length > 0) {
+          <div class="history-table-container">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Tipo</th>
+                  <th>Descricao</th>
+                  <th>Valor</th>
+                  <th>Saldo</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (transaction of creditHistory; track transaction.id) {
+                  <tr>
+                    <td>{{ formatDate(transaction.createdAt) }}</td>
+                    <td>
+                      <span [class]="'type-' + transaction.type.toLowerCase()">
+                        {{ transaction.typeDescription }}
+                      </span>
+                    </td>
+                    <td>
+                      {{ transaction.description }}
+                      @if (transaction.packageName) {
+                        <span class="package-name">({{ transaction.packageName }})</span>
+                      }
+                    </td>
+                    <td [class]="transaction.amount >= 0 ? 'amount-positive' : 'amount-negative'">
+                      {{ transaction.amount >= 0 ? '+' : '' }}{{ transaction.amount }}
+                    </td>
+                    <td class="balance">{{ transaction.balanceAfter }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="pagination">
+            <button (click)="previousPage()" [disabled]="!hasPreviousPage">
+              Anterior
+            </button>
+            <span class="page-info">Pagina {{ currentPage }} de {{ totalPages }}</span>
+            <button (click)="nextPage()" [disabled]="!hasNextPage">
+              Proxima
+            </button>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

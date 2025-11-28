@@ -1,0 +1,117 @@
+<div class="credits-container">
+  <div class="credits-content">
+    <!-- Header -->
+    <div class="credits-header">
+      <h1>Comprar Creditos</h1>
+      <p>Escolha o pacote ideal para suas necessidades</p>
+    </div>
+
+    <!-- Current Balance -->
+    @if (userCredits) {
+      <div class="current-balance">
+        <div class="balance-label">Saldo Atual</div>
+        <span class="balance-amount">{{ userCredits.availableCredits }}</span>
+        <span class="balance-suffix">creditos</span>
+      </div>
+    }
+
+    <!-- Success Message -->
+    @if (successMessage) {
+      <div class="success-message">
+        {{ successMessage }}
+      </div>
+    }
+
+    <!-- Error Message -->
+    @if (error) {
+      <div class="error-message">
+        {{ error }}
+      </div>
+    }
+
+    <!-- Loading -->
+    @if (loading) {
+      <div class="loading-container">
+        <div class="spinner"></div>
+      </div>
+    }
+
+    <!-- Packages Grid -->
+    @if (!loading && packages.length > 0) {
+      <div class="packages-grid">
+        @for (pkg of packages; track pkg.id) {
+          <div
+            class="package-card"
+            [class.popular]="pkg.isPopular"
+            [class.purchasing]="purchasing && selectedPackageId === pkg.id"
+          >
+            <!-- Popular Badge -->
+            <div class="popular-badge">POPULAR</div>
+
+            <!-- Package Icon -->
+            <div class="package-icon" [ngClass]="getPackageColor(pkg.name)">
+              @switch (getPackageIcon(pkg.name)) {
+                @case ('rocket') { 🚀 }
+                @case ('star') { ⭐ }
+                @case ('fire') { 🔥 }
+                @case ('crown') { 👑 }
+                @default { 📦 }
+              }
+            </div>
+
+            <!-- Package Info -->
+            <h3 class="package-name">{{ pkg.name }}</h3>
+            <p class="package-description">{{ pkg.description }}</p>
+
+            <!-- Credits -->
+            <div class="package-credits">
+              <span class="credits-main">{{ pkg.credits }}</span>
+              @if (pkg.bonusCredits > 0) {
+                <span class="credits-bonus">+{{ pkg.bonusCredits }}</span>
+              }
+              <span class="credits-total">= {{ pkg.totalCredits }} creditos total</span>
+            </div>
+
+            <!-- Price -->
+            <div class="package-price">
+              <span class="price-amount">{{ pkg.priceFormatted }}</span>
+              <span class="price-per-credit">R$ {{ pkg.pricePerCredit.toFixed(3) }}/credito</span>
+            </div>
+
+            <!-- Savings Badge -->
+            @if (pkg.savingsPercent > 0) {
+              <div class="savings-badge">
+                {{ pkg.savingsPercent }}% de economia
+              </div>
+            }
+
+            <!-- Buy Button -->
+            <button
+              (click)="purchasePackage(pkg)"
+              [disabled]="purchasing"
+              class="btn-purchase"
+              [ngClass]="pkg.isPopular ? 'popular' : 'primary'"
+            >
+              @if (purchasing && selectedPackageId === pkg.id) {
+                Processando...
+              } @else {
+                Comprar Agora
+              }
+            </button>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- No packages -->
+    @if (!loading && packages.length === 0) {
+      <div class="error-message">
+        Nenhum pacote disponivel no momento.
+        <button (click)="loadData()">Tentar novamente</button>
+      </div>
+    }
+
+    <!-- Back Link -->
+    <a routerLink="/profile" class="back-link">← Voltar ao Perfil</a>
+  </div>
+</div>

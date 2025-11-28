@@ -4,7 +4,19 @@
       "Bash(Select-Object FullName)",
       "Bash(dir:*)",
       "Bash(dotnet build:*)",
-      "Bash(Get-ChildItem -Path \"C:\\Users\\LucasHergessel\\Desktop\\Projetos\\BookPricesWatcher\\Client\\src\\app\" -Recurse -Directory)"
+      "Bash(Get-ChildItem -Path \"C:\\Users\\LucasHergessel\\Desktop\\Projetos\\BookPricesWatcher\\Client\\src\\app\" -Recurse -Directory)",
+      "Bash(docker-compose up:*)",
+      "Bash(npm run build:*)",
+      "Bash(dotnet test:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(docker ps:*)",
+      "Bash(dotnet ef migrations add:*)",
+      "Bash(dotnet tool install:*)",
+      "Bash(dotnet tool update:*)",
+      "Bash(curl:*)",
+      "Bash(docker restart:*)",
+      "Bash(npm test:*)",
+      "Bash(docker exec:*)"
     ],
     "deny": [],
     "ask": []

@@ -9,10 +9,10 @@ namespace SherlockAPI.Configurations;
 
 public class Configurator
 {
-    private const string secretKey = "SherlockSuperSecretKey2024!@#$%^&*";
-
     public void ConfigureServices(WebApplicationBuilder builder)
     {
+        var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+        var secretKey = jwtSettings["SecretKey"] ?? "SherlockSuperSecretKey2024!@#$%^&*";
         var key = Encoding.ASCII.GetBytes(secretKey);
 
         builder.Services.AddCors(options =>

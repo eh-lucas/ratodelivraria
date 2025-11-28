@@ -76,17 +76,4 @@ public class ProviderTests
         }
     }
 
-    [Fact]
-    public void Provider_ShippingCosts_AreNonNegative()
-    {
-        // Act
-        var providers = Provider.AllSources;
-
-        // Assert
-        providers.Should().AllSatisfy(p =>
-        {
-            p.BaseShippingCost.Should().BeGreaterOrEqualTo(0);
-            p.MinFreeShipping.Should().BeGreaterOrEqualTo(0);
-        });
-    }
 }

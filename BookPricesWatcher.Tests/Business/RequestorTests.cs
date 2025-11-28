@@ -11,7 +11,7 @@ public class RequestorTests
     public void Constructor_WithSearchParameterOnly_UsesCedetProviders()
     {
         // Arrange
-        var searchParams = new SearchParameter { BookTitle = "Test Book" };
+        var searchParams = new SearchParameter { Isbn = "9780132350884" };
 
         // Act
         var requestor = new Requestor(searchParams);
@@ -26,7 +26,7 @@ public class RequestorTests
     public void Constructor_WithSearchParameterOnly_SetsNullCacheTimeMinutes()
     {
         // Arrange
-        var searchParams = new SearchParameter { BookTitle = "Test Book" };
+        var searchParams = new SearchParameter { Isbn = "9780132350884" };
 
         // Act
         var requestor = new Requestor(searchParams);
@@ -39,7 +39,7 @@ public class RequestorTests
     public void Constructor_WithCustomProviders_UsesProvidedList()
     {
         // Arrange
-        var searchParams = new SearchParameter { BookTitle = "Test Book" };
+        var searchParams = new SearchParameter { Isbn = "9780132350884" };
         var customProviders = new List<Provider>
         {
             new() { Id = 1, Name = "Custom Provider", Url = "https://custom.com" }
@@ -57,7 +57,7 @@ public class RequestorTests
     public void Constructor_WithCustomCacheTimeMinutes_UsesProvidedValue()
     {
         // Arrange
-        var searchParams = new SearchParameter { BookTitle = "Test Book" };
+        var searchParams = new SearchParameter { Isbn = "9780132350884" };
         var providers = new List<Provider>();
         var cacheTimeMinutes = 60;
 
@@ -74,20 +74,14 @@ public class RequestorTests
         // Arrange
         var searchParams = new SearchParameter
         {
-            BookTitle = "Clean Code",
-            AuthorName = "Robert Martin",
-            Isbn = "9780132350884",
-            IsExactSearch = true
+            Isbn = "9780132350884"
         };
 
         // Act
         var requestor = new Requestor(searchParams);
 
         // Assert
-        requestor.SearchParameters.BookTitle.Should().Be("Clean Code");
-        requestor.SearchParameters.AuthorName.Should().Be("Robert Martin");
         requestor.SearchParameters.Isbn.Should().Be("9780132350884");
-        requestor.SearchParameters.IsExactSearch.Should().BeTrue();
     }
 
     [Fact]

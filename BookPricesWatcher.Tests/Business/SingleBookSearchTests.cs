@@ -12,9 +12,7 @@ public class SingleBookSearchTests
         var request = new SingleBookSearchRequest();
 
         // Assert
-        request.Title.Should().BeEmpty();
-        request.Isbn.Should().BeNull();
-        request.Author.Should().BeNull();
+        request.Isbn.Should().BeEmpty();
         request.ProviderUrls.Should().BeNull();
     }
 
@@ -24,16 +22,12 @@ public class SingleBookSearchTests
         // Arrange
         var request = new SingleBookSearchRequest
         {
-            Title = "Clean Code",
             Isbn = "978-0132350884",
-            Author = "Robert C. Martin",
             ProviderUrls = new List<string> { "http://provider1.com", "http://provider2.com" }
         };
 
         // Assert
-        request.Title.Should().Be("Clean Code");
         request.Isbn.Should().Be("978-0132350884");
-        request.Author.Should().Be("Robert C. Martin");
         request.ProviderUrls.Should().HaveCount(2);
     }
 

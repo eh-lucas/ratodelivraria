@@ -11,15 +11,6 @@ public class CartOptimizer
 {
     private readonly ILogger<CartOptimizer> _logger;
 
-    // Configurações de frete por provider (em produção, viriam do banco)
-    private static readonly Dictionary<int, ShippingConfig> ShippingConfigs = new()
-    {
-        { 1, new ShippingConfig { BaseShipping = 15.90m, FreeShippingThreshold = 199m } },  // Amazon
-        { 2, new ShippingConfig { BaseShipping = 12.90m, FreeShippingThreshold = 149m } },  // Estante Virtual
-        { 3, new ShippingConfig { BaseShipping = 14.90m, FreeShippingThreshold = 179m } },  // Livraria Cultura
-        { 4, new ShippingConfig { BaseShipping = 9.90m, FreeShippingThreshold = 99m } },    // Cedet
-    };
-
     public CartOptimizer(ILogger<CartOptimizer> logger)
     {
         _logger = logger;
@@ -40,14 +31,13 @@ public class CartOptimizer
         {
             OptimizationStrategy.LowestTotal => OptimizeForLowestTotal(allPrices, request),
             OptimizationStrategy.FewestOrders => OptimizeForFewestOrders(allPrices, request),
-            OptimizationStrategy.PrioritizeFreeShipping => OptimizeForFreeShipping(allPrices, request),
             OptimizationStrategy.SingleProvider => OptimizeForSingleProvider(allPrices, request),
             _ => OptimizeForLowestTotal(allPrices, request)
         };
     }
 
     /// <summary>
-    /// Estratégia: Menor custo total (livros + frete)
+    /// Estratégia: Menor custo total
     /// Usa programação dinâmica para encontrar a melhor combinação
     /// </summary>
     private CartOptimizationResult OptimizeForLowestTotal(
@@ -102,10 +92,9 @@ public class CartOptimizer
             bestPricePerBookPerProvider,
             quantities,
             allProviders,
-            request.MaxProviders,
-            request.IncludeShipping);
+            request.MaxProviders);
 
-        return BuildResult(bestAssignment, quantities, booksNotFound, request);
+        return BuildResult(bestAssignment, quantities, booksNotFound);
     }
 
     /// <summary>
@@ -125,8 +114,7 @@ public class CartOptimizer
             {
                 Books = request.Books,
                 Strategy = OptimizationStrategy.LowestTotal,
-                MaxProviders = maxProviders,
-                IncludeShipping = request.IncludeShipping
+                MaxProviders = maxProviders
             };
 
             var result = OptimizeForLowestTotal(allPrices, modifiedRequest);
@@ -161,82 +149,6 @@ public class CartOptimizer
     }
 
     /// <summary>
-    /// Estratégia: Prioriza frete grátis
-    /// </summary>
-    private CartOptimizationResult OptimizeForFreeShipping(
-        List<BookPriceOption> allPrices,
-        CartOptimizationRequest request)
-    {
-        // Primeiro tenta com frete grátis
-        var bookIsbns = request.Books.Select(b => b.Isbn.ToLowerInvariant()).ToList();
-        var quantities = request.Books.ToDictionary(
-            b => b.Isbn.ToLowerInvariant(),
-            b => b.Quantity);
-
-        var pricesByIsbn = allPrices
-            .Where(p => !string.IsNullOrEmpty(p.Isbn))
-            .GroupBy(p => p.Isbn!.ToLowerInvariant())
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        var allProviders = allPrices.Select(p => p.ProviderId).Distinct().ToList();
-
-        // Para cada provider, calcula o custo total se comprasse tudo lá
-        var providerTotals = new Dictionary<int, decimal>();
-        foreach (var providerId in allProviders)
-        {
-            decimal total = 0;
-            bool hasAllBooks = true;
-
-            foreach (var isbn in bookIsbns)
-            {
-                if (!pricesByIsbn.ContainsKey(isbn))
-                {
-                    hasAllBooks = false;
-                    break;
-                }
-
-                var price = pricesByIsbn[isbn].FirstOrDefault(p => p.ProviderId == providerId);
-                if (price == null)
-                {
-                    hasAllBooks = false;
-                    break;
-                }
-
-                total += price.Price * quantities[isbn];
-            }
-
-            if (hasAllBooks)
-            {
-                var shipping = GetShippingCost(providerId, total);
-                providerTotals[providerId] = total + shipping;
-            }
-        }
-
-        // Prioriza providers com frete grátis
-        var providersWithFreeShipping = providerTotals
-            .Where(p =>
-            {
-                var config = ShippingConfigs.GetValueOrDefault(p.Key);
-                var subtotal = p.Value - GetShippingCost(p.Key, p.Value);
-                return config != null && subtotal >= config.FreeShippingThreshold;
-            })
-            .OrderBy(p => p.Value)
-            .ToList();
-
-        if (providersWithFreeShipping.Any())
-        {
-            var best = providersWithFreeShipping.First();
-            request.MaxProviders = 1;
-            var result = OptimizeForSingleProvider(allPrices, request);
-            result.Message = "Frete grátis disponível!";
-            return result;
-        }
-
-        // Se não consegue frete grátis, usa estratégia padrão
-        return OptimizeForLowestTotal(allPrices, request);
-    }
-
-    /// <summary>
     /// Estratégia: Comprar tudo em um único provider
     /// </summary>
     private CartOptimizationResult OptimizeForSingleProvider(
@@ -256,8 +168,7 @@ public class CartOptimizer
         Dictionary<string, Dictionary<int, BookPriceOption>> pricesByBookProvider,
         Dictionary<string, int> quantities,
         List<int> allProviders,
-        int maxProviders,
-        bool includeShipping)
+        int maxProviders)
     {
         var bestAssignment = new Dictionary<string, BookPriceOption>();
         decimal bestTotalCost = decimal.MaxValue;
@@ -285,16 +196,10 @@ public class CartOptimizer
                     }
                 }
 
-                if (valid)
+                if (valid && subtotal < bestTotalCost)
                 {
-                    var shipping = includeShipping ? GetShippingCost(providerId, subtotal) : 0;
-                    var total = subtotal + shipping;
-
-                    if (total < bestTotalCost)
-                    {
-                        bestTotalCost = total;
-                        bestAssignment = new Dictionary<string, BookPriceOption>(assignment);
-                    }
+                    bestTotalCost = subtotal;
+                    bestAssignment = new Dictionary<string, BookPriceOption>(assignment);
                 }
             }
 
@@ -315,20 +220,17 @@ public class CartOptimizer
             }
         }
 
-        // Calcula custo com frete
-        var providerSubtotals = greedyAssignment
-            .GroupBy(kvp => kvp.Value.ProviderId)
-            .ToDictionary(
-                g => g.Key,
-                g => g.Sum(kvp => kvp.Value.Price * quantities[kvp.Key]));
-
-        decimal greedyTotal = providerSubtotals.Sum(kvp =>
-            kvp.Value + (includeShipping ? GetShippingCost(kvp.Key, kvp.Value) : 0));
+        // Calcula custo total
+        decimal greedyTotal = greedyAssignment.Sum(kvp => kvp.Value.Price * quantities[kvp.Key]);
 
         bestAssignment = greedyAssignment;
         bestTotalCost = greedyTotal;
 
         // Refinamento: tenta consolidar em menos providers se mais barato
+        var providerSubtotals = greedyAssignment
+            .GroupBy(kvp => kvp.Value.ProviderId)
+            .ToDictionary(g => g.Key, g => g.Sum(kvp => kvp.Value.Price * quantities[kvp.Key]));
+
         if (maxProviders == 0 || providerSubtotals.Count > 1)
         {
             var usedProviders = providerSubtotals.Keys.ToList();
@@ -341,7 +243,6 @@ public class CartOptimizer
 
                 foreach (var book in books)
                 {
-                    // Tenta usar o provider alvo
                     if (pricesByBookProvider[book].TryGetValue(targetProvider, out var price))
                     {
                         consolidatedAssignment[book] = price;
@@ -349,22 +250,15 @@ public class CartOptimizer
                     }
                     else
                     {
-                        // Mantém o original se não disponível
                         canConsolidate = false;
                         break;
                     }
                 }
 
-                if (canConsolidate)
+                if (canConsolidate && consolidatedSubtotal < bestTotalCost)
                 {
-                    var shipping = includeShipping ? GetShippingCost(targetProvider, consolidatedSubtotal) : 0;
-                    var total = consolidatedSubtotal + shipping;
-
-                    if (total < bestTotalCost)
-                    {
-                        bestTotalCost = total;
-                        bestAssignment = consolidatedAssignment;
-                    }
+                    bestTotalCost = consolidatedSubtotal;
+                    bestAssignment = consolidatedAssignment;
                 }
             }
         }
@@ -372,7 +266,6 @@ public class CartOptimizer
         // Aplica limite de providers se especificado
         if (maxProviders > 0 && maxProviders < bestAssignment.Values.Select(v => v.ProviderId).Distinct().Count())
         {
-            // Força consolidação nos N melhores providers
             var topProviders = bestAssignment.Values
                 .GroupBy(v => v.ProviderId)
                 .OrderByDescending(g => g.Count())
@@ -404,27 +297,12 @@ public class CartOptimizer
     }
 
     /// <summary>
-    /// Calcula o custo de frete para um provider
-    /// </summary>
-    private decimal GetShippingCost(int providerId, decimal subtotal)
-    {
-        if (!ShippingConfigs.TryGetValue(providerId, out var config))
-        {
-            // Provider desconhecido: usa frete padrão
-            config = new ShippingConfig { BaseShipping = 15m, FreeShippingThreshold = 150m };
-        }
-
-        return subtotal >= config.FreeShippingThreshold ? 0 : config.BaseShipping;
-    }
-
-    /// <summary>
     /// Constrói o resultado final da otimização
     /// </summary>
     private CartOptimizationResult BuildResult(
         Dictionary<string, BookPriceOption> assignment,
         Dictionary<string, int> quantities,
-        List<string> booksNotFound,
-        CartOptimizationRequest request)
+        List<string> booksNotFound)
     {
         if (!assignment.Any())
         {
@@ -443,7 +321,6 @@ public class CartOptimizer
 
         var providerCarts = new List<ProviderCart>();
         decimal totalBooksCost = 0;
-        decimal totalShippingCost = 0;
 
         foreach (var group in providerGroups)
         {
@@ -460,8 +337,6 @@ public class CartOptimizer
             }).ToList();
 
             var subtotal = items.Sum(i => i.TotalPrice);
-            var shipping = request.IncludeShipping ? GetShippingCost(providerId, subtotal) : 0;
-            var config = ShippingConfigs.GetValueOrDefault(providerId);
 
             providerCarts.Add(new ProviderCart
             {
@@ -469,28 +344,23 @@ public class CartOptimizer
                 ProviderName = group.First().Value.ProviderName,
                 Items = items,
                 Subtotal = subtotal,
-                ShippingCost = shipping,
-                Total = subtotal + shipping,
-                FreeShippingThreshold = config?.FreeShippingThreshold,
-                HasFreeShipping = shipping == 0
+                Total = subtotal
             });
 
             totalBooksCost += subtotal;
-            totalShippingCost += shipping;
         }
 
         // Calcula economia comparada ao pior cenário (tudo no provider mais caro)
-        decimal worstCaseTotal = CalculateWorstCase(assignment, quantities, request.IncludeShipping);
-        decimal savings = worstCaseTotal - (totalBooksCost + totalShippingCost);
+        decimal worstCaseTotal = CalculateWorstCase(assignment, quantities);
+        decimal savings = worstCaseTotal - totalBooksCost;
         decimal savingsPercent = worstCaseTotal > 0 ? (savings / worstCaseTotal) * 100 : 0;
 
         return new CartOptimizationResult
         {
             Success = true,
             Message = $"Carrinho otimizado em {providerCarts.Count} pedido(s)",
-            TotalCost = totalBooksCost + totalShippingCost,
+            TotalCost = totalBooksCost,
             BooksCost = totalBooksCost,
-            ShippingCost = totalShippingCost,
             Savings = Math.Max(0, savings),
             SavingsPercent = Math.Max(0, savingsPercent),
             ProviderCarts = providerCarts.OrderByDescending(p => p.Subtotal).ToList(),
@@ -500,36 +370,17 @@ public class CartOptimizer
 
     private decimal CalculateWorstCase(
         Dictionary<string, BookPriceOption> assignment,
-        Dictionary<string, int> quantities,
-        bool includeShipping)
+        Dictionary<string, int> quantities)
     {
-        // Simula comprar cada livro no provider mais caro
         decimal total = 0;
-        var providersUsed = new HashSet<int>();
 
         foreach (var kvp in assignment)
         {
-            // Encontra o preço mais alto para este livro
-            var price = kvp.Value.Price * 1.3m; // Assume 30% mais caro como pior caso
+            // Assume 30% mais caro como pior caso
+            var price = kvp.Value.Price * 1.3m;
             total += price * quantities.GetValueOrDefault(kvp.Key, 1);
-            providersUsed.Add(kvp.Value.ProviderId);
-        }
-
-        // Adiciona frete de cada provider
-        if (includeShipping)
-        {
-            foreach (var providerId in providersUsed)
-            {
-                total += GetShippingCost(providerId, 0); // Força frete pago
-            }
         }
 
         return total;
-    }
-
-    private class ShippingConfig
-    {
-        public decimal BaseShipping { get; set; }
-        public decimal FreeShippingThreshold { get; set; }
     }
 }
