@@ -13,7 +13,9 @@ public class Configurator
     {
         var jwtSettings = builder.Configuration.GetSection("JwtSettings");
         var secretKey = jwtSettings["SecretKey"] ?? "SherlockSuperSecretKey2024!@#$%^&*";
-        var key = Encoding.ASCII.GetBytes(secretKey);
+        // UTF-8 alinhado com TokenService (assinatura). ASCII anterior quebrava silenciosamente
+        // se a SecretKey contivesse qualquer caractere fora do range ASCII.
+        var key = Encoding.UTF8.GetBytes(secretKey);
 
         builder.Services.AddCors(options =>
         {
