@@ -39,7 +39,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: API/Dockerfile
+      dockerfile: Sherlock.Api/Dockerfile
     container_name: bookfin-api
     ports:
       - "5177:8080"
