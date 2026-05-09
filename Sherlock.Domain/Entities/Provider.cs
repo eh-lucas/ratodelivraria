@@ -796,14 +796,14 @@ public class Provider
         LivrariaSabedoriaCatolica,
         LivrariaThomas,
         LivrariaVictorSales,
-        LivrariaVistaPatria,
+        // LivrariaVistaPatria, // Inativo: NXDOMAIN (livrariavistapatria.com.br não resolve)
         // Novos
         LivrariaLuisEnrique,
         LivrariaAnalia,
-        LivrariaSilvioNavarro,
+        // LivrariaSilvioNavarro, // Inativo: DNS SERVFAIL (livrariadosilvionavarro.com.br)
         LivrariaCrisCorrea,
         LivrariaPsZerado,
-        LivrariaVandressa,
+        // LivrariaVandressa, // Inativo: NXDOMAIN (livrariadavandressa.com.br)
         LivrariaForaDaCaixinha,
         LivrariaBrunaGutstein,
         LivrariaDantas,
@@ -811,7 +811,7 @@ public class Provider
         LivrariaLaraBrenner,
         LivrariaInstitutoLiberal,
         LivrariaNfc,
-        LivrariaRosaly,
+        // LivrariaRosaly, // Inativo: NXDOMAIN (livrariadarosaly.com.br)
         LivrariaInstitutoMises,
         LivrariaArno,
         LivrariaRevistaOeste,
@@ -820,7 +820,7 @@ public class Provider
         LivrariaRafaelNogueira,
         LivrariaDaLiberdade,
         LivrariaSeuFilhoLeitor,
-        LivrariaRebelo,
+        // LivrariaRebelo, // Inativo: NXDOMAIN (livrariarebelo.com.br)
         LivrariaJulia,
         LivrariaCamila,
         LivrariaCatolicosDeVerdade,
@@ -829,7 +829,7 @@ public class Provider
         LivrariaBbp,
         LivrariaLaise,
         LivrariaGrimaldo,
-        LivrariaPatthy,
+        // LivrariaPatthy, // Inativo: DNS SERVFAIL (livrariadapatthy.com.br)
         LivrariaPeregrino,
         LivrariaFamiliaCatolica,
         LivrariaGrandeFamilia,
@@ -839,12 +839,12 @@ public class Provider
         LivrariaMarize,
         LivrariaPriAntunes,
         LivrariaPaulaMarisa,
-        LivrariaNuzioNeto,
+        // LivrariaNuzioNeto, // Inativo: NXDOMAIN (livrariadanuzioneto.com.br)
         LivrariaPietra,
         LivrariaDoutorPacheco,
         LivrariaEduardoBolsonaro,
         LivrariaCep,
-        LivrariaZapparoli,
+        // LivrariaZapparoli, // Inativo: NXDOMAIN (livrariazapparoli.com.br)
         LivrariaBoraSerSanto,
         LivrariaCassia,
         LivrariaFran,
