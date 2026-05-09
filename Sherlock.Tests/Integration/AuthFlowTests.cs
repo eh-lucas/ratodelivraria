@@ -16,16 +16,16 @@ public class AuthFlowTests(SherlockApiFactory factory)
     [Fact]
     public async Task Register_NewUser_Returns201WithToken()
     {
-        var email = UniqueEmail();
+        var email = AuthHelper.UniqueEmail();
         var response = await _client.PostAsJsonAsync("/api/auth/register", new
         {
             email,
-            password = "Test1234!",
+            password = AuthHelper.DefaultPassword,
             username = "tester"
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var body = await response.Content.ReadFromJsonAsync<LoginResponse>();
+        var body = await response.Content.ReadFromJsonAsync<AuthHelper.RegisterResult>();
         body.Should().NotBeNull();
         body!.Token.Should().NotBeNullOrEmpty();
         body.Email.Should().Be(email);
@@ -34,8 +34,8 @@ public class AuthFlowTests(SherlockApiFactory factory)
     [Fact]
     public async Task Register_DuplicateEmail_Returns409()
     {
-        var email = UniqueEmail();
-        await Register(email, "Test1234!");
+        var email = AuthHelper.UniqueEmail();
+        await AuthHelper.RegisterAsync(_client, email);
 
         var response = await _client.PostAsJsonAsync("/api/auth/register", new
         {
@@ -49,22 +49,25 @@ public class AuthFlowTests(SherlockApiFactory factory)
     [Fact]
     public async Task Login_WithValidCredentials_Returns200WithToken()
     {
-        var email = UniqueEmail();
-        var password = "Test1234!";
-        await Register(email, password);
+        var email = AuthHelper.UniqueEmail();
+        await AuthHelper.RegisterAsync(_client, email);
 
-        var response = await _client.PostAsJsonAsync("/api/auth/login", new { email, password });
+        var response = await _client.PostAsJsonAsync("/api/auth/login", new
+        {
+            email,
+            password = AuthHelper.DefaultPassword
+        });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<LoginResponse>();
+        var body = await response.Content.ReadFromJsonAsync<AuthHelper.RegisterResult>();
         body!.Token.Should().NotBeNullOrEmpty();
     }
 
     [Fact]
     public async Task Login_WithWrongPassword_Returns401()
     {
-        var email = UniqueEmail();
-        await Register(email, "Test1234!");
+        var email = AuthHelper.UniqueEmail();
+        await AuthHelper.RegisterAsync(_client, email);
 
         var response = await _client.PostAsJsonAsync("/api/auth/login", new
         {
@@ -80,7 +83,7 @@ public class AuthFlowTests(SherlockApiFactory factory)
     {
         var response = await _client.PostAsJsonAsync("/api/auth/login", new
         {
-            email = UniqueEmail(),
+            email = AuthHelper.UniqueEmail(),
             password = "QualquerSenha123!"
         });
 
@@ -98,28 +101,10 @@ public class AuthFlowTests(SherlockApiFactory factory)
     [Fact]
     public async Task ProtectedEndpoint_WithValidToken_Returns200()
     {
-        var email = UniqueEmail();
-        var token = await Register(email, "Test1234!");
-
-        // Cria cliente novo pra nao vazar header entre testes
-        var authedClient = factory.CreateClient();
-        authedClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var (authedClient, _) = await AuthHelper.CreateAuthenticatedClientAsync(factory);
 
         var response = await authedClient.GetAsync("/api/User/me");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
-
-    private async Task<string> Register(string email, string password)
-    {
-        var response = await _client.PostAsJsonAsync("/api/auth/register", new { email, password });
-        response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadFromJsonAsync<LoginResponse>();
-        return body!.Token;
-    }
-
-    // Cada teste usa email unico pra nao colidir no banco compartilhado
-    private static string UniqueEmail() => $"user_{Guid.NewGuid():N}@test.local";
-
-    private record LoginResponse(string Token, string Email, string? Username, DateTime ExpiresAt);
 }
