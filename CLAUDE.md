@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BookPricesWatcher is a full-stack web application for scraping and comparing book prices across online retailers. It uses Clean Architecture with ASP.NET Core 8.0 backend, Angular 20 frontend, and PostgreSQL database.
+Sherlock is a full-stack web application for scraping and comparing book prices across online retailers. It uses Clean Architecture with ASP.NET Core 8.0 backend, Angular 20 frontend, and PostgreSQL database.
 
 ## Common Commands
 
@@ -15,16 +15,16 @@ BookPricesWatcher is a full-stack web application for scraping and comparing boo
 dotnet build
 
 # Run API (available at http://localhost:5177)
-dotnet run --project API/SherlockAPI.csproj
+dotnet run --project Sherlock.Api/Sherlock.Api.csproj
 
 # Run with hot reload
-dotnet watch --project API/SherlockAPI.csproj
+dotnet watch --project Sherlock.Api/Sherlock.Api.csproj
 
 # Database migrations
-dotnet ef database update --project BookPricesWatcher.Data/Sherlock.Data.csproj --startup-project API/SherlockAPI.csproj
+dotnet ef database update --project Sherlock.Data/Sherlock.Data.csproj --startup-project Sherlock.Api/Sherlock.Api.csproj
 
 # Add new migration
-dotnet ef migrations add MigrationName --project BookPricesWatcher.Data/Sherlock.Data.csproj --startup-project API/SherlockAPI.csproj
+dotnet ef migrations add MigrationName --project Sherlock.Data/Sherlock.Data.csproj --startup-project Sherlock.Api/Sherlock.Api.csproj
 ```
 
 ### Frontend (Angular)
@@ -49,16 +49,16 @@ npm test
 
 ```bash
 # Run all tests
-dotnet test BookPricesWatcher.Tests/Sherlock.Tests.csproj
+dotnet test Sherlock.Tests/Sherlock.Tests.csproj
 
 # Run with verbose output
-dotnet test BookPricesWatcher.Tests/Sherlock.Tests.csproj --verbosity normal
+dotnet test Sherlock.Tests/Sherlock.Tests.csproj --verbosity normal
 
 # Run specific test class
 dotnet test --filter "FullyQualifiedName~AuthControllerTests"
 ```
 
-Test project: `BookPricesWatcher.Tests/` using xUnit, FluentAssertions, Moq
+Test project: `Sherlock.Tests/` using xUnit, FluentAssertions, Moq
 
 ### Docker
 
@@ -77,10 +77,10 @@ docker-compose logs --tail=50 client
 docker-compose down
 
 # Execute SQL in PostgreSQL container
-docker exec bookfin-postgres psql -U sherlock_admin -d sherlock_dev_db -c "SELECT * FROM users;"
+docker exec sherlock-postgres psql -U sherlock_admin -d sherlock_dev_db -c "SELECT * FROM users;"
 ```
 
-**Container names:** `bookfin-postgres`, `bookfin-redis`, `bookfin-api`, `bookfin-client`
+**Container names:** `sherlock-postgres`, `sherlock-redis`, `sherlock-api`, `sherlock-client`
 
 **URLs when running with Docker:**
 - Frontend: http://localhost:4200
@@ -91,18 +91,18 @@ docker exec bookfin-postgres psql -U sherlock_admin -d sherlock_dev_db -c "SELEC
 
 The solution follows Clean Architecture with these layers:
 
-- **BookPricesWatcher.Domain/** - Entities (User, Book, BookPrice, Provider, Query, Transaction, Scraper, Token) and repository interfaces
-- **BookPricesWatcher.Business/** - Business logic, services, scrapers (W16Engine), DTOs
-- **BookPricesWatcher.Data/** - EF Core DbContext (SherlockDbContext), repositories, migrations
-- **BookPricesWatcher.Infrastructure/** - Cross-cutting concerns (cache, resilience)
-- **API/** - ASP.NET Core Web API controllers, JWT authentication (TokenService), DI configuration
+- **Sherlock.Domain/** - Entities (User, Book, BookPrice, Provider, Query, Transaction, Scraper, Token) and repository interfaces
+- **Sherlock.Business/** - Business logic, services, scrapers (W16Engine), DTOs
+- **Sherlock.Data/** - EF Core DbContext (SherlockDbContext), repositories, migrations
+- **Sherlock.Infrastructure/** - Cross-cutting concerns (cache, resilience)
+- **Sherlock.Api/** - ASP.NET Core Web API controllers, JWT authentication (TokenService), DI configuration
 - **Client/** - Angular 20 app with standalone components pattern
 
 ### Key Patterns
 
 - Repository pattern for data access (IUserRepository → UserRepository)
 - DI registration via extension methods on IServiceCollection in each layer
-- JWT Bearer authentication configured in `API/Configurations/Configurator.cs`
+- JWT Bearer authentication configured in `Sherlock.Api/Configurations/Configurator.cs`
 - Angular auth service manages tokens in localStorage with @auth0/angular-jwt
 - Snake_case naming convention for database tables and columns (EF Core UseSnakeCaseNamingConvention)
 - **DbContextFactory** for concurrent database operations (required for parallel searches)
@@ -137,7 +137,7 @@ public class QueryRepository : BaseRepository<Query>, IQueryRepository
 
 ### Database
 
-PostgreSQL connection configured in `API/appsettings.json`. DbContext: `BookPricesWatcher.Data/Context/SherlockDbContext.cs`
+PostgreSQL connection configured in `Sherlock.Api/appsettings.json`. DbContext: `Sherlock.Data/Context/SherlockDbContext.cs`
 
 **Auto-Migration:** O `Program.cs` aplica migrations automaticamente no startup:
 ```csharp
@@ -184,13 +184,13 @@ Controller (autenticado) → Service → W16Engine.ExecuteTransaction(requestor,
 
 ### Web Scraping
 
-Core engine in `BookPricesWatcher.Business/Core/Base/W16Engine.cs`:
+Core engine in `Sherlock.Business/Core/Base/W16Engine.cs`:
 - Configurable parallelism via `MaxDegreeOfParallelism` (default: 10)
 - Detailed metrics logging (response times, P50/P95, throughput)
 - Uses `ScraperFactory` to create scrapers by provider category
 - **Persistência automática**: Após cada busca, persiste Transaction e Queries no banco via `ITransactionPersistenceService`
 
-Scrapers in `BookPricesWatcher.Business/Core/Scrapers/`:
+Scrapers in `Sherlock.Business/Core/Scrapers/`:
 - **CedetSingleSearchHttpClient** - Primary scraper using HttpClient + HtmlAgilityPack
   - Multiple CSS/XPath selectors for robust HTML parsing
   - Polly retry policy (2 retries, exponential backoff)
@@ -272,9 +272,9 @@ O endpoint `/api/Cart/optimize` recebe uma lista de livros (ISBN + quantidade) e
 
 ## Key Entry Points
 
-- Backend: `API/Program.cs`
+- Backend: `Sherlock.Api/Program.cs`
 - Frontend: `Client/src/app/app.ts` with routes in `app.routes.ts`
-- Auth flow: `API/Controllers/AuthController.cs` ↔ `Client/src/app/services/auth-service.ts`
+- Auth flow: `Sherlock.Api/Controllers/AuthController.cs` ↔ `Client/src/app/services/auth-service.ts`
 - Search flow: `BookSearchController` → `W16Engine.ExecuteTransaction()` → `Scrapers`
 - Cart optimization: `CartController` → `CartOptimizationService` → `CartOptimizer`
 
@@ -288,7 +288,7 @@ O endpoint `/api/Cart/optimize` recebe uma lista de livros (ISBN + quantidade) e
 
 ## Providers
 
-93 book retailers configured in `BookPricesWatcher.Domain/Entities/Provider.cs`:
+93 book retailers configured in `Sherlock.Domain/Entities/Provider.cs`:
 - Each has: Id, Name, Url, ProviderCategoryEnum, MinFreeShipping, BaseShippingCost, IsActive, SearchUrlTemplate
 - Categories: Cedet (OpenCart stores), Amazon, MercadoLivre, etc.
 - Use `Provider.AllSources` to access the static list

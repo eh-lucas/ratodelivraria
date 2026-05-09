@@ -1,8 +1,8 @@
-# Arquitetura do Sistema BookPricesWatcher
+# Arquitetura do Sistema Sherlock
 
 ## 1. Visão Geral
 
-O BookPricesWatcher é um sistema de comparação de preços de livros que permite ao usuário inserir uma lista de livros e receber a **melhor combinação de sites para compra com o menor custo total**.
+O Sherlock é um sistema de comparação de preços de livros que permite ao usuário inserir uma lista de livros e receber a **melhor combinação de sites para compra com o menor custo total**.
 
 ### Objetivo Principal
 Otimizar a compra de múltiplos livros considerando:
@@ -516,7 +516,7 @@ public class TransactionCostCalculator
 ### 6.1 Domain Layer (Existente + Novos)
 
 ```
-BookPricesWatcher.Domain/
+Sherlock.Domain/
 ├── Entities/
 │   ├── User.cs ✓ (existente)
 │   ├── Book.cs ✓ (existente)
@@ -553,7 +553,7 @@ BookPricesWatcher.Domain/
 ### 6.2 Business Layer (Existente + Novos)
 
 ```
-BookPricesWatcher.Business/
+Sherlock.Business/
 ├── Core/
 │   ├── Base/
 │   │   ├── W16Engine.cs ✓ (existente - melhorado)
@@ -871,6 +871,6 @@ public static class ResiliencePolicies
 
 ---
 
-*Documento gerado para o projeto BookPricesWatcher*
+*Documento gerado para o projeto Sherlock*
 *Versão: 1.0*
 *Data: 2024*

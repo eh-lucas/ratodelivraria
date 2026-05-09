@@ -1,4 +1,4 @@
-# BookFin - Comparador de Preços de Livros
+# Sherlock - Comparador de Preços de Livros
 
 Aplicação full-stack para busca e comparação de preços de livros em diversas livrarias online brasileiras. O sistema faz scraping em tempo real de 93 lojas e apresenta os melhores preços para o usuário.
 
@@ -22,7 +22,7 @@ Aplicação full-stack para busca e comparação de preços de livros em diversa
 ```bash
 # Clone o repositório
 git clone <repository-url>
-cd BookPricesWatcher
+cd Sherlock
 
 # Inicie todos os serviços
 docker-compose up -d
@@ -83,10 +83,10 @@ docker-compose up -d --build
 
 | Serviço | Container | Porta Externa | Descrição |
 |---------|-----------|---------------|-----------|
-| `client` | bookfin-client | 4200 | Frontend Angular (nginx) |
-| `api` | bookfin-api | 5177 | Backend .NET API |
-| `postgres` | bookfin-postgres | 5433 | Banco de dados PostgreSQL |
-| `redis` | bookfin-redis | 6379 | Cache Redis |
+| `client` | sherlock-client | 4200 | Frontend Angular (nginx) |
+| `api` | sherlock-api | 5177 | Backend .NET API |
+| `postgres` | sherlock-postgres | 5433 | Banco de dados PostgreSQL |
+| `redis` | sherlock-redis | 6379 | Cache Redis |
 
 ## Desenvolvimento Local
 
@@ -102,7 +102,7 @@ docker-compose -f docker-compose.dev.yml up -d
 
 ```bash
 # Navegue até a pasta do projeto
-cd API
+cd Sherlock.Api
 
 # Restaurar dependências (primeira vez)
 dotnet restore
@@ -131,18 +131,18 @@ O frontend estará disponível em: http://localhost:4200
 ## Estrutura do Projeto
 
 ```
-BookPricesWatcher/
-├── API/                          # ASP.NET Core Web API
+Sherlock/
+├── Sherlock.Api/                 # ASP.NET Core Web API
 │   ├── Controllers/              # Endpoints da API
 │   ├── Configurations/           # Configurações (JWT, CORS, etc)
 │   └── Dockerfile                # Container da API
-├── BookPricesWatcher.Business/   # Lógica de negócio
+├── Sherlock.Business/   # Lógica de negócio
 │   ├── Core/                     # Engine de scraping
 │   ├── DTOs/                     # Data Transfer Objects
 │   └── Services/                 # Serviços de aplicação
-├── BookPricesWatcher.Data/       # Acesso a dados (EF Core)
-├── BookPricesWatcher.Domain/     # Entidades e interfaces
-├── BookPricesWatcher.Infrastructure/ # Cache, resiliência
+├── Sherlock.Data/       # Acesso a dados (EF Core)
+├── Sherlock.Domain/     # Entidades e interfaces
+├── Sherlock.Infrastructure/ # Cache, resiliência
 ├── Client/                       # Angular 20 App
 │   ├── src/app/                  # Componentes Angular
 │   ├── Dockerfile.prod           # Container de produção
@@ -225,7 +225,7 @@ docker-compose ps
 docker-compose ps postgres
 
 # Conectar diretamente ao banco
-docker exec -it bookfin-postgres psql -U sherlock_admin -d sherlock_dev_db
+docker exec -it sherlock-postgres psql -U sherlock_admin -d sherlock_dev_db
 ```
 
 ### Rebuild completo
@@ -244,7 +244,7 @@ docker-compose up -d --build
 curl http://localhost:5177/health
 
 # Ou via Docker
-docker inspect --format='{{.State.Health.Status}}' bookfin-api
+docker inspect --format='{{.State.Health.Status}}' sherlock-api
 ```
 
 ## Contribuindo
