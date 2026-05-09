@@ -2,7 +2,7 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: bookfin-postgres
+    container_name: sherlock-postgres
     environment:
       POSTGRES_USER: sherlock_admin
       POSTGRES_PASSWORD: SuperSecure123!
@@ -17,12 +17,12 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - bookfin-network
+      - sherlock-network
 
   # Redis Cache (optional)
   redis:
     image: redis:7-alpine
-    container_name: bookfin-redis
+    container_name: sherlock-redis
     ports:
       - "6379:6379"
     volumes:
@@ -33,14 +33,14 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - bookfin-network
+      - sherlock-network
 
   # .NET API
   api:
     build:
       context: .
       dockerfile: Sherlock.Api/Dockerfile
-    container_name: bookfin-api
+    container_name: sherlock-api
     ports:
       - "5177:8080"
     depends_on:
@@ -55,26 +55,26 @@ services:
       retries: 5
       start_period: 60s
     networks:
-      - bookfin-network
+      - sherlock-network
 
   # Angular Client (nginx)
   client:
     build:
       context: ./Client
       dockerfile: Dockerfile.prod
-    container_name: bookfin-client
+    container_name: sherlock-client
     ports:
       - "4200:80"
     depends_on:
       api:
         condition: service_healthy
     networks:
-      - bookfin-network
+      - sherlock-network
 
 volumes:
   postgres_data:
   redis_data:
 
 networks:
-  bookfin-network:
+  sherlock-network:
     driver: bridge

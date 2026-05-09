@@ -6,4 +6,4 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-    container_name: bookfin-client
+    container_name: sherlock-client
