@@ -1,0 +1,43 @@
+.layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg-muted);
+}
+
+.overlay {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  // No mobile a sidebar fica fora do flow (drawer); por padrão escondida
+  .layout app-sidebar {
+    display: none;
+  }
+
+  .layout.mobile-open {
+    app-sidebar {
+      display: block;
+    }
+
+    .overlay {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      z-index: 40;
+    }
+  }
+}

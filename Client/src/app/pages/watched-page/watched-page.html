@@ -1,0 +1,96 @@
+<section class="watched">
+  <div class="page-header">
+    <h1 class="page-title">Meus livros observados</h1>
+    @if (!showForm) {
+      <button type="button" class="btn-primary" (click)="openForm()">+ Adicionar</button>
+    }
+  </div>
+
+  <p class="hint">
+    Cadastre livros para que o sistema consulte periodicamente. Quando o preço atingir o alvo,
+    você receberá um aviso por e-mail.
+  </p>
+
+  <!-- Formulário inline -->
+  @if (showForm) {
+    <form class="form-card" (ngSubmit)="submit()">
+      <div class="form-row">
+        <div class="field">
+          <label for="watched-isbn">ISBN</label>
+          <input id="watched-isbn" type="text" [(ngModel)]="newIsbn" name="isbn" placeholder="ex: 9788535914849" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="watched-target">Preço-alvo (R$)</label>
+          <input id="watched-target" type="number" min="0" step="0.01" [(ngModel)]="newTargetPrice" name="target" placeholder="0,00" />
+        </div>
+        <div class="field">
+          <label for="watched-freq">Frequência</label>
+          <select id="watched-freq" [(ngModel)]="newFrequency" name="freq">
+            @for (f of frequencies; track f.value) {
+              <option [value]="f.value">{{ f.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      @if (formError) { <p class="form-error">{{ formError }}</p> }
+
+      <div class="form-actions">
+        <button type="button" class="btn-ghost" (click)="cancelForm()">Cancelar</button>
+        <button type="submit" class="btn-primary">Adicionar</button>
+      </div>
+    </form>
+  }
+
+  <!-- Lista -->
+  @if (items.length === 0 && !showForm) {
+    <p class="placeholder-text">Nenhum livro observado ainda.</p>
+  } @else if (items.length > 0) {
+    <div class="table-wrap">
+      <table class="watched-table">
+        <thead>
+          <tr>
+            <th>ISBN</th>
+            <th class="num">Preço alvo</th>
+            <th>Frequência</th>
+            <th class="num">Último preço</th>
+            <th>Última consulta</th>
+            <th>Status</th>
+            <th class="actions">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (w of items; track w.id) {
+            <tr [class.paused]="w.paused">
+              <td class="isbn">{{ w.isbn }}</td>
+              <td class="num">{{ formatPrice(w.targetPrice) }}</td>
+              <td>{{ frequencyLabel(w.frequency) }}</td>
+              <td class="num">
+                @if (w.lastPrice != null) {
+                  <span [class.below]="w.lastPrice <= w.targetPrice">{{ formatPrice(w.lastPrice) }}</span>
+                } @else { — }
+              </td>
+              <td>{{ w.lastCheckedAt ? (w.lastCheckedAt | date:'dd/MM HH:mm') : 'pendente' }}</td>
+              <td>
+                <span class="tag" [class.tag-active]="!w.paused" [class.tag-paused]="w.paused">
+                  {{ w.paused ? 'Pausado' : 'Ativo' }}
+                </span>
+              </td>
+              <td class="actions">
+                <button type="button" class="btn-icon" (click)="togglePause(w.id)" [title]="w.paused ? 'Retomar' : 'Pausar'">
+                  {{ w.paused ? '▶' : '⏸' }}
+                </button>
+                <button type="button" class="btn-icon danger" (click)="remove(w.id)" title="Remover">×</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <p class="footer-note">
+      <strong>Em construção:</strong> ainda estamos finalizando o agendador no servidor.
+      Por enquanto os itens ficam salvos apenas no seu navegador.
+    </p>
+  }
+</section>

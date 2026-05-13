@@ -45,7 +45,7 @@ export class LoginPage implements OnInit {
       next: (response: any) => {
         if (response && response.token) {
           this.authService.setToken(response.token);
-          this.router.navigate(['/search']);
+          this.router.navigate(['/home']);
         }
       },
       error: (err: any) => {

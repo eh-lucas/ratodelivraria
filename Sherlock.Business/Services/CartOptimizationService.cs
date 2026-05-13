@@ -50,9 +50,12 @@ public class CartOptimizationService : ICartOptimizationService
         // Determina quais providers usar
         var sourcesToSearch = GetSourcesToSearch(request.ProviderUrls);
 
+        // Mais de 1 livro = carrinho; 1 livro = consulta unitária (mesmo serviço atende ambos)
+        var isCart = request.Books.Count > 1;
+
         foreach (var book in request.Books)
         {
-            searchTasks.Add(SearchBookPricesAsync(book, sourcesToSearch, userId, cancellationToken));
+            searchTasks.Add(SearchBookPricesAsync(book, sourcesToSearch, userId, isCart, cancellationToken));
         }
 
         var searchResults = await Task.WhenAll(searchTasks);
@@ -136,13 +139,15 @@ public class CartOptimizationService : ICartOptimizationService
         CartBookItem book,
         List<Provider> sources,
         int userId,
+        bool isCart,
         CancellationToken cancellationToken)
     {
         var requestor = new Requestor
         {
             SearchParameters = new SearchParameter
             {
-                Isbn = book.Isbn
+                Isbn = book.Isbn,
+                IsCart = isCart
             },
             SourcesToSearch = sources
         };

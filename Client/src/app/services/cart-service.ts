@@ -14,6 +14,7 @@ export interface CartOptimizationRequest {
   strategy: OptimizationStrategy;
   maxProviders: number;
   includeShipping: boolean;
+  providerUrls?: string[];
 }
 
 export enum OptimizationStrategy {

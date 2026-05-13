@@ -1,0 +1,120 @@
+<section class="history">
+  <h1 class="page-title">Meu histórico</h1>
+
+  @if (isLoading) {
+    <p class="placeholder-text">Carregando histórico...</p>
+  } @else if (errorMessage) {
+    <p class="placeholder-text error">{{ errorMessage }}</p>
+  } @else if (transactions.length === 0) {
+    <p class="placeholder-text">Você ainda não fez nenhuma consulta.</p>
+  } @else {
+    <div class="table-wrap">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Tipo</th>
+            <th>Consulta</th>
+            <th class="num">Sites</th>
+            <th class="num">Custo</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (t of transactions; track t.id) {
+            @let parsed = parseInput(t.inputParameters);
+            <tr (click)="openDetail(t)">
+              <td>{{ t.startedAt | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td>
+                <span class="tag" [class.tag-cart]="parsed.type === 'cart'" [class.tag-single]="parsed.type === 'single'">
+                  {{ parsed.type === 'cart' ? 'Carrinho' : parsed.type === 'single' ? 'Unitária' : 'Outro' }}
+                </span>
+              </td>
+              <td class="ellipsis">{{ parsed.description }}</td>
+              <td class="num">{{ t.totalProvidersQueried }}</td>
+              <td class="num">{{ t.costCredits }} cr</td>
+              <td>
+                @if (t.isSuccess) {
+                  <span class="status success">✓</span>
+                } @else {
+                  <span class="status fail">✗</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- Modal de detalhes -->
+  @if (detail || detailLoading) {
+    <div class="modal-backdrop" (click)="closeDetail()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <button class="modal-close" (click)="closeDetail()" aria-label="Fechar">×</button>
+
+        @if (detailLoading) {
+          <p class="placeholder-text">Carregando detalhes...</p>
+        } @else if (detail) {
+          @let dParsed = parseInput(detail.inputParameters);
+
+          <h2 class="modal-title">Detalhes da consulta</h2>
+          <div class="meta">
+            <div><span>Data</span><strong>{{ detail.startedAt | date:'dd/MM/yyyy HH:mm:ss' }}</strong></div>
+            <div><span>Tipo</span><strong>{{ dParsed.type === 'cart' ? 'Carrinho' : dParsed.type === 'single' ? 'Unitária' : '—' }}</strong></div>
+            <div><span>Consulta</span><strong>{{ dParsed.description }}</strong></div>
+            <div><span>Sites consultados</span><strong>{{ detail.totalProvidersQueried }}</strong></div>
+            <div><span>Com sucesso</span><strong>{{ detail.successfulQueries }}</strong></div>
+            <div><span>Tempo</span><strong>{{ (detail.executionTimeMs / 1000).toFixed(2) }}s</strong></div>
+            <div><span>Custo</span><strong>{{ detail.costCredits }} créditos</strong></div>
+          </div>
+
+          @if (detail.bestPrice != null) {
+            <div class="best">
+              <div class="best-label">Melhor resultado</div>
+              <div class="best-line">
+                <span>{{ detail.bestProvider }}</span>
+                <span class="best-price">{{ formatPrice(detail.bestPrice) }}</span>
+              </div>
+              @if (detail.bestTitle) {
+                <div class="best-title">{{ detail.bestTitle }}</div>
+              }
+            </div>
+          }
+
+          <h3 class="modal-subtitle">Resultados por site ({{ detail.queries.length }})</h3>
+          <div class="table-wrap">
+            <table class="detail-table">
+              <thead>
+                <tr>
+                  <th>Site</th>
+                  <th>Título</th>
+                  <th class="num">Preço</th>
+                  <th class="num">Tempo</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (q of detail.queries; track q.id) {
+                  <tr [class.failed]="!q.success">
+                    <td>{{ q.providerName }}</td>
+                    <td class="ellipsis">{{ q.title || '—' }}</td>
+                    <td class="num">{{ formatPrice(q.price) }}</td>
+                    <td class="num">{{ q.responseTimeMs }}ms</td>
+                    <td>
+                      @if (q.success) {
+                        <span class="status success">✓</span>
+                      } @else {
+                        <span class="status fail" [title]="q.errorMessage || ''">✗</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</section>

@@ -1,208 +1,206 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
   CartService,
   CartBookItem,
-  CartOptimizationRequest,
   CartOptimizationResult,
   OptimizationStrategy,
-  StrategyOption,
   ProviderOption,
-  BookSearchResponse,
-  QueryResultItem,
-  ProviderComparison
 } from '../../services/cart-service';
+import { UserService } from '../../services/user-service';
+
+// Item da lista de progresso exibida no painel "Resultado" durante a consulta
+interface ProgressItem {
+  providerId: number;
+  providerName: string;
+  providerUrl: string;
+  status: 'pending' | 'success' | 'not_found' | 'error';
+  price?: number;
+}
 
 @Component({
   selector: 'search-page',
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './search-page.html',
-  styleUrl: './search-page.scss'
+  styleUrl: './search-page.scss',
 })
 export class SearchPage implements OnInit {
-  // Lista de livros no carrinho
+  // Carrinho de ISBNs a consultar
   books: CartBookItem[] = [];
+  newIsbn = '';
 
-  // Formulário de novo livro
-  newBook: CartBookItem = {
-    isbn: '',
-    quantity: 1
-  };
-
-  // Configurações de otimização
-  selectedStrategy: OptimizationStrategy = OptimizationStrategy.LowestTotal;
-  maxProviders: number = 0;
-  includeShipping: boolean = true;
-  strategies: StrategyOption[] = [];
-
-  // Providers
+  // Providers disponíveis e selecionados
   providers: ProviderOption[] = [];
   selectedProviderUrls: string[] = [];
+  providersOpen = false;
+  providerFilter = '';
 
-  // Resultado
+  // Resultado / estado
   result: CartOptimizationResult | null = null;
-  searchResult: BookSearchResponse | null = null;
+  isLoading = false;
+  errorMessage = '';
 
-  // Estado
-  isLoading: boolean = false;
-  errorMessage: string = '';
+  // Progresso da consulta — populado ao iniciar busca, atualizado ao receber resposta
+  progressItems: ProgressItem[] = [];
 
-  constructor(private cartService: CartService) {}
+  @ViewChild('providersBox') providersBox?: ElementRef;
+
+  constructor(
+    private cartService: CartService,
+    private userService: UserService,
+  ) {}
 
   ngOnInit(): void {
-    this.loadStrategies();
-    this.loadProviders();
-  }
-
-  loadStrategies(): void {
-    this.cartService.getStrategies().subscribe({
-      next: (strategies) => {
-        this.strategies = strategies;
-      },
-      error: (err) => {
-        console.error('Erro ao carregar estratégias', err);
-        // Fallback para estratégias padrão
-        this.strategies = [
-          { value: 0, name: 'LowestTotal', description: 'Menor custo total (livros + frete)' },
-          { value: 1, name: 'FewestOrders', description: 'Menor número de pedidos' },
-          { value: 2, name: 'PrioritizeFreeShipping', description: 'Prioriza frete grátis' },
-          { value: 3, name: 'SingleProvider', description: 'Comprar tudo em um único site' }
-        ];
-      }
-    });
-  }
-
-  loadProviders(): void {
     this.cartService.getActiveProviders().subscribe({
-      next: (providers) => {
-        this.providers = providers;
-        // Por padrão, seleciona todos os providers
-        this.selectedProviderUrls = providers.map(p => p.url);
+      next: list => {
+        this.providers = list;
+        // Por padrão consulta em todos os providers ativos
+        this.selectedProviderUrls = list.map(p => p.url);
       },
-      error: (err) => {
-        console.error('Erro ao carregar providers', err);
-      }
+      error: () => {
+        this.errorMessage = 'Não foi possível carregar a lista de sites.';
+      },
     });
+  }
+
+  // ===== Carrinho =====
+
+  addBook(): void {
+    const isbn = this.newIsbn.trim();
+    if (!isbn) return;
+    // Evita duplicatas
+    if (this.books.some(b => b.isbn === isbn)) {
+      this.newIsbn = '';
+      return;
+    }
+    this.books.push({ isbn, quantity: 1 });
+    this.newIsbn = '';
+  }
+
+  removeBook(isbn: string): void {
+    this.books = this.books.filter(b => b.isbn !== isbn);
+  }
+
+  // ===== Providers dropdown =====
+
+  toggleProviders(): void {
+    this.providersOpen = !this.providersOpen;
   }
 
   toggleProvider(url: string): void {
-    const index = this.selectedProviderUrls.indexOf(url);
-    if (index > -1) {
-      this.selectedProviderUrls.splice(index, 1);
+    if (this.selectedProviderUrls.includes(url)) {
+      this.selectedProviderUrls = this.selectedProviderUrls.filter(u => u !== url);
     } else {
-      this.selectedProviderUrls.push(url);
+      this.selectedProviderUrls = [...this.selectedProviderUrls, url];
     }
-  }
-
-  isProviderSelected(url: string): boolean {
-    return this.selectedProviderUrls.includes(url);
   }
 
   selectAllProviders(): void {
     this.selectedProviderUrls = this.providers.map(p => p.url);
   }
 
-  deselectAllProviders(): void {
+  clearProviders(): void {
     this.selectedProviderUrls = [];
   }
 
-  addBook(): void {
-    const isbn = this.newBook.isbn?.trim();
+  get filteredProviders(): ProviderOption[] {
+    const q = this.providerFilter.trim().toLowerCase();
+    if (!q) return this.providers;
+    return this.providers.filter(p => p.name.toLowerCase().includes(q));
+  }
 
-    if (!isbn) {
-      this.errorMessage = 'Digite o ISBN do livro';
-      return;
+  // Fecha o dropdown ao clicar fora
+  @HostListener('document:click', ['$event'])
+  onDocClick(e: MouseEvent): void {
+    if (this.providersOpen && this.providersBox && !this.providersBox.nativeElement.contains(e.target)) {
+      this.providersOpen = false;
     }
-
-    this.books.push({
-      isbn: isbn,
-      quantity: this.newBook.quantity || 1
-    });
-
-    // Limpa formulário
-    this.newBook = {
-      isbn: '',
-      quantity: 1
-    };
-    this.errorMessage = '';
   }
 
-  removeBook(index: number): void {
-    this.books.splice(index, 1);
+  // ===== Custo estimado =====
+
+  get estimatedCredits(): number {
+    // Cada combinação livro × provider = 1 query = 1 crédito (estimativa)
+    return this.books.length * this.selectedProviderUrls.length;
   }
 
-  clearCart(): void {
-    this.books = [];
-    this.result = null;
-    this.searchResult = null;
-    this.errorMessage = '';
+  get canSearch(): boolean {
+    return this.books.length > 0 && this.selectedProviderUrls.length > 0 && !this.isLoading;
   }
 
-  optimizeCart(): void {
-    if (this.books.length === 0) {
-      this.errorMessage = 'Adicione pelo menos um livro ao carrinho';
-      return;
-    }
+  // ===== Busca =====
+
+  search(): void {
+    if (!this.canSearch) return;
 
     this.isLoading = true;
     this.errorMessage = '';
     this.result = null;
 
-    const request: CartOptimizationRequest = {
-      books: this.books,
-      strategy: this.selectedStrategy,
-      maxProviders: this.maxProviders,
-      includeShipping: this.includeShipping
-    };
+    // Mostra cada provider selecionado como "consultando..." enquanto a busca roda
+    this.progressItems = this.providers
+      .filter(p => this.selectedProviderUrls.includes(p.url))
+      .map(p => ({ providerId: p.id, providerName: p.name, providerUrl: p.url, status: 'pending' as const }));
 
-    this.cartService.optimizeCart(request).subscribe({
-      next: (result) => {
-        this.result = result;
-        this.isLoading = false;
-      },
-      error: (err) => {
-        console.error('Erro na otimização', err);
-        this.errorMessage = err.error?.error || 'Erro ao otimizar carrinho. Tente novamente.';
-        this.isLoading = false;
+    this.cartService
+      .optimizeCart({
+        books: this.books,
+        strategy: OptimizationStrategy.LowestTotal,
+        maxProviders: 0,
+        includeShipping: true,
+        providerUrls: this.selectedProviderUrls,
+      })
+      .subscribe({
+        next: r => {
+          this.applyProgressFromResult(r);
+          this.result = r;
+          this.isLoading = false;
+          if (r.creditsUsed) this.userService.updateCreditsAfterConsumption(r.creditsUsed);
+        },
+        error: err => {
+          // Em caso de falha geral, marca todos como erro
+          this.progressItems = this.progressItems.map(p => ({ ...p, status: 'error' }));
+          this.errorMessage = err?.error?.message || 'Erro ao consultar livros.';
+          this.isLoading = false;
+        },
+      });
+  }
+
+  // Resolve o status de cada provider da lista de progresso a partir do resultado agregado.
+  // Comparamos por providerName porque o backend retorna providerId=0 / providerUrl="" em providerComparisons.
+  private applyProgressFromResult(r: CartOptimizationResult): void {
+    const byName = new Map(r.providerComparisons.map(c => [c.providerName, c]));
+    this.progressItems = this.progressItems.map(item => {
+      const cmp = byName.get(item.providerName);
+      if (!cmp) {
+        return { ...item, status: 'error' };
       }
+      if (cmp.booksFound === 0) {
+        return { ...item, status: 'not_found' };
+      }
+      return {
+        ...item,
+        status: 'success',
+        price: cmp.totalPrice,
+      };
     });
   }
 
-  quickSearch(): void {
-    const isbn = this.newBook.isbn?.trim();
+  // ===== Helpers de exibição =====
 
-    if (!isbn) {
-      this.errorMessage = 'Digite o ISBN do livro para buscar';
-      return;
-    }
-
-    if (this.selectedProviderUrls.length === 0) {
-      this.errorMessage = 'Selecione pelo menos um site para buscar';
-      return;
-    }
-
-    this.isLoading = true;
-    this.errorMessage = '';
-    this.searchResult = null;
-    this.result = null;
-
-    this.cartService.searchBookByIsbn(isbn, this.selectedProviderUrls).subscribe({
-      next: (result) => {
-        this.searchResult = result;
-        this.isLoading = false;
-      },
-      error: (err) => {
-        console.error('Erro na busca', err);
-        this.errorMessage = err.error?.error || 'Erro ao buscar livro. Tente novamente.';
-        this.isLoading = false;
-      }
-    });
+  trackByIsbn(_: number, item: CartBookItem): string {
+    return item.isbn;
   }
 
-  getStrategyName(value: number): string {
-    const strategy = this.strategies.find(s => s.value === value);
-    return strategy?.description || 'Menor custo total';
+  get topProviders() {
+    if (!this.result) return [];
+    // Já vem ordenado pelo backend; pega top 5 que têm todos os livros
+    return this.result.providerComparisons.slice(0, 5);
+  }
+
+  get bestProvider() {
+    return this.result?.providerComparisons.find(p => p.hasAllBooks) ?? null;
   }
 }
