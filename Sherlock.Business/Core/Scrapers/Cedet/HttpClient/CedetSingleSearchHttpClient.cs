@@ -71,31 +71,22 @@ public class CedetSingleSearchHttpClient : IScraper
             if (candidates.Count == 0)
                 return QueryResult.CreateNoResult(provider, stopwatch.ElapsedMilliseconds);
 
-            _logger.LogDebug("[{Provider}] {Count} candidatos, validando ISBN...", provider.Name, candidates.Count);
-
-            foreach (var candidate in candidates)
-            {
-                var (matched, productUrl) = await TryValidateByIsbnAsync(candidate, parameters.Isbn, baseUrl, provider);
-                if (!matched) continue;
-
-                stopwatch.Stop();
-                _logger.LogInformation("[{Provider}] ISBN validado! \"{Title}\" - R${Price:F2} em {ElapsedMs}ms",
-                    provider.Name, candidate.Title, candidate.Price, stopwatch.ElapsedMilliseconds);
-
-                return QueryResult.CreateSuccess(
-                    provider,
-                    candidate.Title,
-                    candidate.Author,
-                    candidate.Price,
-                    candidate.Discount,
-                    stopwatch.ElapsedMilliseconds,
-                    productUrl);
-            }
+            // Buscamos pelo próprio ISBN: confiamos no buscador do provider e usamos o primeiro candidato sem revalidar
+            var best = candidates[0];
+            var productUrl = BuildProductUrl(best.ProductUrl, baseUrl);
 
             stopwatch.Stop();
-            _logger.LogDebug("[{Provider}] Nenhum candidato com ISBN correspondente em {ElapsedMs}ms",
-                provider.Name, stopwatch.ElapsedMilliseconds);
-            return QueryResult.CreateNoResult(provider, stopwatch.ElapsedMilliseconds);
+            _logger.LogInformation("[{Provider}] \"{Title}\" - R${Price:F2} em {ElapsedMs}ms ({Count} candidatos)",
+                provider.Name, best.Title, best.Price, stopwatch.ElapsedMilliseconds, candidates.Count);
+
+            return QueryResult.CreateSuccess(
+                provider,
+                best.Title,
+                best.Author,
+                best.Price,
+                best.Discount,
+                stopwatch.ElapsedMilliseconds,
+                productUrl);
         }
         catch (TaskCanceledException)
         {
@@ -138,6 +129,16 @@ public class CedetSingleSearchHttpClient : IScraper
         return ParseProducts(products, provider);
     }
 
+    private static string BuildProductUrl(string productUrl, string baseUrl)
+    {
+        if (string.IsNullOrEmpty(productUrl)) return "";
+        return productUrl.StartsWith("http")
+            ? productUrl
+            : $"{baseUrl.TrimEnd('/')}/{productUrl.TrimStart('/')}";
+    }
+
+    // Validação por ISBN desabilitada temporariamente: confiamos no buscador do provider (busca é feita pelo próprio ISBN)
+    /*
     private async Task<(bool matched, string productUrl)> TryValidateByIsbnAsync(
         BookCandidate candidate, string expectedIsbn, string baseUrl, Provider provider)
     {
@@ -191,6 +192,16 @@ public class CedetSingleSearchHttpClient : IScraper
         }
     }
 
+    private static bool IsKit(HtmlDocument doc, string bodyText)
+    {
+        var title = doc.DocumentNode.SelectSingleNode("//h1")?.InnerText?.ToLowerInvariant() ?? "";
+        var bodyLower = bodyText.ToLowerInvariant();
+
+        return title.Contains("kit") || title.Contains("combo") || title.Contains("coleção") ||
+               bodyLower.Contains("kit de livros") || bodyLower.Contains("combo de livros");
+    }
+    */
+
     private async Task<HttpResponseMessage> SendAsync(string url, Provider provider)
     {
         return await _retryPolicy.ExecuteAsync(async () =>
@@ -219,15 +230,6 @@ public class CedetSingleSearchHttpClient : IScraper
 
         var builder = new UriBuilder(uri) { Host = uri.Host[4..] };
         return builder.Uri.ToString();
-    }
-
-    private static bool IsKit(HtmlDocument doc, string bodyText)
-    {
-        var title = doc.DocumentNode.SelectSingleNode("//h1")?.InnerText?.ToLowerInvariant() ?? "";
-        var bodyLower = bodyText.ToLowerInvariant();
-
-        return title.Contains("kit") || title.Contains("combo") || title.Contains("coleção") ||
-               bodyLower.Contains("kit de livros") || bodyLower.Contains("combo de livros");
     }
 
     private HtmlNodeCollection? ExtractProducts(HtmlDocument doc)
