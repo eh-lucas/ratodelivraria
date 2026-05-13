@@ -1,0 +1,81 @@
+:host {
+  display: contents;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: var(--sidebar-w-expanded);
+  height: 100vh;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  padding: var(--space-3) 0;
+  gap: var(--space-1);
+  transition: width 0.18s ease;
+  flex-shrink: 0;
+
+  &.collapsed {
+    width: var(--sidebar-w-collapsed);
+
+    .label {
+      opacity: 0;
+      pointer-events: none;
+    }
+  }
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+
+  &:hover {
+    background: var(--bg-muted);
+    color: var(--text);
+  }
+
+  &.active {
+    color: var(--text);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+  }
+
+  &.toggle {
+    color: var(--text);
+    margin-bottom: var(--space-2);
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+
+    &:hover {
+      background: var(--bg-muted);
+    }
+  }
+}
+
+.icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.label {
+  transition: opacity 0.15s ease;
+}
+
+// Mobile: sidebar vira drawer (controlado pelo layout pai)
+@media (max-width: 767px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 50;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+  }
+}

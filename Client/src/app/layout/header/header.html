@@ -1,0 +1,30 @@
+<header class="header">
+  <button class="mobile-menu-btn" (click)="onMobileMenu()" aria-label="Abrir menu">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+    </svg>
+  </button>
+
+  <a routerLink="/home" class="title">Sherlock</a>
+
+  <div class="actions">
+    @if (userCredits) {
+      <a routerLink="/credits" class="credits" title="Comprar créditos">
+        <svg class="credits-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" stroke-width="2"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 7v10M9 10h6M9 14h6"/>
+        </svg>
+        <span class="credits-value">{{ userCredits.availableCredits }}</span>
+      </a>
+    }
+
+    <div class="user-wrapper">
+      <button type="button" class="avatar" (click)="toggleUserMenu($event)" [attr.aria-expanded]="userMenuOpen" aria-label="Menu do usuário">
+        {{ userInitial }}
+      </button>
+      @if (userMenuOpen) {
+        <app-user-menu (close)="closeUserMenu()"></app-user-menu>
+      }
+    </div>
+  </div>
+</header>
