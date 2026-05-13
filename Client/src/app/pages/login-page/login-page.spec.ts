@@ -86,7 +86,7 @@ describe('Login', () => {
     component.onSubmit();
 
     expect(mockAuthService.setToken).toHaveBeenCalledWith('test-token');
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/search']);
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/home']);
   });
 
   it('should handle login error', () => {

@@ -1,35 +1,34 @@
 import { Routes } from '@angular/router';
 import { LoginPage } from './pages/login-page/login-page';
 import { RegisterPage } from './pages/register-page/register-page';
+import { HomePage } from './pages/home-page/home-page';
 import { SearchPage } from './pages/search-page/search-page';
+import { WatchedPage } from './pages/watched-page/watched-page';
+import { HistoryPage } from './pages/history-page/history-page';
 import { ProfilePage } from './pages/profile-page/profile-page';
 import { CreditsPage } from './pages/credits-page/credits-page';
-import { HomeComponent } from './components/home-component/home-component';
+import { AppLayoutComponent } from './layout/app-layout';
 import { authGuard } from './guards/auth-guard';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/login', pathMatch: 'full' },
-  {
-    path: 'home',
-    component: HomeComponent,
-    canActivate: [authGuard],
-  },
-  {
-    path: 'search',
-    component: SearchPage,
-    canActivate: [authGuard],
-  },
-  {
-    path: 'profile',
-    component: ProfilePage,
-    canActivate: [authGuard],
-  },
-  {
-    path: 'credits',
-    component: CreditsPage,
-    canActivate: [authGuard],
-  },
   { path: 'login', component: LoginPage },
   { path: 'register', component: RegisterPage },
-  { path: '**', redirectTo: '/login' }
+
+  // Rotas autenticadas compartilham o shell (sidebar + header)
+  {
+    path: '',
+    component: AppLayoutComponent,
+    canActivate: [authGuard],
+    children: [
+      { path: 'home', component: HomePage },
+      { path: 'search', component: SearchPage },
+      { path: 'watched', component: WatchedPage },
+      { path: 'history', component: HistoryPage },
+      { path: 'profile', component: ProfilePage },
+      { path: 'credits', component: CreditsPage },
+    ],
+  },
+
+  { path: '**', redirectTo: '/login' },
 ];
