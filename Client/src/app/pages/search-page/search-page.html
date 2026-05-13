@@ -1,423 +1,183 @@
-<div class="search-container">
-  <main class="main-content">
-    <!-- Painel de Busca -->
-    <section class="search-panel">
-      <h2>Buscar Livros</h2>
+<section class="search">
+  <h1 class="page-title">Pesquisar livros</h1>
 
-      <div class="book-form">
-        <div class="form-row">
-          <div class="form-group flex-2">
-            <label>ISBN *</label>
-            <input
-              type="text"
-              [(ngModel)]="newBook.isbn"
-              placeholder="978-..."
-              (keyup.enter)="addBook()"
-            />
-          </div>
-          <div class="form-group flex-1">
-            <label>Quantidade</label>
-            <input
-              type="number"
-              [(ngModel)]="newBook.quantity"
-              min="1"
-              max="10"
-            />
-          </div>
-        </div>
+  <!-- Linha de inputs: ISBN + sites -->
+  <div class="toolbar">
+    <form class="isbn-form" (ngSubmit)="addBook()">
+      <label for="isbn-input" class="sr-only">ISBN</label>
+      <input
+        id="isbn-input"
+        type="text"
+        class="isbn-input"
+        placeholder="ISBN"
+        [(ngModel)]="newIsbn"
+        name="isbn"
+        autocomplete="off"
+      />
+      <button type="submit" class="btn-add" [disabled]="!newIsbn.trim()" aria-label="Adicionar livro">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"/>
+        </svg>
+      </button>
+    </form>
 
-        <!-- Seleção de Providers -->
-        <div class="providers-section">
-          <div class="providers-header">
-            <label>Sites para buscar</label>
-            <div class="providers-actions">
-              <button type="button" class="btn-link" (click)="selectAllProviders()">Todos</button>
-              <span>|</span>
-              <button type="button" class="btn-link" (click)="deselectAllProviders()">Nenhum</button>
-            </div>
+    <div class="providers" #providersBox>
+      <button type="button" class="providers-trigger" (click)="toggleProviders()" [class.open]="providersOpen">
+        <span>Sites a consultar
+          @if (selectedProviderUrls.length > 0) {
+            <span class="count">({{ selectedProviderUrls.length }})</span>
+          }
+        </span>
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        </svg>
+      </button>
+
+      @if (providersOpen) {
+        <div class="providers-panel">
+          <input
+            type="text"
+            class="providers-search"
+            placeholder="Filtrar..."
+            [(ngModel)]="providerFilter"
+            name="provFilter"
+          />
+          <div class="providers-actions">
+            <button type="button" (click)="selectAllProviders()">Selecionar todos</button>
+            <button type="button" (click)="clearProviders()">Limpar</button>
           </div>
-          <div class="providers-grid">
-            @for (provider of providers; track provider.id) {
-              <label class="provider-checkbox" [class.selected]="isProviderSelected(provider.url)">
-                <input
-                  type="checkbox"
-                  [checked]="isProviderSelected(provider.url)"
-                  (change)="toggleProvider(provider.url)"
-                />
-                <span class="provider-name">{{ provider.name }}</span>
-              </label>
+          <ul class="providers-list">
+            @for (p of filteredProviders; track p.id) {
+              <li>
+                <label>
+                  <input
+                    type="checkbox"
+                    [checked]="selectedProviderUrls.includes(p.url)"
+                    (change)="toggleProvider(p.url)"
+                  />
+                  <span>{{ p.name }}</span>
+                </label>
+              </li>
             }
-          </div>
-          @if (providers.length === 0) {
-            <p class="providers-loading">Carregando sites...</p>
-          }
+          </ul>
         </div>
-
-        <div class="form-actions">
-          <button class="btn btn-secondary" (click)="quickSearch()" [disabled]="isLoading || selectedProviderUrls.length === 0">
-            Busca Rápida
-          </button>
-          <button class="btn btn-primary" (click)="addBook()" [disabled]="isLoading">
-            Adicionar ao Carrinho
-          </button>
-        </div>
-      </div>
-
-      @if (errorMessage) {
-        <div class="error-message">{{ errorMessage }}</div>
       }
-    </section>
+    </div>
+  </div>
 
-    <!-- Carrinho -->
-    @if (books.length > 0) {
-      <section class="cart-panel">
-        <div class="cart-header">
-          <h2>Carrinho ({{ books.length }} livros)</h2>
-          <button class="btn btn-danger btn-sm" (click)="clearCart()">Limpar</button>
-        </div>
+  <!-- Duas colunas: livros a consultar + resultado -->
+  <div class="columns">
+    <div class="panel">
+      <h2 class="panel-title">Livros a consultar</h2>
 
-        <div class="cart-items">
-          @for (book of books; track book.isbn; let i = $index) {
-            <div class="cart-item">
-              <div class="item-info">
-                <span class="item-isbn">ISBN: {{ book.isbn }}</span>
-              </div>
-              <div class="item-quantity">x{{ book.quantity }}</div>
-              <button class="btn-remove" (click)="removeBook(i)">✕</button>
-            </div>
+      @if (books.length === 0) {
+        <p class="panel-empty">Adicione um ISBN acima para começar.</p>
+      } @else {
+        <ol class="book-list">
+          @for (b of books; track b.isbn; let i = $index) {
+            <li>
+              <span class="book-number">{{ i + 1 }}.</span>
+              <span class="book-isbn">ISBN {{ b.isbn }}</span>
+              <button type="button" class="book-remove" (click)="removeBook(b.isbn)" aria-label="Remover">×</button>
+            </li>
           }
+        </ol>
+      }
+
+      <div class="panel-footer">
+        <div class="cost">
+          Custo estimado:
+          <strong>{{ estimatedCredits }} crédito{{ estimatedCredits === 1 ? '' : 's' }}</strong>
         </div>
-
-        <!-- Opções de Otimização -->
-        <div class="optimization-options">
-          <h3>Opções de Otimização</h3>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>Estratégia</label>
-              <select [(ngModel)]="selectedStrategy">
-                @for (strategy of strategies; track strategy.value) {
-                  <option [value]="strategy.value">{{ strategy.description }}</option>
-                }
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label>Máx. Sites (0 = sem limite)</label>
-              <input type="number" [(ngModel)]="maxProviders" min="0" max="5" />
-            </div>
-          </div>
-
-          <div class="form-row">
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="includeShipping" />
-              Incluir frete no cálculo
-            </label>
-          </div>
-        </div>
-
-        <button
-          class="btn btn-success btn-large"
-          (click)="optimizeCart()"
-          [disabled]="isLoading"
-        >
-          @if (isLoading) {
-            Otimizando...
-          } @else {
-            Otimizar Carrinho
-          }
+        <button type="button" class="btn-search" (click)="search()" [disabled]="!canSearch">
+          @if (isLoading) { Consultando... } @else { Pesquisar }
         </button>
-      </section>
-    }
+      </div>
+    </div>
 
-    <!-- Resultados da Busca por ISBN -->
-    @if (searchResult) {
-      <section class="search-results-panel">
-        <div class="results-header">
-          <h2>Resultados da Busca</h2>
-          <span class="search-info">ISBN: {{ searchResult.searchedIsbn }}</span>
-        </div>
+    <div class="panel">
+      <h2 class="panel-title">Resultado</h2>
 
-        <!-- Melhor Resultado -->
-        @if (searchResult.bestResult) {
-          <div class="best-result">
-            <div class="best-result-header">
-              <span class="best-badge">MELHOR PREÇO</span>
+      @if (errorMessage && !isLoading) {
+        <p class="panel-error">{{ errorMessage }}</p>
+      } @else if (progressItems.length === 0 && !result) {
+        <p class="panel-empty">…</p>
+      } @else {
+        <!-- Log de progresso por provider; permanece visível também após a resposta -->
+        @if (progressItems.length > 0) {
+          <ul class="progress-list">
+            @for (p of progressItems; track p.providerId) {
+              <li [class]="'progress-item status-' + p.status">
+                @switch (p.status) {
+                  @case ('pending') {
+                    <span class="progress-icon spinner" aria-hidden="true"></span>
+                    <span class="progress-text">Consultando {{ p.providerName }}...</span>
+                  }
+                  @case ('success') {
+                    <span class="progress-icon check" aria-hidden="true">✓</span>
+                    <span class="progress-text">{{ p.providerName }}</span>
+                    <span class="progress-price">R$ {{ p.price?.toFixed(2) }}</span>
+                  }
+                  @case ('not_found') {
+                    <span class="progress-icon dash" aria-hidden="true">—</span>
+                    <span class="progress-text">{{ p.providerName }}</span>
+                    <span class="progress-note">não encontrado</span>
+                  }
+                  @case ('error') {
+                    <span class="progress-icon cross" aria-hidden="true">✗</span>
+                    <span class="progress-text">{{ p.providerName }}</span>
+                    <span class="progress-note">falha</span>
+                  }
+                }
+              </li>
+            }
+          </ul>
+        }
+
+        @if (result) {
+        @if (bestProvider) {
+          <div class="best-card">
+            <div class="best-label">Melhor opção</div>
+            <div class="best-provider">
+              <a [href]="bestProvider.providerUrl" target="_blank" rel="noopener">{{ bestProvider.providerName }}</a>
             </div>
-            <div class="best-result-content">
-              <div class="best-result-info">
-                <h3 class="book-title">{{ searchResult.bestResult.title || 'Título não disponível' }}</h3>
-                @if (searchResult.bestResult.author) {
-                  <p class="book-author">{{ searchResult.bestResult.author }}</p>
-                }
-                <p class="provider-name">{{ searchResult.bestResult.providerName }}</p>
-              </div>
-              <div class="best-result-price">
-                <span class="price">R$ {{ searchResult.bestResult.price?.toFixed(2) }}</span>
-                @if (searchResult.bestResult.discount) {
-                  <span class="discount-badge">-{{ searchResult.bestResult.discount }}%</span>
-                }
-              </div>
-              @if (searchResult.bestResult.productUrl) {
-                <a
-                  [href]="searchResult.bestResult.productUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="btn btn-primary visit-btn"
-                >
-                  Ir para o site
-                </a>
-              }
+            <div class="best-total">R$ {{ bestProvider.totalPrice.toFixed(2) }}</div>
+            <div class="best-info">
+              {{ bestProvider.booksFound }} de {{ bestProvider.totalBooksRequested }} livros
             </div>
           </div>
         } @else {
-          <div class="no-results">
-            <p>Nenhum resultado encontrado para este ISBN.</p>
-          </div>
+          <p class="panel-empty">Nenhum site tem todos os livros do carrinho.</p>
         }
 
-        <!-- Resumo -->
-        <div class="search-summary">
-          <span class="summary-item">
-            <strong>{{ searchResult.totalProviders }}</strong> sites consultados
-          </span>
-          <span class="summary-item success">
-            <strong>{{ searchResult.successCount }}</strong> com sucesso
-          </span>
-          <span class="summary-item error">
-            <strong>{{ searchResult.errorCount }}</strong> com erro
-          </span>
-          <span class="summary-item">
-            <strong>{{ searchResult.totalCredits }}</strong> créditos
-          </span>
-          <span class="summary-item">
-            <strong>{{ searchResult.executionTimeMs }}ms</strong>
-          </span>
-        </div>
-
-        <!-- Tabela de Todas as Consultas -->
-        <div class="queries-table-container">
-          <h3>Todas as Consultas</h3>
-          <table class="queries-table">
+        @if (topProviders.length > 0) {
+          <table class="results-table">
             <thead>
               <tr>
                 <th>Site</th>
-                <th>Título</th>
-                <th>Preço</th>
-                <th>Link</th>
-                <th>Tempo</th>
-                <th>Status</th>
+                <th class="num">Livros</th>
+                <th class="num">Total</th>
               </tr>
             </thead>
             <tbody>
-              @for (query of searchResult.allResults; track query.providerId) {
-                <tr [class.error-row]="!query.success">
-                  <td class="provider-cell">{{ query.providerName }}</td>
-                  <td class="title-cell">
-                    @if (query.title) {
-                      {{ query.title }}
-                    } @else {
-                      <span class="no-data">-</span>
-                    }
-                  </td>
-                  <td class="price-cell">
-                    @if (query.price) {
-                      R$ {{ query.price.toFixed(2) }}
-                      @if (query.discount) {
-                        <span class="discount-tag">-{{ query.discount }}%</span>
-                      }
-                    } @else {
-                      <span class="no-data">-</span>
-                    }
-                  </td>
-                  <td class="link-cell">
-                    @if (query.productUrl) {
-                      <a
-                        [href]="query.productUrl"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="product-link"
-                        title="Abrir produto"
-                      >
-                        Abrir
-                      </a>
-                    } @else {
-                      <span class="no-data">-</span>
-                    }
-                  </td>
-                  <td class="time-cell">{{ query.responseTimeMs }}ms</td>
-                  <td class="status-cell">
-                    @if (query.success) {
-                      <span class="status-success">OK</span>
-                    } @else {
-                      <span class="status-error" [title]="query.errorMessage || ''">
-                        {{ query.errorType || 'Erro' }}
-                      </span>
-                    }
-                  </td>
+              @for (p of topProviders; track p.providerId) {
+                <tr [class.partial]="!p.hasAllBooks">
+                  <td><a [href]="p.providerUrl" target="_blank" rel="noopener">{{ p.providerName }}</a></td>
+                  <td class="num">{{ p.booksFound }} / {{ p.totalBooksRequested }}</td>
+                  <td class="num">R$ {{ p.totalPrice.toFixed(2) }}</td>
                 </tr>
               }
             </tbody>
           </table>
-        </div>
-      </section>
-    }
-
-    <!-- Resultados da Otimização -->
-    @if (result) {
-      <section class="results-panel">
-        <div class="results-header">
-          <h2>Resultado da Otimização</h2>
-          @if (result.fromCache) {
-            <span class="cache-badge">Cache</span>
-          }
-        </div>
-
-        @if (result.success) {
-          <!-- Resumo -->
-          <div class="results-summary">
-            <div class="summary-card total">
-              <span class="label">Total</span>
-              <span class="value">R$ {{ result.totalCost?.toFixed(2) || '0.00' }}</span>
-            </div>
-            <div class="summary-card">
-              <span class="label">Livros</span>
-              <span class="value">R$ {{ result.booksCost?.toFixed(2) || '0.00' }}</span>
-            </div>
-            @if (result.shippingCost && result.shippingCost > 0) {
-              <div class="summary-card">
-                <span class="label">Frete</span>
-                <span class="value">R$ {{ result.shippingCost.toFixed(2) }}</span>
-              </div>
-            }
-            @if (result.savings && result.savings > 0) {
-              <div class="summary-card savings">
-                <span class="label">Economia</span>
-                <span class="value">R$ {{ result.savings.toFixed(2) }} ({{ result.savingsPercent?.toFixed(1) || '0' }}%)</span>
-              </div>
-            }
-          </div>
-
-          <!-- Tabela Comparativa de Providers -->
-          @if (result.providerComparisons && result.providerComparisons.length > 0) {
-            <div class="comparison-table-container">
-              <h3>Comparação de Providers</h3>
-              <p class="comparison-subtitle">
-                {{ result.totalQueriesExecuted }} consultas em {{ result.providerComparisons.length }} sites
-              </p>
-              <div class="table-wrapper">
-                <table class="comparison-table">
-                  <thead>
-                    <tr>
-                      <th class="rank-col">#</th>
-                      <th class="provider-col">Site</th>
-                      <th class="books-col">Livros</th>
-                      <th class="price-col">Total</th>
-                      <th class="status-col">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (provider of result.providerComparisons; track $index; let i = $index) {
-                      <tr [class.best-provider]="i === 0" [class.incomplete]="!provider.hasAllBooks">
-                        <td class="rank-col">{{ i + 1 }}</td>
-                        <td class="provider-col">
-                          <span class="provider-name">{{ provider.providerName }}</span>
-                        </td>
-                        <td class="books-col">
-                          <span [class.all-books]="provider.hasAllBooks" [class.partial-books]="!provider.hasAllBooks">
-                            {{ provider.booksFound }}/{{ provider.totalBooksRequested }}
-                          </span>
-                        </td>
-                        <td class="price-col">
-                          <span class="price">R$ {{ provider.totalPrice?.toFixed(2) || '0.00' }}</span>
-                        </td>
-                        <td class="status-col">
-                          @if (provider.hasAllBooks) {
-                            <span class="status-complete">Completo</span>
-                          } @else {
-                            <span class="status-partial" [title]="'Faltando: ' + (provider.missingIsbns?.join(', ') || '')">
-                              Parcial
-                            </span>
-                          }
-                        </td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          }
-
-          <!-- Melhor Provider (Carrinho Recomendado) -->
-          @if (result.providerCarts && result.providerCarts.length > 0) {
-            <div class="provider-carts">
-              <h3>Melhor Opção</h3>
-              @for (cart of result.providerCarts; track $index) {
-                <div class="provider-cart recommended">
-                  <div class="provider-header">
-                    <h4>{{ cart.providerName }}</h4>
-                    @if (cart.hasFreeShipping) {
-                      <span class="free-shipping-badge">Frete Grátis!</span>
-                    }
-                  </div>
-
-                  <div class="provider-items">
-                    @for (item of cart.items; track $index) {
-                      <div class="provider-item">
-                        <div class="item-details">
-                          <span class="item-title">{{ item.title || 'Título não disponível' }}</span>
-                          @if (item.author) {
-                            <span class="item-author">{{ item.author }}</span>
-                          }
-                        </div>
-                        <div class="item-pricing">
-                          <span class="quantity">{{ item.quantity }}x</span>
-                          <span class="price">R$ {{ item.unitPrice?.toFixed(2) || '0.00' }}</span>
-                          @if (item.discount && item.discount > 0) {
-                            <span class="discount">-{{ item.discount.toFixed(0) }}%</span>
-                          }
-                        </div>
-                      </div>
-                    }
-                  </div>
-
-                  <div class="provider-totals">
-                    <div class="total-row total">
-                      <span>Total:</span>
-                      <span>R$ {{ cart.total?.toFixed(2) || '0.00' }}</span>
-                    </div>
-                  </div>
-                </div>
-              }
-            </div>
-          }
-
-          <!-- Livros não encontrados -->
-          @if (result.booksNotFound && result.booksNotFound.length > 0) {
-            <div class="not-found">
-              <h4>Livros não encontrados:</h4>
-              <ul>
-                @for (book of result.booksNotFound; track $index) {
-                  <li>{{ book }}</li>
-                }
-              </ul>
-            </div>
-          }
-
-          <!-- Métricas -->
-          <div class="metrics">
-            <span>Tempo: {{ result.executionTimeMs }}ms</span>
-            <span>Créditos: {{ result.creditsUsed }}</span>
-          </div>
-        } @else {
-          <div class="error-result">
-            <p>{{ result.message }}</p>
-            @if (result.booksNotFound && result.booksNotFound.length > 0) {
-              <p>Livros não encontrados: {{ result.booksNotFound.join(', ') }}</p>
-            }
-          </div>
         }
-      </section>
-    }
-  </main>
-</div>
+
+        <div class="result-meta">
+          {{ result.creditsUsed }} crédito{{ result.creditsUsed === 1 ? '' : 's' }} consumido{{ result.creditsUsed === 1 ? '' : 's' }}
+          · {{ (result.executionTimeMs / 1000).toFixed(1) }}s
+          @if (result.fromCache) { · cache }
+        </div>
+        }
+      }
+    </div>
+  </div>
+</section>
