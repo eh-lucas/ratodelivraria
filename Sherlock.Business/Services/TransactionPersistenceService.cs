@@ -136,7 +136,9 @@ public class TransactionPersistenceService : ITransactionPersistenceService
     {
         var parameters = new
         {
-            isbn = searchParameter.Isbn
+            isbn = searchParameter.Isbn,
+            // Marca se a transação faz parte de um carrinho; o histórico usa isso para classificar
+            isCart = searchParameter.IsCart
         };
 
         return JsonSerializer.Serialize(parameters, JsonOptions);

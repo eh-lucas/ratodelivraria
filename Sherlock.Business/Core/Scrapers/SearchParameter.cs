@@ -16,4 +16,10 @@ public class SearchParameter
     /// Provider onde será feita a busca
     /// </summary>
     public Provider? Source { get; set; }
+
+    /// <summary>
+    /// Sinaliza que a busca faz parte de um carrinho (múltiplos livros agrupados).
+    /// Usado apenas para distinguir transações no histórico — não afeta o scraping.
+    /// </summary>
+    public bool IsCart { get; set; }
 }
