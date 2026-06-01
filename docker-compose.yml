@@ -3,16 +3,22 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: sherlock-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: sherlock_admin
-      POSTGRES_PASSWORD: SuperSecure123!
-      POSTGRES_DB: sherlock_dev_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      # Lidas pelo script de init para criar o usuario da aplicacao
+      APP_DB_USER: ${APP_DB_USER}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Script roda so na primeira init (volume vazio): cria o sherlock_app
+      - ./scripts/db-init:/docker-entrypoint-initdb.d:ro
     ports:
       - "5433:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sherlock_admin -d sherlock_dev_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -23,6 +29,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: sherlock-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
@@ -41,6 +48,12 @@ services:
       context: .
       dockerfile: Sherlock.Api/Dockerfile
     container_name: sherlock-api
+    restart: unless-stopped
+    # Sobrescreve os segredos do appsettings.Docker.json via env (sintaxe __ do ASP.NET Core)
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${APP_DB_USER};Password=${APP_DB_PASSWORD}"
+      ConnectionStrings__SherlockDb: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${APP_DB_USER};Password=${APP_DB_PASSWORD}"
+      JwtSettings__SecretKey: ${JWT_SECRET}
     ports:
       - "5177:8080"
     depends_on:
@@ -63,6 +76,7 @@ services:
       context: ./Client
       dockerfile: Dockerfile.prod
     container_name: sherlock-client
+    restart: unless-stopped
     ports:
       - "4200:80"
     depends_on:

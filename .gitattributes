@@ -1,0 +1,3 @@
+# Scripts shell sempre com fim de linha LF, mesmo commitados no Windows,
+# senao quebram ao rodar no Linux/container (erro: /bin/bash^M)
+*.sh text eol=lf
