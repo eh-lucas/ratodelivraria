@@ -25,6 +25,19 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
+    // Segredos nao vivem mais no appsettings: falha cedo e com instrucao em vez de
+    // estourar um erro obscuro do Npgsql no meio do startup
+    foreach (var name in new[] { "DefaultConnection", "SherlockDb" })
+    {
+        if (string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString(name)))
+        {
+            throw new InvalidOperationException(
+                $"ConnectionStrings:{name} nao configurada. Em desenvolvimento use " +
+                $"'dotnet user-secrets set \"ConnectionStrings:{name}\" \"<valor>\"'; " +
+                "em Docker preencha o .env (ver DEPLOY.md).");
+        }
+    }
+
     builder.Host.UseSerilog();
 
     var configurator = new Configurator();
@@ -78,6 +91,17 @@ try
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
             });
         });
+
+        // Login/registro: janela curta por IP contra forca bruta. Sem fila — excedeu, 429 na hora
+        options.AddPolicy("auth", context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 10,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0
+                }));
 
         // Política global (fallback)
         options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>

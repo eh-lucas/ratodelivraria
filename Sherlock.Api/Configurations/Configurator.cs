@@ -12,16 +12,33 @@ public class Configurator
     public void ConfigureServices(WebApplicationBuilder builder)
     {
         var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-        var secretKey = jwtSettings["SecretKey"] ?? "SherlockSuperSecretKey2024!@#$%^&*";
+        var secretKey = jwtSettings["SecretKey"];
+
+        // Falha no startup em vez de assinar tokens com um segredo previsivel
+        if (string.IsNullOrWhiteSpace(secretKey))
+        {
+            throw new InvalidOperationException(
+                "JwtSettings:SecretKey nao configurada. Em desenvolvimento use " +
+                "'dotnet user-secrets set \"JwtSettings:SecretKey\" \"<segredo>\"'; " +
+                "em Docker defina JWT_SECRET no .env.");
+        }
+
         // UTF-8 alinhado com TokenService (assinatura). ASCII anterior quebrava silenciosamente
         // se a SecretKey contivesse qualquer caractere fora do range ASCII.
         var key = Encoding.UTF8.GetBytes(secretKey);
+
+        // Origens vem da config: o compose injeta Cors__AllowedOrigins__0 a partir do .env
+        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+        if (allowedOrigins is null || allowedOrigins.Length == 0)
+        {
+            allowedOrigins = ["http://localhost:4200"];
+        }
 
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowAngular", policy =>
             {
-                policy.WithOrigins("http://localhost:4200")
+                policy.WithOrigins(allowedOrigins)
                       .AllowAnyHeader()
                       .AllowAnyMethod()
                       .AllowCredentials();

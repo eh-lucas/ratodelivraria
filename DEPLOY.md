@@ -111,19 +111,39 @@ cloudflared tunnel --url http://localhost:4200   # gera URL https://...trycloudf
 - [x] **`restart: unless-stopped`** em todos os serviços (resiliência a reboot/crash).
 - [x] **`.gitattributes`** força LF em `*.sh` (evita quebra de script no Linux).
 - [x] **Imagens com tag fixa** (`postgres:16-alpine`, `redis:7-alpine`).
+- [x] **Postgres e Redis só no loopback**: `127.0.0.1:5433:5432` e `127.0.0.1:6379:6379`.
+      Continuam acessíveis da própria máquina (`dotnet run`, `psql`) e invisíveis na rede —
+      importante porque o Redis roda sem senha.
+- [x] **`appsettings` sem segredos**: senha do banco e JWT secret ficaram vazios nos dois
+      arquivos. Em Docker vêm do `.env` via compose; em dev, de `dotnet user-secrets`.
+      A aplicação **falha no startup** com mensagem instrutiva se algum estiver ausente,
+      em vez de assinar token com segredo previsível.
+- [x] **CORS por configuração**: `Cors:AllowedOrigins`, alimentado por `CORS_ALLOWED_ORIGINS`
+      no `.env`. Sem valor, cai em `http://localhost:4200`.
+- [x] **Rate limiting em `/api/auth`**: policy `auth` (fixed window, 10 req/min por IP,
+      sem fila) aplicada no `AuthController` — cobre login e registro.
+- [x] **Container da API como non-root**: roda com o usuário `app` da imagem `aspnet:8.0`.
 
-### Pendentes (recomendadas antes de abrir ao público)
-- [ ] **Fechar portas de Postgres/Redis no host**: remover os blocos `ports:` desses serviços
-      no `docker-compose.yml`. Eles já se comunicam pela rede interna `sherlock-network`;
-      expor no host é superfície de ataque (Redis está sem senha). **Alta prioridade.**
-- [ ] **CORS restrito**: a API deve aceitar requisições apenas do domínio do front
-      (`https://app.seudominio.com.br`), não de qualquer origem.
-- [ ] **Rate limiting no `/api/auth/login`**: usar rate limiting nativo do ASP.NET Core 8
-      contra força bruta.
-- [ ] **Limpar segredos hardcoded** dos `appsettings.json` / `appsettings.Docker.json`
-      (trocar por placeholders — tudo vem do `.env` agora).
-- [ ] **Container da API como non-root**: adicionar usuário não-privilegiado no Dockerfile.
+### Pendentes
 - [ ] **Backup automático do banco**: cron diário com `pg_dump` (ver abaixo).
+- [ ] **Rotacionar os segredos antigos**: `SuperSecure123!` e o JWT secret de dev estão no
+      histórico do git. Gere valores novos antes de expor a máquina à internet — remover do
+      arquivo não os remove do histórico.
+
+---
+
+## Desenvolvimento local (fora do Docker)
+
+Os `appsettings` não têm mais segredos, então `dotnet run` precisa dos user-secrets
+(guardados no perfil do usuário, fora do repositório):
+
+```bash
+cd Sherlock.Api
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5433;Database=sherlock_dev_db;Username=sherlock_admin;Password=<senha>"
+dotnet user-secrets set "ConnectionStrings:SherlockDb"        "Host=localhost;Port=5433;Database=sherlock_dev_db;Username=sherlock_admin;Password=<senha>"
+dotnet user-secrets set "JwtSettings:SecretKey"               "<segredo-longo-e-aleatorio>"
+dotnet user-secrets list   # conferir
+```
 
 ---
 

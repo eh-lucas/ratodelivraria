@@ -33,8 +33,11 @@ COPY --from=build /app/publish .
 # Copy Docker-specific appsettings from build stage
 COPY --from=build /src/Sherlock.Api/appsettings.Docker.json ./appsettings.Docker.json
 
-# Create logs directory
-RUN mkdir -p /app/logs
+# Logs precisam ser gravaveis pelo usuario 'app' que a imagem aspnet ja traz
+RUN mkdir -p /app/logs && chown -R app:app /app
+
+# Roda sem privilegio: se a API for comprometida, o atacante nao e root no container
+USER app
 
 # Expose port
 EXPOSE 8080
