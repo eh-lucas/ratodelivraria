@@ -26,17 +26,8 @@ public class CreditsController : ControllerBase
     [ProducesResponseType(typeof(List<CreditPackageDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPackages()
     {
-        try
-        {
-            var packages = await _creditService.GetAvailablePackagesAsync();
-            return Ok(packages);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao listar pacotes de créditos");
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new { error = "Erro ao listar pacotes de créditos" });
-        }
+        var packages = await _creditService.GetAvailablePackagesAsync();
+        return Ok(packages);
     }
 
     /// <summary>
@@ -47,21 +38,12 @@ public class CreditsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPackage(int id)
     {
-        try
+        var package = await _creditService.GetPackageByIdAsync(id);
+        if (package == null)
         {
-            var package = await _creditService.GetPackageByIdAsync(id);
-            if (package == null)
-            {
-                return NotFound(new { error = "Pacote não encontrado" });
-            }
-            return Ok(package);
+            return NotFound(new { error = "Pacote não encontrado" });
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao obter pacote {PackageId}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new { error = "Erro ao obter detalhes do pacote" });
-        }
+        return Ok(package);
     }
 
     /// <summary>
@@ -78,47 +60,34 @@ public class CreditsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> PurchaseCredits([FromBody] PurchaseCreditsRequest request)
     {
-        try
+        var userId = GetUserId();
+
+        // Verifica se o pacote existe
+        var package = await _creditService.GetPackageByIdAsync(request.PackageId);
+        if (package == null)
         {
-            var userId = GetUserId();
-
-            // Verifica se o pacote existe
-            var package = await _creditService.GetPackageByIdAsync(request.PackageId);
-            if (package == null)
-            {
-                return BadRequest(new { error = "Pacote de créditos inválido" });
-            }
-
-            // Em produção, aqui você validaria o pagamento com o gateway
-            // Por enquanto, aceita pagamentos simulados ou com ID externo
-            if (string.IsNullOrEmpty(request.PaymentId))
-            {
-                return BadRequest(new { error = "ID do pagamento é obrigatório" });
-            }
-
-            _logger.LogInformation(
-                "Processando compra de créditos: UserId={UserId}, PackageId={PackageId}, PaymentId={PaymentId}",
-                userId, request.PackageId, request.PaymentId);
-
-            var result = await _creditService.AddCreditsAsync(userId, request.PackageId, request.PaymentId);
-
-            if (!result.Success)
-            {
-                return BadRequest(new { error = result.Message });
-            }
-
-            return Ok(result);
+            return BadRequest(new { error = "Pacote de créditos inválido" });
         }
-        catch (UnauthorizedAccessException)
+
+        // Em produção, aqui você validaria o pagamento com o gateway
+        // Por enquanto, aceita pagamentos simulados ou com ID externo
+        if (string.IsNullOrEmpty(request.PaymentId))
         {
-            return Unauthorized(new { error = "Usuário não autenticado" });
+            return BadRequest(new { error = "ID do pagamento é obrigatório" });
         }
-        catch (Exception ex)
+
+        _logger.LogInformation(
+            "Processando compra de créditos: UserId={UserId}, PackageId={PackageId}, PaymentId={PaymentId}",
+            userId, request.PackageId, request.PaymentId);
+
+        var result = await _creditService.AddCreditsAsync(userId, request.PackageId, request.PaymentId);
+
+        if (!result.Success)
         {
-            _logger.LogError(ex, "Erro ao processar compra de créditos");
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new { error = "Erro ao processar compra de créditos" });
+            return BadRequest(new { error = result.Message });
         }
+
+        return Ok(result);
     }
 
     /// <summary>

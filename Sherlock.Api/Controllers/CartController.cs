@@ -73,26 +73,8 @@ public class CartController : ControllerBase
             "Requisição de otimização de carrinho: {BookCount} livros, estratégia: {Strategy}, usuário: {UserId}",
             request.Books.Count, request.Strategy, userId);
 
-        try
-        {
-            var result = await _cartService.OptimizeCartAsync(request, userId, cancellationToken);
-            return Ok(result);
-        }
-        catch (OperationCanceledException)
-        {
-            return StatusCode(StatusCodes.Status408RequestTimeout, new
-            {
-                error = "A requisição foi cancelada ou excedeu o tempo limite."
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao otimizar carrinho para usuário {UserId}", userId);
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                error = "Ocorreu um erro ao processar a otimização. Tente novamente."
-            });
-        }
+        var result = await _cartService.OptimizeCartAsync(request, userId, cancellationToken);
+        return Ok(result);
     }
 
     /// <summary>
@@ -138,19 +120,8 @@ public class CartController : ControllerBase
 
         var userId = GetUserId();
 
-        try
-        {
-            var result = await _cartService.OptimizeCartAsync(request, userId, cancellationToken);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao buscar livro com ISBN '{Isbn}'", isbn);
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                error = "Ocorreu um erro ao buscar o livro. Tente novamente."
-            });
-        }
+        var result = await _cartService.OptimizeCartAsync(request, userId, cancellationToken);
+        return Ok(result);
     }
 
     /// <summary>
@@ -191,80 +162,62 @@ public class CartController : ControllerBase
             "Requisição de melhor provider para {BookCount} livros, usuário: {UserId}",
             request.Books.Count, userId);
 
-        try
+        // Usa estratégia SingleProvider para buscar
+        var optimizationRequest = new CartOptimizationRequest
         {
-            // Usa estratégia SingleProvider para buscar
-            var optimizationRequest = new CartOptimizationRequest
-            {
-                Books = request.Books,
-                Strategy = OptimizationStrategy.SingleProvider,
-                ProviderUrls = request.ProviderUrls,
-                MaxProviders = 1
-            };
+            Books = request.Books,
+            Strategy = OptimizationStrategy.SingleProvider,
+            ProviderUrls = request.ProviderUrls,
+            MaxProviders = 1
+        };
 
-            var result = await _cartService.OptimizeCartAsync(optimizationRequest, userId, cancellationToken);
+        var result = await _cartService.OptimizeCartAsync(optimizationRequest, userId, cancellationToken);
 
-            // Converte para BestProviderCartResult
-            var bestProviderResult = new BestProviderCartResult
-            {
-                Success = result.Success,
-                Message = result.Message,
-                BestProvider = result.ProviderCarts?.FirstOrDefault(),
-                BooksNotFound = result.BooksNotFound,
-                ExecutionTimeMs = result.ExecutionTimeMs,
-                CreditsUsed = result.CreditsUsed,
-                FromCache = result.FromCache,
-                TotalProvidersSearched = result.ProviderCarts?.Count ?? 0
-            };
+        // Converte para BestProviderCartResult
+        var bestProviderResult = new BestProviderCartResult
+        {
+            Success = result.Success,
+            Message = result.Message,
+            BestProvider = result.ProviderCarts?.FirstOrDefault(),
+            BooksNotFound = result.BooksNotFound,
+            ExecutionTimeMs = result.ExecutionTimeMs,
+            CreditsUsed = result.CreditsUsed,
+            FromCache = result.FromCache,
+            TotalProvidersSearched = result.ProviderCarts?.Count ?? 0
+        };
 
-            // Busca segundo melhor se houver sucesso (sem cache para simplificar)
-            if (result.Success && result.ProviderCarts?.Count > 0)
+        // Busca segundo melhor se houver sucesso (sem cache para simplificar)
+        if (result.Success && result.ProviderCarts?.Count > 0)
+        {
+            // Busca alternativa excluindo o melhor provider
+            var bestProviderUrl = bestProviderResult.BestProvider?.ProviderUrl;
+            if (!string.IsNullOrEmpty(bestProviderUrl))
             {
-                // Busca alternativa excluindo o melhor provider
-                var bestProviderUrl = bestProviderResult.BestProvider?.ProviderUrl;
-                if (!string.IsNullOrEmpty(bestProviderUrl))
+                var alternativeRequest = new CartOptimizationRequest
                 {
-                    var alternativeRequest = new CartOptimizationRequest
-                    {
-                        Books = request.Books,
-                        Strategy = OptimizationStrategy.SingleProvider,
-                        ProviderUrls = request.ProviderUrls?.Where(u => u != bestProviderUrl).ToList(),
-                        MaxProviders = 1
-                    };
+                    Books = request.Books,
+                    Strategy = OptimizationStrategy.SingleProvider,
+                    ProviderUrls = request.ProviderUrls?.Where(u => u != bestProviderUrl).ToList(),
+                    MaxProviders = 1
+                };
 
-                    // Só busca alternativa se fizer sentido
-                    if (alternativeRequest.ProviderUrls == null || alternativeRequest.ProviderUrls.Count > 0)
+                // Só busca alternativa se fizer sentido
+                if (alternativeRequest.ProviderUrls == null || alternativeRequest.ProviderUrls.Count > 0)
+                {
+                    var altResult = await _cartService.OptimizeCartAsync(alternativeRequest, userId, cancellationToken);
+                    if (altResult.Success && altResult.ProviderCarts?.Count > 0)
                     {
-                        var altResult = await _cartService.OptimizeCartAsync(alternativeRequest, userId, cancellationToken);
-                        if (altResult.Success && altResult.ProviderCarts?.Count > 0)
+                        var altProvider = altResult.ProviderCarts.FirstOrDefault();
+                        if (altProvider?.ProviderUrl != bestProviderUrl)
                         {
-                            var altProvider = altResult.ProviderCarts.FirstOrDefault();
-                            if (altProvider?.ProviderUrl != bestProviderUrl)
-                            {
-                                bestProviderResult.SecondBestProvider = altProvider;
-                            }
+                            bestProviderResult.SecondBestProvider = altProvider;
                         }
                     }
                 }
             }
+        }
 
-            return Ok(bestProviderResult);
-        }
-        catch (OperationCanceledException)
-        {
-            return StatusCode(StatusCodes.Status408RequestTimeout, new
-            {
-                error = "A requisição foi cancelada ou excedeu o tempo limite."
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao buscar melhor provider para usuário {UserId}", userId);
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                error = "Ocorreu um erro ao processar a busca. Tente novamente."
-            });
-        }
+        return Ok(bestProviderResult);
     }
 
     /// <summary>

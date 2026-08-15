@@ -56,6 +56,7 @@ public class BookSearchController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(BookSearchResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status402PaymentRequired)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> BookSearch(
@@ -67,65 +68,56 @@ public class BookSearchController : ControllerBase
             return BadRequest(new { error = "ISBN do livro é obrigatório." });
         }
 
-        try
+        var userId = GetUserId();
+        var selectedProviders = GetSelectedProviders(providerUrls);
+
+        if (selectedProviders == null)
         {
-            var userId = GetUserId();
-            var selectedProviders = GetSelectedProviders(providerUrls);
-
-            if (selectedProviders == null)
-            {
-                return BadRequest(new { error = "Nenhum provider válido encontrado com as URLs especificadas." });
-            }
-
-            // Verifica créditos antes de executar
-            var estimatedCost = _creditService.EstimateSearchCost(selectedProviders.Count);
-            var hasCredits = await _creditService.HasSufficientCreditsAsync(userId, estimatedCost);
-
-            if (!hasCredits)
-            {
-                var userCredits = await _creditService.GetUserCreditsAsync(userId);
-                return StatusCode(StatusCodes.Status402PaymentRequired, new
-                {
-                    error = "Créditos insuficientes para realizar esta busca",
-                    availableCredits = userCredits.AvailableCredits,
-                    estimatedCost = estimatedCost,
-                    message = "Adquira mais créditos para continuar usando o serviço"
-                });
-            }
-
-            var parameters = new SearchParameter
-            {
-                Isbn = isbn
-            };
-
-            var requestor = new Requestor(parameters, selectedProviders);
-            var result = await _engine.ExecuteTransaction(requestor, userId);
-
-            // Consome créditos após a busca
-            if (result.CustoCreditos > 0)
-            {
-                var consumeResult = await _creditService.ConsumeCreditsAsync(
-                    userId,
-                    result.CustoCreditos,
-                    description: $"Busca ISBN: {isbn}");
-
-                if (!consumeResult.Success)
-                {
-                    _logger.LogWarning(
-                        "Falha ao consumir créditos após busca: UserId={UserId}, Cost={Cost}, Message={Message}",
-                        userId, result.CustoCreditos, consumeResult.Message);
-                }
-            }
-
-            var response = BookSearchResponseDto.FromSearchResult(result, isbn);
-            return Ok(response);
+            return BadRequest(new { error = "Nenhum provider válido encontrado com as URLs especificadas." });
         }
-        catch (Exception ex)
+
+        // Verifica créditos antes de executar
+        var estimatedCost = _creditService.EstimateSearchCost(selectedProviders.Count);
+        var hasCredits = await _creditService.HasSufficientCreditsAsync(userId, estimatedCost);
+
+        if (!hasCredits)
         {
-            _logger.LogError(ex, "Erro ao buscar preços para ISBN {Isbn}", isbn);
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new { error = $"Erro ao buscar preços: {ex.Message}" });
+            var userCredits = await _creditService.GetUserCreditsAsync(userId);
+            return StatusCode(StatusCodes.Status402PaymentRequired, new
+            {
+                error = "Créditos insuficientes para realizar esta busca",
+                availableCredits = userCredits.AvailableCredits,
+                estimatedCost = estimatedCost,
+                message = "Adquira mais créditos para continuar usando o serviço"
+            });
         }
+
+        var parameters = new SearchParameter
+        {
+            Isbn = isbn
+        };
+
+        var requestor = new Requestor(parameters, selectedProviders);
+        var result = await _engine.ExecuteTransaction(requestor, userId);
+
+        // Consome créditos após a busca
+        if (result.CustoCreditos > 0)
+        {
+            var consumeResult = await _creditService.ConsumeCreditsAsync(
+                userId,
+                result.CustoCreditos,
+                description: $"Busca ISBN: {isbn}");
+
+            if (!consumeResult.Success)
+            {
+                _logger.LogWarning(
+                    "Falha ao consumir créditos após busca: UserId={UserId}, Cost={Cost}, Message={Message}",
+                    userId, result.CustoCreditos, consumeResult.Message);
+            }
+        }
+
+        var response = BookSearchResponseDto.FromSearchResult(result, isbn);
+        return Ok(response);
     }
 
     /// <summary>
@@ -136,6 +128,7 @@ public class BookSearchController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(BookSearchResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status402PaymentRequired)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> BookSearchPost([FromBody] BookSearchRequest request)
@@ -145,77 +138,68 @@ public class BookSearchController : ControllerBase
             return BadRequest(new { error = "ISBN do livro é obrigatório." });
         }
 
-        try
+        var userId = GetUserId();
+
+        List<Provider> selectedProviders;
+        if (request.ProviderUrls != null && request.ProviderUrls.Count > 0)
         {
-            var userId = GetUserId();
+            var urls = request.ProviderUrls.ToHashSet();
+            selectedProviders = Provider.AllSources
+                .Where(p => urls.Contains(p.Url))
+                .ToList();
 
-            List<Provider> selectedProviders;
-            if (request.ProviderUrls != null && request.ProviderUrls.Count > 0)
+            if (selectedProviders.Count == 0)
             {
-                var urls = request.ProviderUrls.ToHashSet();
-                selectedProviders = Provider.AllSources
-                    .Where(p => urls.Contains(p.Url))
-                    .ToList();
-
-                if (selectedProviders.Count == 0)
-                {
-                    return BadRequest(new { error = "Nenhum provider válido encontrado com as URLs especificadas." });
-                }
+                return BadRequest(new { error = "Nenhum provider válido encontrado com as URLs especificadas." });
             }
-            else
-            {
-                selectedProviders = Provider.AllSources.Where(p => p.IsActive).ToList();
-            }
-
-            // Verifica créditos antes de executar
-            var estimatedCost = _creditService.EstimateSearchCost(selectedProviders.Count);
-            var hasCredits = await _creditService.HasSufficientCreditsAsync(userId, estimatedCost);
-
-            if (!hasCredits)
-            {
-                var userCredits = await _creditService.GetUserCreditsAsync(userId);
-                return StatusCode(StatusCodes.Status402PaymentRequired, new
-                {
-                    error = "Créditos insuficientes para realizar esta busca",
-                    availableCredits = userCredits.AvailableCredits,
-                    estimatedCost = estimatedCost,
-                    message = "Adquira mais créditos para continuar usando o serviço"
-                });
-            }
-
-            var search = new SearchParameter
-            {
-                Isbn = request.Isbn
-            };
-
-            var requestor = new Requestor(search, selectedProviders);
-            var result = await _engine.ExecuteTransaction(requestor, userId);
-
-            // Consome créditos após a busca
-            if (result.CustoCreditos > 0)
-            {
-                var consumeResult = await _creditService.ConsumeCreditsAsync(
-                    userId,
-                    result.CustoCreditos,
-                    description: $"Busca ISBN: {request.Isbn}");
-
-                if (!consumeResult.Success)
-                {
-                    _logger.LogWarning(
-                        "Falha ao consumir créditos após busca: UserId={UserId}, Cost={Cost}, Message={Message}",
-                        userId, result.CustoCreditos, consumeResult.Message);
-                }
-            }
-
-            var response = BookSearchResponseDto.FromSearchResult(result, request.Isbn);
-            return Ok(response);
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Erro ao buscar preços para ISBN {Isbn}", request.Isbn);
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new { error = $"Erro ao buscar preços: {ex.Message}" });
+            selectedProviders = Provider.AllSources.Where(p => p.IsActive).ToList();
         }
+
+        // Verifica créditos antes de executar
+        var estimatedCost = _creditService.EstimateSearchCost(selectedProviders.Count);
+        var hasCredits = await _creditService.HasSufficientCreditsAsync(userId, estimatedCost);
+
+        if (!hasCredits)
+        {
+            var userCredits = await _creditService.GetUserCreditsAsync(userId);
+            return StatusCode(StatusCodes.Status402PaymentRequired, new
+            {
+                error = "Créditos insuficientes para realizar esta busca",
+                availableCredits = userCredits.AvailableCredits,
+                estimatedCost = estimatedCost,
+                message = "Adquira mais créditos para continuar usando o serviço"
+            });
+        }
+
+        var search = new SearchParameter
+        {
+            Isbn = request.Isbn
+        };
+
+        var requestor = new Requestor(search, selectedProviders);
+        var result = await _engine.ExecuteTransaction(requestor, userId);
+
+        // Consome créditos após a busca
+        if (result.CustoCreditos > 0)
+        {
+            var consumeResult = await _creditService.ConsumeCreditsAsync(
+                userId,
+                result.CustoCreditos,
+                description: $"Busca ISBN: {request.Isbn}");
+
+            if (!consumeResult.Success)
+            {
+                _logger.LogWarning(
+                    "Falha ao consumir créditos após busca: UserId={UserId}, Cost={Cost}, Message={Message}",
+                    userId, result.CustoCreditos, consumeResult.Message);
+            }
+        }
+
+        var response = BookSearchResponseDto.FromSearchResult(result, request.Isbn);
+        return Ok(response);
     }
 
     /// <summary>

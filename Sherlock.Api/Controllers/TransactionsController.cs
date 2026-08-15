@@ -28,26 +28,13 @@ public class TransactionsController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<TransactionHistoryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMyHistory([FromQuery] int limit = 50)
     {
-        try
-        {
-            // Limite defensivo para evitar payloads enormes
-            if (limit < 1) limit = 20;
-            if (limit > 200) limit = 200;
+        // Limite defensivo para evitar payloads enormes
+        if (limit < 1) limit = 20;
+        if (limit > 200) limit = 200;
 
-            var userId = GetUserId();
-            var history = await _historyService.GetUserHistoryAsync(userId, limit);
-            return Ok(history);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { error = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao obter histórico de transações");
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new { error = "Erro ao obter histórico de transações" });
-        }
+        var userId = GetUserId();
+        var history = await _historyService.GetUserHistoryAsync(userId, limit);
+        return Ok(history);
     }
 
     /// <summary>
@@ -58,28 +45,15 @@ public class TransactionsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetTransactionDetail(int id)
     {
-        try
-        {
-            var userId = GetUserId();
-            var detail = await _historyService.GetTransactionDetailAsync(id);
-            if (detail == null) return NotFound();
+        var userId = GetUserId();
+        var detail = await _historyService.GetTransactionDetailAsync(id);
+        if (detail == null) return NotFound();
 
-            // Bloqueia acesso a transações de outros usuários
-            if (!await UserOwnsTransactionAsync(userId, id))
-                return NotFound();
+        // Bloqueia acesso a transações de outros usuários
+        if (!await UserOwnsTransactionAsync(userId, id))
+            return NotFound();
 
-            return Ok(detail);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { error = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao obter detalhes da transação {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new { error = "Erro ao obter detalhes da transação" });
-        }
+        return Ok(detail);
     }
 
     private async Task<bool> UserOwnsTransactionAsync(int userId, int transactionId)

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Sherlock.Data.Context;
 using Sherlock.Api.Configurations;
+using Sherlock.Api.Middleware;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -33,6 +34,8 @@ try
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
+    builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+    builder.Services.AddProblemDetails();
 
     // Cache - Tenta Redis, fallback para memória
     var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
@@ -124,6 +127,9 @@ try
         db.Database.Migrate();
         Log.Information("Migrations aplicadas com sucesso");
     }
+    
+    // Primeiro do pipeline: cada log gerado a partir daqui carrega o CorrelationId
+    app.UseMiddleware<CorrelationIdMiddleware>();
 
     if (app.Environment.IsDevelopment())
     {
@@ -135,6 +141,8 @@ try
     {
         options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} respondido {StatusCode} em {Elapsed:0.0000}ms";
     });
+    
+    app.UseExceptionHandler();
 
     app.UseHttpsRedirection();
 

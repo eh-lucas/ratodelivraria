@@ -34,16 +34,11 @@ public class UserController : ControllerBase
             var userCredits = await _creditService.GetUserCreditsAsync(userId);
             return Ok(userCredits);
         }
+        // Mantido: traduz "usuário inexistente" para 404 — semântica que o handler global não tem
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Usuário não encontrado ao buscar informações");
             return NotFound(new { error = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao obter informações do usuário");
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new { error = "Erro ao obter informações do usuário" });
         }
     }
 
@@ -54,18 +49,9 @@ public class UserController : ControllerBase
     [ProducesResponseType(typeof(UserCreditsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCredits()
     {
-        try
-        {
-            var userId = GetUserId();
-            var credits = await _creditService.GetUserCreditsAsync(userId);
-            return Ok(credits);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao obter créditos do usuário");
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new { error = "Erro ao obter saldo de créditos" });
-        }
+        var userId = GetUserId();
+        var credits = await _creditService.GetUserCreditsAsync(userId);
+        return Ok(credits);
     }
 
     /// <summary>
@@ -77,23 +63,14 @@ public class UserController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        try
-        {
-            var userId = GetUserId();
+        var userId = GetUserId();
 
-            if (page < 1) page = 1;
-            if (pageSize < 1) pageSize = 20;
-            if (pageSize > 100) pageSize = 100;
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+        if (pageSize > 100) pageSize = 100;
 
-            var history = await _creditService.GetCreditHistoryAsync(userId, page, pageSize);
-            return Ok(history);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao obter histórico de créditos");
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new { error = "Erro ao obter histórico de créditos" });
-        }
+        var history = await _creditService.GetCreditHistoryAsync(userId, page, pageSize);
+        return Ok(history);
     }
 
     private int GetUserId()
