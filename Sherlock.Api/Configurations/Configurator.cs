@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using Sherlock.Business;
 using Sherlock.Data;
+using Sherlock.Api.Authentication;
 using Sherlock.Api.Services;
 
 namespace Sherlock.Api.Configurations;
@@ -28,36 +30,57 @@ public class Configurator
             });
         });
 
-        builder.Services.AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            })
-            .AddJwtBearer(options =>
-            {
-                options.RequireHttpsMetadata = false;
-                options.SaveToken = true;
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(key),
-                    ValidateIssuer = false,
-                    ValidateAudience = false
-                };
-                options.Events = new JwtBearerEvents
-                {
-                    OnMessageReceived = context =>
-                    {
-                        var token = context.Request.Query["token"];
-                        if (!string.IsNullOrEmpty(token))
-                        {
-                            context.Token = token;
-                        }
+        // Modo demo (branch de apresentação): autentica toda requisição como o
+        // usuário master, sem login. Default off — produção segue com JWT.
+        var demoMode = builder.Configuration.GetSection(DemoModeOptions.SectionName).Get<DemoModeOptions>()
+                       ?? new DemoModeOptions();
+        builder.Services.Configure<DemoModeOptions>(builder.Configuration.GetSection(DemoModeOptions.SectionName));
 
-                        return Task.CompletedTask;
-                    }
-                };
-            });
+        if (demoMode.Enabled)
+        {
+            builder.Services.AddSingleton(new DemoMasterUser { Email = demoMode.MasterUserEmail });
+
+            builder.Services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = DemoAuthenticationHandler.SchemeName;
+                    options.DefaultChallengeScheme = DemoAuthenticationHandler.SchemeName;
+                })
+                .AddScheme<AuthenticationSchemeOptions, DemoAuthenticationHandler>(
+                    DemoAuthenticationHandler.SchemeName, _ => { });
+        }
+        else
+        {
+            builder.Services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                })
+                .AddJwtBearer(options =>
+                {
+                    options.RequireHttpsMetadata = false;
+                    options.SaveToken = true;
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(key),
+                        ValidateIssuer = false,
+                        ValidateAudience = false
+                    };
+                    options.Events = new JwtBearerEvents
+                    {
+                        OnMessageReceived = context =>
+                        {
+                            var token = context.Request.Query["token"];
+                            if (!string.IsNullOrEmpty(token))
+                            {
+                                context.Token = token;
+                            }
+
+                            return Task.CompletedTask;
+                        }
+                    };
+                });
+        }
 
         RegisterServices(builder);
 

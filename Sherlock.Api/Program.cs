@@ -1,8 +1,11 @@
 using System.Threading.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Serilog;
 using Sherlock.Data.Context;
+using Sherlock.Api.Authentication;
 using Sherlock.Api.Configurations;
+using Sherlock.Domain.Entities;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -123,6 +126,45 @@ try
         Log.Information("Aplicando migrations do banco de dados...");
         db.Database.Migrate();
         Log.Information("Migrations aplicadas com sucesso");
+
+        // Modo demo: garante o usuário master no banco e publica seu id para o
+        // DemoAuthenticationHandler. Reabastece os créditos a cada startup.
+        var demoOpts = scope.ServiceProvider.GetRequiredService<IOptions<DemoModeOptions>>().Value;
+        if (demoOpts.Enabled)
+        {
+            var email = demoOpts.MasterUserEmail.ToLowerInvariant().Trim();
+            var master = db.Users.FirstOrDefault(u => u.Email.ToLower() == email);
+
+            if (master == null)
+            {
+                master = new User
+                {
+                    Email = email,
+                    Username = demoOpts.MasterUsername,
+                    Role = "User",
+                    // Login por senha é desabilitado no modo demo; hash inválido de propósito.
+                    PasswordHash = "!",
+                    Active = true,
+                    AvailableCredits = demoOpts.MasterCredits,
+                    CreatedAt = DateTime.UtcNow
+                };
+                db.Users.Add(master);
+            }
+            else
+            {
+                master.AvailableCredits = demoOpts.MasterCredits;
+                master.Active = true;
+            }
+
+            db.SaveChanges();
+
+            var accessor = scope.ServiceProvider.GetRequiredService<DemoMasterUser>();
+            accessor.UserId = master.Id;
+            accessor.Role = master.Role;
+
+            Log.Warning("MODO DEMO ATIVO: toda requisição será processada como o usuário master '{Email}' (id={Id})",
+                email, master.Id);
+        }
     }
 
     if (app.Environment.IsDevelopment())

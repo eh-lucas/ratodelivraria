@@ -54,6 +54,9 @@ services:
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${APP_DB_USER};Password=${APP_DB_PASSWORD}"
       ConnectionStrings__SherlockDb: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${APP_DB_USER};Password=${APP_DB_PASSWORD}"
       JwtSettings__SecretKey: ${JWT_SECRET}
+      # Branch de demonstração: acesso aberto, toda requisição processada como o usuário master.
+      # NÃO deve ir para a main (produção mantém login por usuário).
+      DemoMode__Enabled: "true"
     ports:
       - "5177:8080"
     depends_on:

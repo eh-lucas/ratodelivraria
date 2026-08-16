@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth-service';
 import { UserService } from '../../services/user-service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-user-menu',
@@ -13,6 +14,9 @@ import { UserService } from '../../services/user-service';
 })
 export class UserMenuComponent {
   @Output() close = new EventEmitter<void>();
+
+  // Em modo demo não há login/créditos por usuário — esconde esses itens.
+  readonly demoMode = environment.demoMode;
 
   constructor(
     private elementRef: ElementRef,

@@ -9,9 +9,13 @@ import { ProfilePage } from './pages/profile-page/profile-page';
 import { CreditsPage } from './pages/credits-page/credits-page';
 import { AppLayoutComponent } from './layout/app-layout';
 import { authGuard } from './guards/auth-guard';
+import { environment } from '../environments/environment';
+
+// Em modo demo a raiz cai direto no app (sem passar pela tela de login).
+const landingRoute = environment.demoMode ? '/home' : '/login';
 
 export const routes: Routes = [
-  { path: '', redirectTo: '/login', pathMatch: 'full' },
+  { path: '', redirectTo: landingRoute, pathMatch: 'full' },
   { path: 'login', component: LoginPage },
   { path: 'register', component: RegisterPage },
 
@@ -30,5 +34,5 @@ export const routes: Routes = [
     ],
   },
 
-  { path: '**', redirectTo: '/login' },
+  { path: '**', redirectTo: landingRoute },
 ];
