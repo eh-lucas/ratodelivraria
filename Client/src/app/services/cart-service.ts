@@ -53,6 +53,7 @@ export interface BookPriceDetail {
   price: number;
   quantity: number;
   totalPrice: number;
+  productUrl?: string;
 }
 
 export interface ProviderComparison {
