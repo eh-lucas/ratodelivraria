@@ -151,7 +151,8 @@ public class CartOptimizer
                     Isbn = isbn,
                     Title = bookPrice.BookTitle,
                     Price = bookPrice.Price,
-                    Quantity = qty
+                    Quantity = qty,
+                    ProductUrl = bookPrice.ProductUrl
                 });
             }
         }
@@ -183,7 +184,8 @@ public class CartOptimizer
                 Isbn = bp.Isbn,
                 UnitPrice = bp.Price,
                 Quantity = bp.Quantity,
-                TotalPrice = bp.TotalPrice
+                TotalPrice = bp.TotalPrice,
+                ProductUrl = bp.ProductUrl
             }).ToList(),
             Subtotal = bestProvider.TotalPrice,
             Total = bestProvider.TotalPrice

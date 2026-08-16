@@ -139,7 +139,7 @@
           <div class="best-card">
             <div class="best-label">Melhor opção</div>
             <div class="best-provider">
-              <a [href]="bestProvider.providerUrl" target="_blank" rel="noopener">{{ bestProvider.providerName }}</a>
+              <a [href]="providerLink(bestProvider)" target="_blank" rel="noopener">{{ bestProvider.providerName }}</a>
             </div>
             <div class="best-total">R$ {{ bestProvider.totalPrice.toFixed(2) }}</div>
             <div class="best-info">
@@ -162,7 +162,7 @@
             <tbody>
               @for (p of topProviders; track p.providerId) {
                 <tr [class.partial]="!p.hasAllBooks">
-                  <td><a [href]="p.providerUrl" target="_blank" rel="noopener">{{ p.providerName }}</a></td>
+                  <td><a [href]="providerLink(p)" target="_blank" rel="noopener">{{ p.providerName }}</a></td>
                   <td class="num">{{ p.booksFound }} / {{ p.totalBooksRequested }}</td>
                   <td class="num">R$ {{ p.totalPrice.toFixed(2) }}</td>
                 </tr>
