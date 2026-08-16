@@ -249,13 +249,6 @@ public class Provider
         Url = "https://livrariavictorsales.com.br/",
     };
 
-    public static Provider LivrariaVistaPatria = new()
-    {
-        Id = 31,
-        Name = "Livraria Vista Pátria",
-        ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
-        Url = "https://livrariavistapatria.com.br/",
-    };
 
     // ========== NOVOS PROVIDERS ==========
 
@@ -275,13 +268,6 @@ public class Provider
         Url = "https://analigialivraria.com.br/",
     };
 
-    public static Provider LivrariaSilvioNavarro = new()
-    {
-        Id = 34,
-        Name = "Livraria do Silvio Navarro",
-        ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
-        Url = "https://livrariadosilvionavarro.com.br/",
-    };
 
     public static Provider LivrariaCrisCorrea = new()
     {
@@ -299,13 +285,6 @@ public class Provider
         Url = "https://livrariapszerado.com.br/",
     };
 
-    public static Provider LivrariaVandressa = new()
-    {
-        Id = 37,
-        Name = "Livraria da Vandressa",
-        ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
-        Url = "https://livrariadavandressa.com.br/",
-    };
 
     public static Provider LivrariaForaDaCaixinha = new()
     {
@@ -363,13 +342,6 @@ public class Provider
         Url = "https://livrarianfc.com.br/",
     };
 
-    public static Provider LivrariaRosaly = new()
-    {
-        Id = 45,
-        Name = "Livraria da Rosaly",
-        ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
-        Url = "https://livrariadarosaly.com.br/",
-    };
 
     public static Provider LivrariaInstitutoMises = new()
     {
@@ -435,13 +407,6 @@ public class Provider
         Url = "https://livrariaseufilholeitor.com.br/",
     };
 
-    public static Provider LivrariaRebelo = new()
-    {
-        Id = 54,
-        Name = "Livraria Rebelo",
-        ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
-        Url = "https://livrariarebelo.com.br/",
-    };
 
     public static Provider LivrariaJulia = new()
     {
@@ -507,13 +472,6 @@ public class Provider
         Url = "https://livrariadogrimaldo.com.br/",
     };
 
-    public static Provider LivrariaPatthy = new()
-    {
-        Id = 63,
-        Name = "Livraria da Patthy",
-        ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
-        Url = "https://livrariadapatthy.com.br/",
-    };
 
     public static Provider LivrariaPeregrino = new()
     {
@@ -587,13 +545,6 @@ public class Provider
         Url = "https://livraria.paulamarisa.com.br/",
     };
 
-    public static Provider LivrariaNuzioNeto = new()
-    {
-        Id = 73,
-        Name = "Livraria da Nuzio Neto",
-        ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
-        Url = "https://livrariadanuzioneto.com.br/",
-    };
 
     public static Provider LivrariaPietra = new()
     {
@@ -627,13 +578,6 @@ public class Provider
         Url = "https://livrariacep.com.br/",
     };
 
-    public static Provider LivrariaZapparoli = new()
-    {
-        Id = 78,
-        Name = "Livraria Zapparoli",
-        ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
-        Url = "https://livrariazapparoli.com.br/",
-    };
 
     public static Provider LivrariaBoraSerSanto = new()
     {
@@ -723,13 +667,6 @@ public class Provider
         Url = "https://bibliotecadoluiz.com.br/",
     };
 
-    public static Provider LivrariaSensoIncomum = new()
-    {
-        Id = 90,
-        Name = "Livraria Senso Incomum",
-        ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
-        Url = "https://livraria.sensoincomum.org/",
-    };
 
     public static Provider Kirion = new()
     {
@@ -767,7 +704,7 @@ public class Provider
         LivrariaBrunaTorlay,
         LivrariaCatolikids,
         LivrariaCazarre,
-        LivrariaChesterton,
+        // LivrariaChesterton, // Inativo: dominio estacionado (301 -> cedet)
         LivrariaConstantino,
         LivrariaContraAcademicos,
         LivrariaDanielLopez,
@@ -777,7 +714,7 @@ public class Provider
         LivrariaGuilhermeFreire,
         LivrariaGurgel,
         LivrariaInstitutoBorborema,
-        LivrariaKogos,
+        // LivrariaKogos, // Inativo: dominio estacionado (301 -> cedet)
         LivrariaLacombe,
         LivrariaNikolas,
         LivrariaPadreLucas,
@@ -787,67 +724,58 @@ public class Provider
         LivrariaSabedoriaCatolica,
         LivrariaThomas,
         LivrariaVictorSales,
-        // LivrariaVistaPatria, // Inativo: NXDOMAIN (livrariavistapatria.com.br não resolve)
         // Novos
         LivrariaLuisEnrique,
         LivrariaAnalia,
-        // LivrariaSilvioNavarro, // Inativo: DNS SERVFAIL (livrariadosilvionavarro.com.br)
         LivrariaCrisCorrea,
         LivrariaPsZerado,
-        // LivrariaVandressa, // Inativo: NXDOMAIN (livrariadavandressa.com.br)
-        LivrariaForaDaCaixinha,
-        LivrariaBrunaGutstein,
-        LivrariaDantas,
+        // LivrariaForaDaCaixinha, // Inativo: dominio estacionado (301 -> cedet)
+        // LivrariaBrunaGutstein, // Inativo: dominio estacionado (301 -> cedet)
+        // LivrariaDantas, // Inativo: dominio estacionado (301 -> cedet)
         LivrariaFioDiario,
         LivrariaLaraBrenner,
         LivrariaInstitutoLiberal,
         LivrariaNfc,
-        // LivrariaRosaly, // Inativo: NXDOMAIN (livrariadarosaly.com.br)
         LivrariaInstitutoMises,
         LivrariaArno,
         LivrariaRevistaOeste,
-        LivrariaEdisonCarlos,
+        // LivrariaEdisonCarlos, // Inativo: dominio estacionado (301 -> cedet)
         LivrariaDiacono,
         LivrariaRafaelNogueira,
         LivrariaDaLiberdade,
         LivrariaSeuFilhoLeitor,
-        // LivrariaRebelo, // Inativo: NXDOMAIN (livrariarebelo.com.br)
-        LivrariaJulia,
+        // LivrariaJulia, // Inativo: dominio estacionado (301 -> cedet)
         LivrariaCamila,
         LivrariaCatolicosDeVerdade,
         LivrariaLorenzo,
         LivrariaRaphaelTonon,
-        LivrariaBbp,
+        // LivrariaBbp, // Inativo: dominio estacionado (301 -> cedet)
         LivrariaLaise,
         LivrariaGrimaldo,
-        // LivrariaPatthy, // Inativo: DNS SERVFAIL (livrariadapatthy.com.br)
         LivrariaPeregrino,
         LivrariaFamiliaCatolica,
         LivrariaGrandeFamilia,
-        LivrariaTati,
+        // LivrariaTati, // Inativo: dominio estacionado (301 -> cedet)
         LivrariaDanilo,
         LivrariaSantaCarona,
-        LivrariaMarize,
+        // LivrariaMarize, // Inativo: dominio estacionado (301 -> cedet)
         LivrariaPriAntunes,
         LivrariaPaulaMarisa,
-        // LivrariaNuzioNeto, // Inativo: NXDOMAIN (livrariadanuzioneto.com.br)
-        LivrariaPietra,
+        // LivrariaPietra, // Inativo: dominio estacionado (301 -> cedet)
         LivrariaDoutorPacheco,
-        LivrariaEduardoBolsonaro,
-        LivrariaCep,
-        // LivrariaZapparoli, // Inativo: NXDOMAIN (livrariazapparoli.com.br)
+        // LivrariaEduardoBolsonaro, // Inativo: dominio estacionado (301 -> cedet)
+        // LivrariaCep, // Inativo: dominio estacionado (301 -> cedet)
         LivrariaBoraSerSanto,
         LivrariaCassia,
-        LivrariaFran,
+        // LivrariaFran, // Inativo: dominio estacionado (301 -> cedet)
         LivrariaProf,
         LivrariaSaulo,
         LivrariaMarieBruno,
         LivrariaRodrigo,
         LivrariaAmandaButtchevits,
-        LivrariaTeAtualizei,
-        LivrariaAlam,
+        // LivrariaTeAtualizei, // Inativo: dominio estacionado (301 -> cedet)
+        // LivrariaAlam, // Inativo: dominio estacionado (301 -> cedet)
         BibliotecaDoLuiz,
-        LivrariaSensoIncomum,
         Kirion,
         VideEditorial,
         EditoraSetimoSelo,
