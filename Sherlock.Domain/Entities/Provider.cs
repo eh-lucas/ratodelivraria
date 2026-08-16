@@ -185,14 +185,6 @@ public class Provider
         Url = "https://livrariadolacombe.com.br/",
     };
 
-    public static Provider LivrariaMarcela = new()
-    {
-        Id = 22,
-        Name = "Livraria da Marcela",
-        ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
-        Url = "https://livrariadamarcela.com.br/",
-    };
-
     public static Provider LivrariaNikolas = new()
     {
         Id = 23,
@@ -787,7 +779,6 @@ public class Provider
         LivrariaInstitutoBorborema,
         LivrariaKogos,
         LivrariaLacombe,
-        LivrariaMarcela,
         LivrariaNikolas,
         LivrariaPadreLucas,
         LivrariaPedroAugusto,
