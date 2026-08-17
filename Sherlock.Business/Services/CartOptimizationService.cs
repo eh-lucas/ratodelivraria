@@ -64,8 +64,34 @@ public class CartOptimizationService : ICartOptimizationService
         {
             creditsUsed += result.CustoCreditos;
 
-            if (result.AllResults != null && result.AllResults.Any())
+            // Preferimos AllQueryResults: carrega dados completos por provider
+            // (ProviderId, ProviderUrl e ProductUrl — a página do livro na loja).
+            var validQueries = result.AllQueryResults?
+                .Where(q => q.HasValidResult)
+                .ToList() ?? new List<QueryResult>();
+
+            if (validQueries.Count > 0)
             {
+                foreach (var q in validQueries)
+                {
+                    allPrices.Add(new BookPriceOption
+                    {
+                        BookTitle = q.Title ?? book.Isbn,
+                        Isbn = book.Isbn,
+                        Author = q.Author,
+                        ProviderId = q.ProviderId,
+                        ProviderName = q.ProviderName,
+                        ProviderUrl = q.ProviderUrl,
+                        Price = q.Price,
+                        Discount = q.Discount,
+                        ProductUrl = q.ProductUrl,
+                        Available = true
+                    });
+                }
+            }
+            else if (result.AllResults != null && result.AllResults.Any())
+            {
+                // Fallback legado (BookPriceResult não carrega URL do produto/provider).
                 foreach (var priceResult in result.AllResults)
                 {
                     allPrices.Add(new BookPriceOption
@@ -73,37 +99,9 @@ public class CartOptimizationService : ICartOptimizationService
                         BookTitle = priceResult.Title ?? book.Isbn,
                         Isbn = book.Isbn,
                         Author = priceResult.Author,
-                        ProviderId = GetProviderId(priceResult.Website),
                         ProviderName = priceResult.Website,
                         Price = priceResult.Price,
                         Discount = priceResult.Discount,
-                        ProductUrl = null,
-                        Available = true
-                    });
-                }
-            }
-
-            // Também adiciona o melhor resultado se AllResults estiver vazio
-            if (result.BookPriceResult != null &&
-                !string.IsNullOrEmpty(result.BookPriceResult.Title) &&
-                result.BookPriceResult.Price > 0)
-            {
-                var existing = allPrices.FirstOrDefault(p =>
-                    p.Isbn == book.Isbn &&
-                    p.ProviderName == result.BookPriceResult.Website);
-
-                if (existing == null)
-                {
-                    allPrices.Add(new BookPriceOption
-                    {
-                        BookTitle = result.BookPriceResult.Title ?? book.Isbn,
-                        Isbn = book.Isbn,
-                        Author = result.BookPriceResult.Author,
-                        ProviderId = GetProviderId(result.BookPriceResult.Website),
-                        ProviderName = result.BookPriceResult.Website,
-                        Price = result.BookPriceResult.Price,
-                        Discount = result.BookPriceResult.Discount,
-                        ProductUrl = null,
                         Available = true
                     });
                 }
@@ -176,18 +174,4 @@ public class CartOptimizationService : ICartOptimizationService
             .Where(s => s.IsActive)
             .ToList();
     }
-
-    private int GetProviderId(string providerName)
-    {
-        // Mapeamento simples - em produção, viria do banco
-        return providerName?.ToLowerInvariant() switch
-        {
-            "amazon" => 1,
-            "estante virtual" => 2,
-            "livraria cultura" => 3,
-            "cedet" => 4,
-            _ => 0
-        };
-    }
-
 }

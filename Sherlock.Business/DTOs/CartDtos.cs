@@ -325,4 +325,9 @@ public class BookPriceDetail
     public decimal Price { get; set; }
     public int Quantity { get; set; } = 1;
     public decimal TotalPrice => Price * Quantity;
+
+    /// <summary>
+    /// URL da página do livro na loja (para linkar direto ao produto)
+    /// </summary>
+    public string? ProductUrl { get; set; }
 }

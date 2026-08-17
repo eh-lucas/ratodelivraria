@@ -7,6 +7,7 @@ import {
   CartOptimizationResult,
   OptimizationStrategy,
   ProviderOption,
+  ProviderComparison,
 } from '../../services/cart-service';
 import { UserService } from '../../services/user-service';
 
@@ -202,5 +203,11 @@ export class SearchPage implements OnInit {
 
   get bestProvider() {
     return this.result?.providerComparisons.find(p => p.hasAllBooks) ?? null;
+  }
+
+  // Link do resultado: aponta para a página do livro na loja (productUrl do
+  // primeiro livro encontrado); cai para a home da loja se não houver.
+  providerLink(p: ProviderComparison): string {
+    return p.bookPrices?.find(b => b.productUrl)?.productUrl || p.providerUrl || '#';
   }
 }
