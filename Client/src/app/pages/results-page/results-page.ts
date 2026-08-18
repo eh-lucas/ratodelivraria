@@ -31,6 +31,12 @@ interface Offer {
   fromCache: boolean;
   /** % abaixo da média dos sites comparáveis (negativo = acima da média) */
   vsAverage: number;
+  /** Amazon tem destaque próprio na lista; ver pinAmazon(). */
+  isAmazon: boolean;
+  /** Posição real por preço (1 = mais barata). Fixar o card não pode mentir sobre isso. */
+  priceRank: number;
+  /** Quanto esta oferta custa a mais que a melhor. 0 quando é a melhor. */
+  overBest: number;
 }
 
 interface OfferItem {
@@ -260,6 +266,8 @@ export class ResultsPage implements OnInit {
       ? complete.reduce((best, o) => (o.total < best.total ? o : best))
       : null;
 
+    this.rankOffers();
+
     this.cachedBookStats = this.buildBookStats();
   }
 
@@ -311,8 +319,53 @@ export class ResultsPage implements OnInit {
         vsAverage: avg > 0 && (complete.length === 0 || c.hasAllBooks)
           ? ((avg - c.totalPrice) / avg) * 100
           : 0,
+        // Pelo domínio, não pelo nome: o nome do provider pode mudar no cadastro.
+        isAmazon: (c.providerUrl || queries[0]?.providerUrl || '').includes('amazon.com.br'),
+        priceRank: 0,
+        overBest: 0,
       };
     });
+  }
+
+  /**
+   * Posição real de cada oferta por preço, e o quanto ela custa a mais que a
+   * melhor. O card da Amazon é fixado no topo da lista; sem estes dois números
+   * o destaque viraria uma promessa falsa de "segunda mais barata".
+   */
+  private rankOffers(): void {
+    const ordenadas = [...this.allOffers]
+      .filter(o => o.total > 0)
+      .sort((a, b) => a.total - b.total);
+
+    const menor = ordenadas[0]?.total ?? 0;
+
+    ordenadas.forEach((o, i) => {
+      o.priceRank = i + 1;
+      o.overBest = menor > 0 ? o.total - menor : 0;
+    });
+  }
+
+  /** A oferta da Amazon, se ela respondeu com preço nesta busca. */
+  get amazonOffer(): Offer | null {
+    return this.allOffers.find(o => o.isAmazon && o.total > 0) ?? null;
+  }
+
+  /**
+   * Traz a Amazon para o topo: primeiro lugar quando é a mais barata, segundo
+   * quando não é. Só mexe em quem sobreviveu aos filtros — se a pessoa filtrou
+   * a Amazon para fora, ela fica fora.
+   */
+  private pinAmazon(list: Offer[]): Offer[] {
+    const i = list.findIndex(o => o.isAmazon);
+    if (i < 0) return list;
+
+    const amazon = list[i];
+    if (amazon.total <= 0) return list;
+
+    const resto = [...list.slice(0, i), ...list.slice(i + 1)];
+    const posicao = amazon.priceRank === 1 ? 0 : 1;
+    resto.splice(posicao, 0, amazon);
+    return resto;
   }
 
   private providerLink(c: ProviderComparison, queries: ProviderQueryDetail[]): string {
@@ -341,7 +394,7 @@ export class ResultsPage implements OnInit {
       list = list.filter(o => o.total <= this.priceCeiling!);
     }
 
-    return [...list].sort((a, b) => {
+    const ordenada = [...list].sort((a, b) => {
       switch (this.sortKey) {
         case 'price':
           // Sites com o carrinho completo vêm primeiro; entre iguais, o mais barato
@@ -352,6 +405,8 @@ export class ResultsPage implements OnInit {
           return b.total - a.total;
       }
     });
+
+    return this.pinAmazon(ordenada);
   }
 
   get bestOffer(): Offer | null {

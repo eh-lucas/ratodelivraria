@@ -24,6 +24,9 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
     <PackageReference Include="Polly" Version="8.5.0" />
+    <!-- Navegador para a Amazon. Ver Core/Scrapers/Amazon/AmazonBrowser.cs: sem
+         navegador de verdade a Amazon serve pagina sem preco. -->
+    <PackageReference Include="PuppeteerSharp" Version="25.8.0" />
     <PackageReference Include="Polly.Extensions" Version="8.5.0" />
   </ItemGroup>
 

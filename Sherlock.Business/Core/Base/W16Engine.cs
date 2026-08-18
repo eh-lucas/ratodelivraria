@@ -6,6 +6,7 @@ using Sherlock.Business.Core.Exceptions;
 using Sherlock.Business.Core.Progress;
 using Sherlock.Business.Core.Resilience;
 using Sherlock.Business.Core.Scrapers;
+using Sherlock.Business.Core.Scrapers.Amazon;
 using Sherlock.Business.Interfaces;
 using Sherlock.Domain.Entities;
 using Sherlock.Domain.Interfaces;
@@ -53,10 +54,11 @@ public class W16Engine
         ITransactionPersistenceService? persistenceService,
         IQueryRepository? queryRepository,
         IOptions<QueryCacheSettings>? cacheSettings,
-        IOptions<SearchSettings>? searchSettings = null)
+        IOptions<SearchSettings>? searchSettings = null,
+        IAmazonBrowser? amazonBrowser = null)
     {
         _comparator = new Comparator();
-        _scraperFactory = new ScraperFactory(loggerFactory);
+        _scraperFactory = new ScraperFactory(loggerFactory, amazonBrowser);
         _logger = logger;
         _cacheService = cacheService;
         _resilientWrapper = resilientWrapper;
@@ -129,6 +131,12 @@ public class W16Engine
 
             var sourcesByCategory = GroupSourcesByCategory(requestor.SourcesToSearch);
 
+            // Categorias correm juntas. Elas usam transportes diferentes (as
+            // livrarias vao por HttpClient, a Amazon por navegador) e disputam
+            // servidores diferentes, entao serializa-las so somaria espera: a
+            // Amazon responde em ~1s e ficaria parada atras de 15s de livraria.
+            var porCategoria = new List<Task>();
+
             foreach (var (category, sources) in sourcesByCategory)
             {
                 // Cria scraper para a categoria
@@ -137,14 +145,16 @@ public class W16Engine
                 {
                     _logger.LogWarning("Scraper não encontrado para categoria {Category}", category);
                     Interlocked.Add(ref metrics.FailedCount, sources.Count);
+                    SearchProgressScope.Current?.Increment(sources.Count);
                     continue;
                 }
 
-                if (parallel)
-                    await ExecuteParallely(requestor, queryResults, sources, scraper, metrics, cancellationToken);
-                else
-                    await ExecuteNonConcurrently(requestor, queryResults, sources, scraper, metrics, cancellationToken);
+                porCategoria.Add(parallel
+                    ? ExecuteParallely(requestor, queryResults, sources, scraper, metrics, cancellationToken)
+                    : ExecuteNonConcurrently(requestor, queryResults, sources, scraper, metrics, cancellationToken));
             }
+
+            await Task.WhenAll(porCategoria);
         }
         catch (Exception ex)
         {

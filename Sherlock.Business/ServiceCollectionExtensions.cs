@@ -6,6 +6,7 @@ using Sherlock.Business.Core.Crawling;
 using Sherlock.Business.Core.Optimization;
 using Sherlock.Business.Core.Progress;
 using Sherlock.Business.Core.Resilience;
+using Sherlock.Business.Core.Scrapers.Amazon;
 using Sherlock.Business.Interfaces;
 using Sherlock.Business.Services;
 
@@ -22,6 +23,8 @@ public static class ServiceCollectionExtensions
             configuration.GetSection(CatalogCrawlSettings.SectionName));
         services.Configure<SearchSettings>(
             configuration.GetSection(SearchSettings.SectionName));
+        services.Configure<AmazonSettings>(
+            configuration.GetSection(AmazonSettings.SectionName));
         // Services
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IBookService, BookService>();
@@ -38,6 +41,10 @@ public static class ServiceCollectionExtensions
 
         // Progresso das buscas: singleton, pois é consultado por requisições diferentes
         services.AddSingleton<SearchProgressStore>();
+
+        // Navegador da Amazon: singleton porque subir Chrome custa ~1s e um
+        // processo por busca acabaria com a memória da máquina.
+        services.AddSingleton<IAmazonBrowser, AmazonBrowser>();
 
         // Cache
         services.AddScoped<ICacheService, CacheService>();

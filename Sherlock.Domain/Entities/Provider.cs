@@ -724,6 +724,20 @@ public class Provider
         Url = "https://editorasetimoselo.com.br/",
     };
 
+    /// <summary>
+    /// Amazon. Provider especial: consultado por navegador, não por HttpClient
+    /// como as livrarias — a Amazon devolve página sem preço para cliente que
+    /// não parece navegador. Ver docs/PROVIDER-AMAZON.md.
+    /// </summary>
+    public static Provider Amazon = new()
+    {
+        Id = 94,
+        Name = "Amazon",
+        ProviderCategoryEnum = ProviderCategoryEnum.Amazon,
+        Url = "https://www.amazon.com.br/",
+        SearchUrlTemplate = "s?k={search}&i=stripbooks",
+    };
+
     public static List<Provider> AllSources = new()
     {
         // Existentes
@@ -811,5 +825,8 @@ public class Provider
         Kirion,
         VideEditorial,
         EditoraSetimoSelo,
+
+        // Provider especial: ver comentario na declaracao acima.
+        Amazon,
     };
 }

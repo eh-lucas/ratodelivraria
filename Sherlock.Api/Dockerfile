@@ -24,8 +24,21 @@ RUN dotnet publish -c Release -o /app/publish --no-restore
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
-# Install curl for healthcheck
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# curl para o healthcheck; chromium para consultar a Amazon.
+#
+# O chromium vem do apt e nao do download do PuppeteerSharp de proposito: a
+# versao do apt ja traz as bibliotecas de sistema resolvidas como dependencia,
+# enquanto o binario baixado exige instalar ~30 pacotes .so na mao.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        chromium \
+        fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
+
+# O PuppeteerSharp so nao tenta baixar o proprio Chrome porque apontamos o
+# caminho em Amazon:ChromePath (appsettings.Docker.json).
+ENV PUPPETEER_SKIP_DOWNLOAD=1
 
 # Copy published app
 COPY --from=build /app/publish .

@@ -196,11 +196,18 @@
 
         <ul class="offer-list">
           @for (o of offers; track o.providerName) {
-            <li class="offer-card" [class.is-best]="isBest(o)" [class.is-partial]="!o.hasAllBooks">
+            <li class="offer-card" [class.is-best]="isBest(o)" [class.is-partial]="!o.hasAllBooks"
+                [class.is-amazon]="o.isAmazon">
               <div class="offer-main">
                 <div class="offer-head">
                   <h3 class="offer-provider">{{ o.providerName }}</h3>
                   @if (isBest(o)) { <span class="badge best">{{ 'Menor preço' | t }}</span> }
+                  <!-- O card da Amazon é fixado no topo. Quando ela não é a mais
+                       barata, a posição real vai junto: destaque não pode virar
+                       promessa de preço. -->
+                  @if (o.isAmazon && !isBest(o) && o.priceRank > 0) {
+                    <span class="badge rank">{{ o.priceRank }}º {{ 'em preço' | t }} · {{ formatPrice(o.overBest) }} {{ 'a mais' | t }}</span>
+                  }
                   @if (!o.hasAllBooks) {
                     <span class="badge partial">{{ o.booksFound }} {{ 'de' | t }} {{ o.totalBooks }} {{ 'livros' | t }}</span>
                   }
