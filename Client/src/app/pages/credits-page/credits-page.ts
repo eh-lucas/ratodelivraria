@@ -2,11 +2,12 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { UserService, CreditPackage, UserCredits } from '../../services/user-service';
+import { TranslatePipe } from '../../i18n/translate-pipe';
 
 @Component({
   selector: 'app-credits-page',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [TranslatePipe, CommonModule, RouterLink],
   templateUrl: './credits-page.html',
   styleUrl: './credits-page.scss'
 })

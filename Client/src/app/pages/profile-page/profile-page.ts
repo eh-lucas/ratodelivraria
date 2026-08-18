@@ -2,11 +2,12 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { UserService, UserCredits, CreditTransaction, PagedResult } from '../../services/user-service';
+import { TranslatePipe } from '../../i18n/translate-pipe';
 
 @Component({
   selector: 'app-profile-page',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [TranslatePipe, CommonModule, RouterLink],
   templateUrl: './profile-page.html',
   styleUrl: './profile-page.scss'
 })

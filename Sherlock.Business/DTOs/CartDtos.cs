@@ -117,6 +117,67 @@ public class CartOptimizationResult
     /// Total de queries executadas (livros × providers)
     /// </summary>
     public int TotalQueriesExecuted { get; set; }
+
+    /// <summary>
+    /// Detalhe bruto de cada consulta (livro × provider), incluindo falhas.
+    /// Diferente de ProviderComparisons, que só traz providers com preço válido.
+    /// </summary>
+    public List<ProviderQueryDetail> ProviderQueries { get; set; } = new();
+}
+
+/// <summary>
+/// Resultado de uma consulta individual a um provider, para exibição detalhada
+/// na tela de resultado (equivalente ao que o histórico mostra por transação).
+/// </summary>
+public class ProviderQueryDetail
+{
+    /// <summary>
+    /// ISBN pesquisado nesta consulta
+    /// </summary>
+    public string Isbn { get; set; } = string.Empty;
+
+    public int ProviderId { get; set; }
+    public string ProviderName { get; set; } = string.Empty;
+    public string ProviderUrl { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Se a consulta executou sem erro (pode ter sucesso sem encontrar o livro)
+    /// </summary>
+    public bool Success { get; set; }
+
+    /// <summary>
+    /// Se a consulta retornou título e preço válidos
+    /// </summary>
+    public bool HasResult { get; set; }
+
+    public string? Title { get; set; }
+    public string? Author { get; set; }
+
+    /// <summary>
+    /// Preço encontrado (null quando não houve resultado)
+    /// </summary>
+    public decimal? Price { get; set; }
+
+    public int? Discount { get; set; }
+
+    /// <summary>
+    /// URL da página do livro na loja
+    /// </summary>
+    public string? ProductUrl { get; set; }
+
+    public long ResponseTimeMs { get; set; }
+
+    public string? ErrorMessage { get; set; }
+
+    /// <summary>
+    /// Tipo do erro em texto (Timeout, Network, HttpError, ParseError, Blocked, Unknown)
+    /// </summary>
+    public string? ErrorType { get; set; }
+
+    /// <summary>
+    /// Se o resultado veio do cache (não executou scraping)
+    /// </summary>
+    public bool FromCache { get; set; }
 }
 
 /// <summary>

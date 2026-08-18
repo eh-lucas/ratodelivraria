@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
+import { TranslatePipe } from '../../i18n/translate-pipe';
 import {
   TransactionService,
   TransactionHistory,
@@ -15,7 +16,7 @@ interface ParsedInput {
 @Component({
   selector: 'app-history-page',
   standalone: true,
-  imports: [CommonModule, DatePipe],
+  imports: [TranslatePipe, CommonModule, DatePipe],
   templateUrl: './history-page.html',
   styleUrl: './history-page.scss',
 })

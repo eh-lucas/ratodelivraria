@@ -57,6 +57,8 @@ services:
       # Branch de demonstração: acesso aberto, toda requisição processada como o usuário master.
       # NÃO deve ir para a main (produção mantém login por usuário).
       DemoMode__Enabled: "true"
+      # 67 lojas a ~18s cada: com 10 por vez a busca leva 2min; com 30, cerca de 40s.
+      Search__MaxDegreeOfParallelism: "30"
     ports:
       - "5177:8080"
     depends_on:

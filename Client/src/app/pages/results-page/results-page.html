@@ -1,0 +1,350 @@
+<section class="results">
+  <!-- Barra de resumo fixa -->
+  <header class="summary-bar">
+    <button type="button" class="back-btn" (click)="newSearch()">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+      </svg> {{ 'Nova busca' | t }} </button>
+
+    <div class="summary-query">
+      <span class="summary-label">{{ isMultiBook ? books.length + ' livros' : 'ISBN' }}</span>
+      <span class="summary-isbns" [title]="searchLabel">{{ searchLabel }}</span>
+    </div>
+
+    <div class="summary-right">
+      @if (isLoading) {
+        <span class="summary-loading">{{ 'Consultando' | t }} {{ totalQueried }} {{ 'sites' | t }}...</span>
+      } @else if (bestOffer) {
+        <span class="summary-label">{{ 'Menor preço' | t }}</span>
+        <span class="summary-price">{{ formatPrice(bestOffer.total) }}</span>
+      }
+    </div>
+  </header>
+
+  <!-- Carregando -->
+  @if (isLoading) {
+    <div class="loading-block">
+      @if (searchTotal > 0) {
+        <div class="progress-track" role="progressbar"
+             [attr.aria-valuenow]="searchedCount" aria-valuemin="0" [attr.aria-valuemax]="searchTotal">
+          <span class="progress-fill" [style.width.%]="searchPercent"></span>
+        </div>
+        <p class="loading-text">
+          <strong>{{ searchedCount }}</strong> {{ 'de' | t }} {{ searchTotal }}
+          {{ 'site|sites' | tp:searchTotal }} {{ 'consultados' | t }}
+          @if (searchedCount === 0) {
+            <span class="loading-hint">{{ 'as primeiras respostas levam alguns segundos' | t }}</span>
+          }
+        </p>
+      } @else {
+        <div class="loading-bar"><span></span></div>
+        <p class="loading-text">
+          {{ 'Consultando' | t }} {{ totalQueried }} {{ 'site|sites' | tp:totalQueried }} {{ 'em paralelo. Isso leva alguns segundos.' | t }}
+        </p>
+      }
+      <ul class="loading-providers">
+        @for (p of progressItems; track p.url) {
+          <li>{{ p.name }}</li>
+        }
+      </ul>
+    </div>
+  }
+
+  <!-- Erro -->
+  @else if (errorMessage) {
+    <div class="state-block error">
+      <p class="state-title">{{ 'Não foi possível concluir a busca' | t }}</p>
+      <p class="state-text">{{ errorMessage | t }}</p>
+      <div class="state-actions">
+        <button type="button" class="btn-primary" (click)="refresh()">{{ 'Tentar de novo' | t }}</button>
+        <button type="button" class="btn-ghost" (click)="newSearch()">{{ 'Nova busca' | t }}</button>
+      </div>
+    </div>
+  }
+
+  <!-- Nenhuma oferta -->
+  @else if (result && !hasOffers) {
+    <div class="state-block">
+      <p class="state-title">{{ 'Nenhum site encontrou' | t }} {{ (isMultiBook ? 'os livros' : 'o livro') | t }}</p>
+      <p class="state-text">
+        {{ 'Consultamos' | t }} {{ totalQueried }} {{ 'sites' | t }} {{ 'e nenhum retornou preço para' | t }}
+        {{ searchLabel }}. {{ 'Confira o ISBN ou veja o que cada site respondeu abaixo.' | t }}
+      </p>
+      <div class="state-actions">
+        <button type="button" class="btn-primary" (click)="newSearch()">{{ 'Nova busca' | t }}</button>
+        <button type="button" class="btn-ghost" (click)="refresh()">{{ 'Consultar de novo' | t }}</button>
+      </div>
+    </div>
+  }
+
+  <!-- Resultado -->
+  @else if (result) {
+    <div class="layout">
+      <!-- Rail de filtros -->
+      <aside class="filters">
+        <div class="filter-group">
+          <h3 class="filter-title">{{ 'Ordenar' | t }}</h3>
+          <label class="radio"><input type="radio" name="sort" value="price" [(ngModel)]="sortKey"/><span>{{ 'Menor preço' | t }}</span></label>
+          <label class="radio"><input type="radio" name="sort" value="price-desc" [(ngModel)]="sortKey"/><span>{{ 'Maior preço' | t }}</span></label>
+        </div>
+
+        @if (priceSliderMax > priceSliderMin) {
+          <div class="filter-group">
+            <h3 class="filter-title">{{ 'Preço até' | t }}</h3>
+            <input
+              type="range"
+              class="range"
+              [min]="priceSliderMin"
+              [max]="priceSliderMax"
+              [value]="effectiveCeiling"
+              (input)="onCeilingChange($any($event.target).value)"
+            />
+            <div class="range-labels">
+              <span>{{ formatPrice(priceSliderMin) }}</span>
+              <strong>{{ formatPrice(effectiveCeiling) }}</strong>
+            </div>
+          </div>
+        }
+
+        @if (isMultiBook) {
+          <div class="filter-group">
+            <label class="check">
+              <input type="checkbox" [(ngModel)]="onlyComplete"/>
+              <span>{{ 'Só sites com todos os livros' | t }}</span>
+            </label>
+          </div>
+        }
+
+        <div class="filter-group">
+          <h3 class="filter-title">{{ 'Site' | t }}</h3>
+          <input type="text" class="filter-input" [placeholder]="'Filtrar por nome...' | t" [(ngModel)]="providerFilter"/>
+        </div>
+
+        @if (hasActiveFilters) {
+          <button type="button" class="btn-ghost small" (click)="clearFilters()">{{ 'Limpar filtros' | t }}</button>
+        }
+
+        <div class="filter-group meta-group">
+          <h3 class="filter-title">{{ 'Esta consulta' | t }}</h3>
+          <ul class="meta-list">
+            <li><span>{{ 'Sites consultados' | t }}</span><strong>{{ totalQueried }}</strong></li>
+            <li><span>{{ 'Responderam' | t }}</span><strong>{{ respondedCount }}</strong></li>
+            <li><span>{{ 'Com o livro' | t }}</span><strong>{{ withResultCount }}</strong></li>
+            <li><span>{{ 'Falharam' | t }}</span><strong>{{ failedCount }}</strong></li>
+            <li><span>{{ 'Tempo total' | t }}</span><strong>{{ (result.executionTimeMs / 1000).toFixed(1) }}s</strong></li>
+            <li><span>{{ 'Resposta média' | t }}</span><strong>{{ formatMs(avgResponseMs) }}</strong></li>
+            <li><span>{{ 'Créditos' | t }}</span><strong>{{ result.creditsUsed }}</strong></li>
+            @if (cachedQueries > 0) {
+              <li><span>{{ 'Do cache' | t }}</span><strong>{{ cachedQueries }}</strong></li>
+            }
+          </ul>
+          <button type="button" class="btn-ghost small" (click)="refresh()">
+            {{ 'Refazer busca' | t }} ({{ totalQueried * books.length }} {{ 'créditos' | t }})
+          </button>
+          @if (fromCachedSnapshot) {
+            <p class="meta-note">{{ 'Resultado desta sessão, sem custo adicional.' | t }}</p>
+          }
+        </div>
+      </aside>
+
+      <!-- Ofertas -->
+      <div class="offers-column">
+        <!-- Faixa de contexto de preço -->
+        @if (priceMin != null && priceAvg != null) {
+          <div class="context-bar">
+            <div class="context-item">
+              <span class="context-label">{{ 'Menor' | t }}</span>
+              <strong class="context-value best">{{ formatPrice(priceMin) }}</strong>
+            </div>
+            <div class="context-item">
+              <span class="context-label">{{ 'Médio' | t }}</span>
+              <strong class="context-value">{{ formatPrice(priceAvg) }}</strong>
+            </div>
+            <div class="context-item">
+              <span class="context-label">{{ 'Mediana' | t }}</span>
+              <strong class="context-value">{{ formatPrice(priceMedian) }}</strong>
+            </div>
+            <div class="context-item">
+              <span class="context-label">{{ 'Maior' | t }}</span>
+              <strong class="context-value">{{ formatPrice(priceMax) }}</strong>
+            </div>
+            @if (savings > 0) {
+              <div class="context-item savings">
+                <span class="context-label">{{ 'Economia' | t }}</span>
+                <strong class="context-value">{{ formatPrice(savings) }} ({{ savingsPercent.toFixed(0) }}%)</strong>
+              </div>
+            }
+          </div>
+        }
+
+        @if (notFoundIsbns.length > 0) {
+          <p class="warn-strip">
+            {{ 'Não encontrado em nenhum site:' | t }} {{ notFoundIsbns.join(', ') }}
+          </p>
+        }
+
+        <div class="offers-head">
+          <h2 class="offers-title">
+            {{ offers.length }} {{ 'oferta|ofertas' | tp:offers.length }}
+            @if (hasActiveFilters) { <span class="offers-filtered">{{ 'de' | t }} {{ allOffersCount }}</span> }
+          </h2>
+        </div>
+
+        @if (offers.length === 0) {
+          <p class="state-text pad">{{ 'Nenhuma oferta com os filtros atuais.' | t }}</p>
+        }
+
+        <ul class="offer-list">
+          @for (o of offers; track o.providerName) {
+            <li class="offer-card" [class.is-best]="isBest(o)" [class.is-partial]="!o.hasAllBooks">
+              <div class="offer-main">
+                <div class="offer-head">
+                  <h3 class="offer-provider">{{ o.providerName }}</h3>
+                  @if (isBest(o)) { <span class="badge best">{{ 'Menor preço' | t }}</span> }
+                  @if (!o.hasAllBooks) {
+                    <span class="badge partial">{{ o.booksFound }} {{ 'de' | t }} {{ o.totalBooks }} {{ 'livros' | t }}</span>
+                  }
+                  @if (o.fromCache) { <span class="badge muted">{{ 'cache' | t }}</span> }
+                </div>
+
+                <ul class="offer-items">
+                  @for (item of o.items; track item.isbn) {
+                    <li>
+                      <span class="item-title" [title]="item.title">{{ item.title }}</span>
+                      <span class="item-price">
+                        @if (item.quantity > 1) { <span class="item-qty">{{ item.quantity }}×</span> }
+                        {{ formatPrice(item.price) }}
+                      </span>
+                    </li>
+                  }
+                </ul>
+
+                <div class="offer-meta">
+                  <span>{{ formatMs(o.avgResponseMs) }}</span>
+                  @if (o.vsAverage > 0.5) {
+                    <span class="below">{{ o.vsAverage.toFixed(0) }}% {{ 'abaixo da média' | t }}</span>
+                  } @else if (o.vsAverage < -0.5) {
+                    <span class="above">{{ (-o.vsAverage).toFixed(0) }}% {{ 'acima da média' | t }}</span>
+                  }
+                </div>
+              </div>
+
+              <div class="offer-side">
+                <div class="offer-total">{{ formatPrice(o.total) }}</div>
+                @if (isMultiBook) { <div class="offer-total-note">{{ 'total do carrinho' | t }}</div> }
+                <a class="btn-store" [href]="o.link" target="_blank" rel="noopener">{{ 'Ir à loja' | t }}</a>
+              </div>
+            </li>
+          }
+        </ul>
+
+        <!-- Detalhe por livro (só faz sentido com mais de um) -->
+        @if (isMultiBook && bookStats.length > 0) {
+          <section class="book-stats">
+            <h2 class="section-title">{{ 'Por livro' | t }}</h2>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ISBN</th>
+                    <th>{{ 'Título' | t }}</th>
+                    <th class="num">{{ 'Sites' | t }}</th>
+                    <th class="num">{{ 'Menor' | t }}</th>
+                    <th class="num">{{ 'Médio' | t }}</th>
+                    <th class="num">{{ 'Maior' | t }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (b of bookStats; track b.isbn) {
+                    <tr [class.faded]="b.foundIn === 0">
+                      <td class="mono">{{ b.isbn }}</td>
+                      <td class="ellipsis">{{ b.title }}</td>
+                      <td class="num">{{ b.foundIn }}</td>
+                      <td class="num">{{ b.foundIn ? formatPrice(b.min) : '—' }}</td>
+                      <td class="num">{{ b.foundIn ? formatPrice(b.avg) : '—' }}</td>
+                      <td class="num">{{ b.foundIn ? formatPrice(b.max) : '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        }
+
+        <!-- Diagnóstico técnico -->
+        <section class="diagnostics">
+          <button type="button" class="diag-trigger" (click)="toggleDiagnostics()" [class.open]="diagnosticsOpen">
+            <svg class="chev" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg> {{ 'Detalhes da consulta' | t }} <span class="diag-count">
+              {{ queryCount }} {{ 'consulta|consultas' | tp:queryCount }} ·
+              {{ successRate.toFixed(0) }}% {{ 'sem erro' | t }}
+            </span>
+          </button>
+
+          @if (diagnosticsOpen) {
+            <div class="diag-body">
+              <label class="check">
+                <input type="checkbox" [(ngModel)]="onlyFailures"/>
+                <span>{{ 'Mostrar só o que não trouxe resultado' | t }}</span>
+              </label>
+
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      @if (isMultiBook) { <th>ISBN</th> }
+                      <th>{{ 'Site' | t }}</th>
+                      <th>{{ 'Título retornado' | t }}</th>
+                      <th class="num">{{ 'Preço' | t }}</th>
+                      <th class="num">{{ 'Tempo' | t }}</th>
+                      <th>{{ 'Status' | t }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (q of diagnosticRows; track q.providerName + q.isbn) {
+                      <tr [class.faded]="!q.hasResult">
+                        @if (isMultiBook) { <td class="mono">{{ q.isbn }}</td> }
+                        <td>{{ q.providerName }}</td>
+                        <td class="ellipsis">{{ q.title || '—' }}</td>
+                        <td class="num">{{ formatPrice(q.price) }}</td>
+                        <td class="num">{{ formatMs(q.responseTimeMs) }}</td>
+                        <td>
+                          @switch (queryStatus(q)) {
+                            @case ('ok') { <span class="status ok">{{ '✓ encontrado' | t }}</span> }
+                            @case ('empty') { <span class="status empty">{{ '— sem resultado' | t }}</span> }
+                            @case ('fail') {
+                              <span class="status fail" [title]="q.errorMessage || ''">
+                                ✗ {{ q.errorType || 'falha' }}
+                              </span>
+                            }
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+        </section>
+      </div>
+    </div>
+  }
+
+  <div class="coffee-strip">
+    <div class="coffee-strip-text">
+      <strong>{{ 'Achou útil?' | t }}</strong>
+      <span>{{ 'Ajude a manter o site no ar' | t }}</span>
+    </div>
+    <button type="button" class="coffee-strip-btn" (click)="showCoffee = true">
+      ☕ {{ 'Me compre um café' | t }}
+    </button>
+  </div>
+
+  @defer (when showCoffee) {
+    @if (showCoffee) {
+      <app-coffee-modal (close)="showCoffee = false"></app-coffee-modal>
+    }
+  }
+</section>

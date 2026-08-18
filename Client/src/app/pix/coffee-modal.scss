@@ -1,0 +1,131 @@
+.coffee-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 100;
+}
+
+.coffee-modal {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--bg);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6) var(--space-5) var(--space-5);
+  text-align: center;
+}
+
+.close-btn {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-3);
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--text-subtle);
+
+  &:hover { color: var(--text); }
+}
+
+.coffee-title {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+}
+
+.coffee-subtitle {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  margin-bottom: var(--space-5);
+}
+
+.amount-row {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.amount-btn {
+  flex: 1;
+  padding: var(--space-3) 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--text);
+  transition: background 0.15s, border-color 0.15s;
+
+  &:hover { border-color: var(--accent); }
+
+  &.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000000;
+  }
+}
+
+.custom-field {
+  display: block;
+  text-align: left;
+  margin-bottom: var(--space-5);
+
+  span {
+    display: block;
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    margin-bottom: var(--space-1);
+  }
+
+  input {
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: var(--fs-base);
+
+    &:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+  }
+}
+
+.qr-area {
+  margin-bottom: var(--space-4);
+
+  .qr-img {
+    width: 220px;
+    height: 220px;
+    border-radius: var(--radius-md);
+  }
+
+  .qr-hint {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    margin-top: var(--space-2);
+  }
+}
+
+.copy-btn {
+  width: 100%;
+  padding: var(--space-3);
+  background: var(--secondary);
+  color: #fff;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-base);
+  font-weight: 600;
+
+  &:hover { background: var(--secondary-strong); }
+}
+
+.coffee-footer {
+  font-size: var(--fs-sm);
+  color: var(--text-subtle);
+  margin-top: var(--space-3);
+}

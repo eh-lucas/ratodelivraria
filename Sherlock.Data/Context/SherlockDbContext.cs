@@ -16,6 +16,7 @@ public class SherlockDbContext : DbContext
     public DbSet<Provider> Providers => Set<Provider>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
     public DbSet<Query> Queries => Set<Query>();
+    public DbSet<CatalogItem> CatalogItems => Set<CatalogItem>();
 
     // Entidades de suporte
     public DbSet<TransactionResult> TransactionResults => Set<TransactionResult>();
@@ -39,6 +40,24 @@ public class SherlockDbContext : DbContext
             entity.Property(e => e.Author).HasMaxLength(300);
             entity.HasIndex(e => e.Isbn);
             entity.HasIndex(e => e.Title);
+        });
+
+        // CatalogItem — espelho do catálogo das lojas, base das sugestões por nome
+        modelBuilder.Entity<CatalogItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ProductId).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.NameNormalized).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Authors).HasMaxLength(500);
+            entity.Property(e => e.Href).HasMaxLength(1000);
+            entity.Property(e => e.Isbn).HasMaxLength(20);
+            entity.Property(e => e.Price).HasPrecision(18, 2);
+
+            // Um produto por loja: reexecutar o crawl atualiza em vez de duplicar
+            entity.HasIndex(e => new { e.ProviderId, e.ProductId }).IsUnique();
+            entity.HasIndex(e => e.NameNormalized);
+            entity.HasIndex(e => e.Isbn);
         });
 
         // BookPrice

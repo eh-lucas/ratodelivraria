@@ -1,12 +1,29 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, timer, switchMap, map, takeWhile } from 'rxjs';
 import { AuthService } from './auth-service';
 import { environment } from '../../environments/environment';
 
 export interface CartBookItem {
   isbn: string;
   quantity: number;
+}
+
+export interface SearchProgressResponse {
+  total: number;
+  completed: number;
+  done: boolean;
+  error?: string | null;
+  result?: CartOptimizationResult | null;
+}
+
+/** Andamento de uma busca em curso, emitido a cada consulta de status. */
+export interface SearchProgressUpdate {
+  total: number;
+  completed: number;
+  done: boolean;
+  error: string | null;
+  result: CartOptimizationResult | null;
 }
 
 export interface CartOptimizationRequest {
@@ -68,6 +85,28 @@ export interface ProviderComparison {
   missingIsbns: string[];
 }
 
+/**
+ * Detalhe bruto de uma consulta (livro × site), incluindo falhas.
+ * Diferente de ProviderComparison, que só traz sites com preço válido.
+ */
+export interface ProviderQueryDetail {
+  isbn: string;
+  providerId: number;
+  providerName: string;
+  providerUrl: string;
+  success: boolean;
+  hasResult: boolean;
+  title: string | null;
+  author: string | null;
+  price: number | null;
+  discount: number | null;
+  productUrl: string | null;
+  responseTimeMs: number;
+  errorMessage: string | null;
+  errorType: string | null;
+  fromCache: boolean;
+}
+
 export interface CartOptimizationResult {
   success: boolean;
   message: string;
@@ -84,6 +123,7 @@ export interface CartOptimizationResult {
   fromCache: boolean;
   totalBooksRequested: number;
   totalQueriesExecuted: number;
+  providerQueries: ProviderQueryDetail[];
 }
 
 export interface StrategyOption {
@@ -148,6 +188,38 @@ export class CartService {
       'Content-Type': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     });
+  }
+
+  /**
+   * Inicia a busca em segundo plano e acompanha o andamento por polling.
+   *
+   * Emite o progresso a cada consulta e, ao final, o resultado completo — assim a tela
+   * mostra "23 de 67 lojas" em vez de uma espera sem informação.
+   */
+  optimizeCartWithProgress(request: CartOptimizationRequest): Observable<SearchProgressUpdate> {
+    return this.http
+      .post<{ jobId: string }>(`${this.apiUrl}/optimize-async`, request, { headers: this.getHeaders() })
+      .pipe(
+        switchMap(({ jobId }) =>
+          // 1,5s equilibra atualização fluida e número de requisições
+          timer(0, 1500).pipe(
+            switchMap(() =>
+              this.http.get<SearchProgressResponse>(
+                `${this.apiUrl}/progress/${jobId}`,
+                { headers: this.getHeaders() },
+              ),
+            ),
+            map(p => ({
+              total: p.total,
+              completed: p.completed,
+              done: p.done,
+              error: p.error ?? null,
+              result: p.result ?? null,
+            })),
+            takeWhile(p => !p.done, true),
+          ),
+        ),
+      );
   }
 
   optimizeCart(request: CartOptimizationRequest): Observable<CartOptimizationResult> {

@@ -127,6 +127,81 @@ namespace Sherlock.Data.Migrations
                     b.ToTable("book_prices", (string)null);
                 });
 
+            modelBuilder.Entity("Sherlock.Domain.Entities.CatalogItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Authors")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("authors");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Href")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("href");
+
+                    b.Property<string>("Isbn")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("isbn");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("NameNormalized")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("name_normalized");
+
+                    b.Property<decimal?>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("price");
+
+                    b.Property<string>("ProductId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("product_id");
+
+                    b.Property<int>("ProviderId")
+                        .HasColumnType("integer")
+                        .HasColumnName("provider_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_catalog_items");
+
+                    b.HasIndex("Isbn")
+                        .HasDatabaseName("ix_catalog_items_isbn");
+
+                    b.HasIndex("NameNormalized")
+                        .HasDatabaseName("ix_catalog_items_name_normalized");
+
+                    b.HasIndex("ProviderId", "ProductId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_catalog_items_provider_id_product_id");
+
+                    b.ToTable("catalog_items", (string)null);
+                });
+
             modelBuilder.Entity("Sherlock.Domain.Entities.CreditPackage", b =>
                 {
                     b.Property<int>("Id")
@@ -196,7 +271,7 @@ namespace Sherlock.Data.Migrations
                         {
                             Id = 1,
                             BonusCredits = 0,
-                            CreatedAt = new DateTime(2025, 11, 28, 11, 48, 17, 27, DateTimeKind.Utc).AddTicks(1461),
+                            CreatedAt = new DateTime(2026, 8, 18, 11, 7, 55, 187, DateTimeKind.Utc).AddTicks(2450),
                             Credits = 50,
                             Description = "Ideal para testar o serviço",
                             DisplayOrder = 1,
@@ -209,7 +284,7 @@ namespace Sherlock.Data.Migrations
                         {
                             Id = 2,
                             BonusCredits = 10,
-                            CreatedAt = new DateTime(2025, 11, 28, 11, 48, 17, 27, DateTimeKind.Utc).AddTicks(2418),
+                            CreatedAt = new DateTime(2026, 8, 18, 11, 7, 55, 187, DateTimeKind.Utc).AddTicks(3972),
                             Credits = 100,
                             Description = "Para uso casual",
                             DisplayOrder = 2,
@@ -222,7 +297,7 @@ namespace Sherlock.Data.Migrations
                         {
                             Id = 3,
                             BonusCredits = 50,
-                            CreatedAt = new DateTime(2025, 11, 28, 11, 48, 17, 27, DateTimeKind.Utc).AddTicks(2420),
+                            CreatedAt = new DateTime(2026, 8, 18, 11, 7, 55, 187, DateTimeKind.Utc).AddTicks(3986),
                             Credits = 300,
                             Description = "Melhor custo-benefício",
                             DisplayOrder = 3,
@@ -235,7 +310,7 @@ namespace Sherlock.Data.Migrations
                         {
                             Id = 4,
                             BonusCredits = 200,
-                            CreatedAt = new DateTime(2025, 11, 28, 11, 48, 17, 27, DateTimeKind.Utc).AddTicks(2422),
+                            CreatedAt = new DateTime(2026, 8, 18, 11, 7, 55, 187, DateTimeKind.Utc).AddTicks(4000),
                             Credits = 1000,
                             Description = "Para usuários frequentes",
                             DisplayOrder = 4,
@@ -442,15 +517,6 @@ namespace Sherlock.Data.Migrations
                         },
                         new
                         {
-                            Id = 10,
-                            IsActive = true,
-                            Name = "Livraria Chesterton Brasil",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariachestertonbrasil.com.br/"
-                        },
-                        new
-                        {
                             Id = 11,
                             IsActive = true,
                             Name = "Livraria do Constantino",
@@ -532,30 +598,12 @@ namespace Sherlock.Data.Migrations
                         },
                         new
                         {
-                            Id = 20,
-                            IsActive = true,
-                            Name = "Livraria Paulo Kogos",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariapaulokogos.com.br/"
-                        },
-                        new
-                        {
                             Id = 21,
                             IsActive = true,
                             Name = "Livraria do Lacombe",
                             ProviderCategoryEnum = 100,
                             SearchUrlTemplate = "index.php?route=product/search&search={search}",
                             Url = "https://livrariadolacombe.com.br/"
-                        },
-                        new
-                        {
-                            Id = 22,
-                            IsActive = true,
-                            Name = "Livraria da Marcela",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariadamarcela.com.br/"
                         },
                         new
                         {
@@ -631,15 +679,6 @@ namespace Sherlock.Data.Migrations
                         },
                         new
                         {
-                            Id = 31,
-                            IsActive = true,
-                            Name = "Livraria Vista Pátria",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariavistapatria.com.br/"
-                        },
-                        new
-                        {
                             Id = 32,
                             IsActive = true,
                             Name = "Livraria do Luis Enrique",
@@ -658,15 +697,6 @@ namespace Sherlock.Data.Migrations
                         },
                         new
                         {
-                            Id = 34,
-                            IsActive = true,
-                            Name = "Livraria do Silvio Navarro",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariadosilvionavarro.com.br/"
-                        },
-                        new
-                        {
                             Id = 35,
                             IsActive = true,
                             Name = "Livraria Cris Corrêa",
@@ -682,42 +712,6 @@ namespace Sherlock.Data.Migrations
                             ProviderCategoryEnum = 100,
                             SearchUrlTemplate = "index.php?route=product/search&search={search}",
                             Url = "https://livrariapszerado.com.br/"
-                        },
-                        new
-                        {
-                            Id = 37,
-                            IsActive = true,
-                            Name = "Livraria da Vandressa",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariadavandressa.com.br/"
-                        },
-                        new
-                        {
-                            Id = 38,
-                            IsActive = true,
-                            Name = "Livraria Fora da Caixinha",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://www.livrariaforadacaixinha.com.br/"
-                        },
-                        new
-                        {
-                            Id = 39,
-                            IsActive = true,
-                            Name = "Livraria Bruna Gutstein",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariabrunagutstein.com.br/"
-                        },
-                        new
-                        {
-                            Id = 40,
-                            IsActive = true,
-                            Name = "Livraria do Dantas",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariadodantas.com.br/"
                         },
                         new
                         {
@@ -757,15 +751,6 @@ namespace Sherlock.Data.Migrations
                         },
                         new
                         {
-                            Id = 45,
-                            IsActive = true,
-                            Name = "Livraria da Rosaly",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariadarosaly.com.br/"
-                        },
-                        new
-                        {
                             Id = 46,
                             IsActive = true,
                             Name = "Livraria Instituto Mises",
@@ -790,15 +775,6 @@ namespace Sherlock.Data.Migrations
                             ProviderCategoryEnum = 100,
                             SearchUrlTemplate = "index.php?route=product/search&search={search}",
                             Url = "https://livrariarevistaoeste.com.br/"
-                        },
-                        new
-                        {
-                            Id = 49,
-                            IsActive = true,
-                            Name = "Livraria do Edison Carlos",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariadoedisoncarlos.com.br/"
                         },
                         new
                         {
@@ -838,24 +814,6 @@ namespace Sherlock.Data.Migrations
                         },
                         new
                         {
-                            Id = 54,
-                            IsActive = true,
-                            Name = "Livraria Rebelo",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariarebelo.com.br/"
-                        },
-                        new
-                        {
-                            Id = 55,
-                            IsActive = true,
-                            Name = "Livraria da Julia",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariadajulia.com.br/"
-                        },
-                        new
-                        {
                             Id = 56,
                             IsActive = true,
                             Name = "Livraria da Camila",
@@ -892,15 +850,6 @@ namespace Sherlock.Data.Migrations
                         },
                         new
                         {
-                            Id = 60,
-                            IsActive = true,
-                            Name = "Livraria BBP",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariabbp.com/"
-                        },
-                        new
-                        {
                             Id = 61,
                             IsActive = true,
                             Name = "Livraria da Laíse",
@@ -916,15 +865,6 @@ namespace Sherlock.Data.Migrations
                             ProviderCategoryEnum = 100,
                             SearchUrlTemplate = "index.php?route=product/search&search={search}",
                             Url = "https://livrariadogrimaldo.com.br/"
-                        },
-                        new
-                        {
-                            Id = 63,
-                            IsActive = true,
-                            Name = "Livraria da Patthy",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariadapatthy.com.br/"
                         },
                         new
                         {
@@ -955,15 +895,6 @@ namespace Sherlock.Data.Migrations
                         },
                         new
                         {
-                            Id = 67,
-                            IsActive = true,
-                            Name = "Livraria da Tati",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariadatati.com.br/"
-                        },
-                        new
-                        {
                             Id = 68,
                             IsActive = true,
                             Name = "Livraria do Danilo",
@@ -979,15 +910,6 @@ namespace Sherlock.Data.Migrations
                             ProviderCategoryEnum = 100,
                             SearchUrlTemplate = "index.php?route=product/search&search={search}",
                             Url = "https://livrariasantacarona.com.br/"
-                        },
-                        new
-                        {
-                            Id = 70,
-                            IsActive = true,
-                            Name = "Livraria da Marize",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariadamarize.com.br/"
                         },
                         new
                         {
@@ -1009,57 +931,12 @@ namespace Sherlock.Data.Migrations
                         },
                         new
                         {
-                            Id = 73,
-                            IsActive = true,
-                            Name = "Livraria da Nuzio Neto",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariadanuzioneto.com.br/"
-                        },
-                        new
-                        {
-                            Id = 74,
-                            IsActive = true,
-                            Name = "Livraria da Pietra",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariadapietra.com.br/"
-                        },
-                        new
-                        {
                             Id = 75,
                             IsActive = true,
                             Name = "Livraria Doutor Pacheco",
                             ProviderCategoryEnum = 100,
                             SearchUrlTemplate = "index.php?route=product/search&search={search}",
                             Url = "https://livrariadoutorpacheco.com.br/"
-                        },
-                        new
-                        {
-                            Id = 76,
-                            IsActive = true,
-                            Name = "Livraria Eduardo Bolsonaro",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariaeduardobolsonaro.com.br/"
-                        },
-                        new
-                        {
-                            Id = 77,
-                            IsActive = true,
-                            Name = "Livraria CEP",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariacep.com.br/"
-                        },
-                        new
-                        {
-                            Id = 78,
-                            IsActive = true,
-                            Name = "Livraria Zapparoli",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariazapparoli.com.br/"
                         },
                         new
                         {
@@ -1078,15 +955,6 @@ namespace Sherlock.Data.Migrations
                             ProviderCategoryEnum = 100,
                             SearchUrlTemplate = "index.php?route=product/search&search={search}",
                             Url = "https://livrariadacassia.com.br/"
-                        },
-                        new
-                        {
-                            Id = 81,
-                            IsActive = true,
-                            Name = "Livraria da Fran",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariadafran.com.br/"
                         },
                         new
                         {
@@ -1135,39 +1003,12 @@ namespace Sherlock.Data.Migrations
                         },
                         new
                         {
-                            Id = 87,
-                            IsActive = true,
-                            Name = "Livraria Te Atualizei",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariateatualizei.com.br/"
-                        },
-                        new
-                        {
-                            Id = 88,
-                            IsActive = true,
-                            Name = "Livraria do Alam",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livrariadoalam.com.br/"
-                        },
-                        new
-                        {
                             Id = 89,
                             IsActive = true,
                             Name = "Biblioteca do Luiz",
                             ProviderCategoryEnum = 100,
                             SearchUrlTemplate = "index.php?route=product/search&search={search}",
                             Url = "https://bibliotecadoluiz.com.br/"
-                        },
-                        new
-                        {
-                            Id = 90,
-                            IsActive = true,
-                            Name = "Livraria Senso Incomum",
-                            ProviderCategoryEnum = 100,
-                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
-                            Url = "https://livraria.sensoincomum.org/"
                         },
                         new
                         {

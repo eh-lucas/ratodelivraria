@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Sherlock.Business.Configuration;
 using Sherlock.Business.Core.Exceptions;
+using Sherlock.Business.Core.Progress;
 using Sherlock.Business.Core.Resilience;
 using Sherlock.Business.Core.Scrapers;
 using Sherlock.Business.Interfaces;
@@ -51,7 +52,8 @@ public class W16Engine
         ResilientScraperWrapper? resilientWrapper,
         ITransactionPersistenceService? persistenceService,
         IQueryRepository? queryRepository,
-        IOptions<QueryCacheSettings>? cacheSettings)
+        IOptions<QueryCacheSettings>? cacheSettings,
+        IOptions<SearchSettings>? searchSettings = null)
     {
         _comparator = new Comparator();
         _scraperFactory = new ScraperFactory(loggerFactory);
@@ -61,6 +63,10 @@ public class W16Engine
         _persistenceService = persistenceService;
         _queryRepository = queryRepository;
         _cacheSettings = cacheSettings?.Value ?? new QueryCacheSettings();
+
+        var configuredParallelism = searchSettings?.Value.MaxDegreeOfParallelism ?? 0;
+        if (configuredParallelism > 0)
+            MaxDegreeOfParallelism = configuredParallelism;
     }
 
     /// <summary>
@@ -118,6 +124,9 @@ public class W16Engine
         try
         {
             // Prepara os providers a serem consultados por categoria
+            // Quantas lojas o usuário está esperando — base da barra de progresso.
+            SearchProgressScope.Current?.SetTotal(requestor.SourcesToSearch.Count);
+
             var sourcesByCategory = GroupSourcesByCategory(requestor.SourcesToSearch);
 
             foreach (var (category, sources) in sourcesByCategory)
@@ -157,6 +166,7 @@ public class W16Engine
             var cachedResult = ConvertQueryToQueryResult(cachedQuery, source);
             queryResults.Add(cachedResult);
             Interlocked.Increment(ref metrics.SuccessCount);
+            SearchProgressScope.Current?.Increment();
             return true;
         }
 
@@ -173,6 +183,7 @@ public class W16Engine
             _logger.LogInformation("Cache hit (Redis): {Isbn} no provider {ProviderId}",
                 requestor.SearchParameters.Isbn, source.Id);
             queryResults.Add(cachedResult);
+            SearchProgressScope.Current?.Increment();
             return true;
         }
 
@@ -348,6 +359,7 @@ public class W16Engine
             finally
             {
                 TrackActiveTask(metrics, false);
+                SearchProgressScope.Current?.Increment();
                 semaphore.Release();
             }
         }, cancellationToken);
@@ -390,6 +402,7 @@ public class W16Engine
         finally
         {
             TrackActiveTask(metrics, false);
+            SearchProgressScope.Current?.Increment();
         }
     }
 

@@ -1,8 +1,8 @@
 <div class="user-menu" role="menu">
-  <a routerLink="/profile" class="menu-item" role="menuitem" (click)="onItemClick()">Meu perfil</a>
+  <a routerLink="/profile" class="menu-item" role="menuitem" (click)="onItemClick()">{{ 'Meu perfil' | t }}</a>
   @if (!demoMode) {
-    <a routerLink="/credits" class="menu-item" role="menuitem" (click)="onItemClick()">Comprar créditos</a>
+    <a routerLink="/credits" class="menu-item" role="menuitem" (click)="onItemClick()">{{ 'Comprar créditos' | t }}</a>
     <div class="menu-sep"></div>
-    <button type="button" class="menu-item danger" role="menuitem" (click)="logout()">Sair</button>
+    <button type="button" class="menu-item danger" role="menuitem" (click)="logout()">{{ 'Sair' | t }}</button>
   }
 </div>

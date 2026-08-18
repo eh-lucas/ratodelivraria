@@ -2,16 +2,16 @@
   <div class="credits-content">
     <!-- Header -->
     <div class="credits-header">
-      <h1>Comprar Creditos</h1>
-      <p>Escolha o pacote ideal para suas necessidades</p>
+      <h1>{{ 'Comprar Creditos' | t }}</h1>
+      <p>{{ 'Escolha o pacote ideal para suas necessidades' | t }}</p>
     </div>
 
     <!-- Current Balance -->
     @if (userCredits) {
       <div class="current-balance">
-        <div class="balance-label">Saldo Atual</div>
+        <div class="balance-label">{{ 'Saldo Atual' | t }}</div>
         <span class="balance-amount">{{ userCredits.availableCredits }}</span>
-        <span class="balance-suffix">creditos</span>
+        <span class="balance-suffix">{{ 'creditos' | t }}</span>
       </div>
     }
 
@@ -25,7 +25,7 @@
     <!-- Error Message -->
     @if (error) {
       <div class="error-message">
-        {{ error }}
+        {{ error | t }}
       </div>
     }
 
@@ -81,7 +81,7 @@
             <!-- Savings Badge -->
             @if (pkg.savingsPercent > 0) {
               <div class="savings-badge">
-                {{ pkg.savingsPercent }}% de economia
+                {{ pkg.savingsPercent }}% {{ 'de economia' | t }}
               </div>
             }
 
@@ -105,13 +105,11 @@
 
     <!-- No packages -->
     @if (!loading && packages.length === 0) {
-      <div class="error-message">
-        Nenhum pacote disponivel no momento.
-        <button (click)="loadData()">Tentar novamente</button>
+      <div class="error-message"> {{ 'Nenhum pacote disponivel no momento.' | t }} <button (click)="loadData()">{{ 'Tentar novamente' | t }}</button>
       </div>
     }
 
     <!-- Back Link -->
-    <a routerLink="/profile" class="back-link">← Voltar ao Perfil</a>
+    <a routerLink="/profile" class="back-link">{{ '← Voltar ao Perfil' | t }}</a>
   </div>
 </div>

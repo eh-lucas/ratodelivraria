@@ -3,6 +3,7 @@ import { LoginPage } from './pages/login-page/login-page';
 import { RegisterPage } from './pages/register-page/register-page';
 import { HomePage } from './pages/home-page/home-page';
 import { SearchPage } from './pages/search-page/search-page';
+import { ResultsPage } from './pages/results-page/results-page';
 import { WatchedPage } from './pages/watched-page/watched-page';
 import { HistoryPage } from './pages/history-page/history-page';
 import { ProfilePage } from './pages/profile-page/profile-page';
@@ -27,6 +28,7 @@ export const routes: Routes = [
     children: [
       { path: 'home', component: HomePage },
       { path: 'search', component: SearchPage },
+      { path: 'resultado', component: ResultsPage },
       { path: 'watched', component: WatchedPage },
       { path: 'history', component: HistoryPage },
       { path: 'profile', component: ProfilePage },

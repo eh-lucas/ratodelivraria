@@ -42,7 +42,7 @@
 .btn-primary {
   padding: var(--space-2) var(--space-4);
   background: var(--accent);
-  color: #fff;
+  color: #000000;
   border-radius: var(--radius-md);
   font-size: var(--fs-sm);
   font-weight: 500;
@@ -172,4 +172,46 @@
 
 @media (max-width: 700px) {
   .form-row { grid-template-columns: 1fr; }
+}
+
+/* Aviso de recurso indisponível na release pública (sem login) */
+.unavailable {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-10) var(--space-4);
+  max-width: 460px;
+  margin: 0 auto;
+
+  .unavailable-icon {
+    width: 7rem;
+    height: auto;
+    margin-bottom: var(--space-5);
+    opacity: 0.85;
+  }
+
+  .unavailable-title {
+    font-size: var(--fs-lg);
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: var(--space-2);
+  }
+
+  .unavailable-text {
+    font-size: var(--fs-base);
+    color: var(--text-muted);
+    margin-bottom: var(--space-6);
+  }
+
+  .unavailable-action {
+    padding: var(--space-3) var(--space-5);
+    background: var(--accent);
+    color: #000000;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+
+    &:hover { background: var(--accent-strong); }
+  }
 }

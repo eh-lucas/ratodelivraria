@@ -1,0 +1,38 @@
+<div class="coffee-backdrop" (click)="onBackdrop($event)">
+  <div class="coffee-modal" role="dialog" aria-modal="true">
+    <button type="button" class="close-btn" (click)="close.emit()" [attr.aria-label]="'Fechar' | t">×</button>
+
+    <h2 class="coffee-title">{{ 'Me compre um café' | t }}</h2>
+    <p class="coffee-subtitle">{{ 'O site é gratuito e sem anúncios. Se ele te economizou dinheiro, considere ajudar a manter o servidor no ar.' | t }}</p>
+
+    <div class="amount-row">
+      @for (value of presets; track value) {
+        <button type="button" class="amount-btn" [class.active]="selected === value" (click)="selectPreset(value)">
+          R$ {{ value }}
+        </button>
+      }
+    </div>
+
+    <label class="custom-field">
+      <span>{{ 'Outro valor' | t }}</span>
+      <input type="text" inputmode="decimal" [(ngModel)]="customAmount" (ngModelChange)="onCustomInput()"
+             [placeholder]="'Deixe em branco para escolher no banco' | t" />
+    </label>
+
+    <div class="qr-area">
+      @if (qrDataUrl) {
+        <img [src]="qrDataUrl" [alt]="'QR code Pix' | t" class="qr-img" />
+      }
+      <p class="qr-hint">
+        @if (amount) { {{ 'Escaneie com o app do seu banco' | t }} }
+        @else { {{ 'Escaneie e escolha o valor no seu banco' | t }} }
+      </p>
+    </div>
+
+    <button type="button" class="copy-btn" (click)="copyPayload()">
+      @if (copied) { {{ 'Código copiado!' | t }} } @else { {{ 'Copiar código Pix' | t }} }
+    </button>
+
+    <p class="coffee-footer">{{ 'O pagamento vai direto para a conta, sem intermediários.' | t }}</p>
+  </div>
+</div>
