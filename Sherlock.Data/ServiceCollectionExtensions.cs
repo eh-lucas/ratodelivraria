@@ -29,6 +29,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITransactionRepository, TransactionRepository>();
         services.AddScoped<IQueryRepository, QueryRepository>();
         services.AddScoped<ICreditRepository, CreditRepository>();
+        services.AddScoped<ICatalogRepository, CatalogRepository>();
 
         return services;
     }

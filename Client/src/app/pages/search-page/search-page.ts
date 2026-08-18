@@ -1,101 +1,216 @@
 import { Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import {
-  CartService,
-  CartBookItem,
-  CartOptimizationResult,
-  OptimizationStrategy,
-  ProviderOption,
-  ProviderComparison,
-} from '../../services/cart-service';
-import { UserService } from '../../services/user-service';
+import { Router } from '@angular/router';
+import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
+import { CartService, CartBookItem, ProviderOption } from '../../services/cart-service';
+import { CatalogService, CatalogSuggestion } from '../../services/catalog-service';
+import { SearchStateService } from '../../services/search-state';
+import { TranslatePipe } from '../../i18n/translate-pipe';
+import { PluralPipe } from '../../i18n/plural-pipe';
 
-// Item da lista de progresso exibida no painel "Resultado" durante a consulta
-interface ProgressItem {
-  providerId: number;
-  providerName: string;
-  providerUrl: string;
-  status: 'pending' | 'success' | 'not_found' | 'error';
-  price?: number;
+const RECENT_KEY = 'sherlock.search.recent';
+const MAX_RECENT = 5;
+
+interface RecentSearch {
+  isbns: string[];
+  at: number;
 }
 
 @Component({
   selector: 'search-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [TranslatePipe, PluralPipe, CommonModule, FormsModule],
   templateUrl: './search-page.html',
   styleUrl: './search-page.scss',
 })
 export class SearchPage implements OnInit {
-  // Carrinho de ISBNs a consultar
+  // Livros a consultar
   books: CartBookItem[] = [];
   newIsbn = '';
 
-  // Providers disponíveis e selecionados
+  // Sites disponíveis e selecionados
   providers: ProviderOption[] = [];
   selectedProviderUrls: string[] = [];
   providersOpen = false;
   providerFilter = '';
+  providersLoading = true;
 
-  // Resultado / estado
-  result: CartOptimizationResult | null = null;
-  isLoading = false;
   errorMessage = '';
+  recent: RecentSearch[] = [];
 
-  // Progresso da consulta — populado ao iniciar busca, atualizado ao receber resposta
-  progressItems: ProgressItem[] = [];
+  // Sugestões por nome (catálogo local)
+  suggestions: CatalogSuggestion[] = [];
+  suggestionsOpen = false;
+  resolvingSuggestionId: number | null = null;
+  suggestionError = '';
+  private readonly nameQuery$ = new Subject<string>();
 
   @ViewChild('providersBox') providersBox?: ElementRef;
+  @ViewChild('isbnInput') isbnInput?: ElementRef<HTMLInputElement>;
 
   constructor(
     private cartService: CartService,
-    private userService: UserService,
+    private catalogService: CatalogService,
+    private state: SearchStateService,
+    private router: Router,
   ) {}
 
   ngOnInit(): void {
+    this.loadRecent();
+
+    // Autocomplete por nome: espera o usuário parar de digitar antes de consultar
+    this.nameQuery$
+      .pipe(
+        debounceTime(250),
+        distinctUntilChanged(),
+        switchMap(term => this.catalogService.suggest(term)),
+      )
+      .subscribe(list => {
+        this.suggestions = list;
+        this.suggestionsOpen = list.length > 0;
+      });
+
     this.cartService.getActiveProviders().subscribe({
       next: list => {
         this.providers = list;
-        // Por padrão consulta em todos os providers ativos
-        this.selectedProviderUrls = list.map(p => p.url);
+        this.state.providerNames = Object.fromEntries(list.map(p => [p.url, p.name]));
+        // Mantém a seleção anterior da sessão; na primeira visita marca todos
+        const previous = this.state.selectedProviderUrls.filter(u => list.some(p => p.url === u));
+        this.selectedProviderUrls = previous.length > 0 ? previous : list.map(p => p.url);
+        this.providersLoading = false;
       },
       error: () => {
         this.errorMessage = 'Não foi possível carregar a lista de sites.';
+        this.providersLoading = false;
       },
     });
   }
 
-  // ===== Carrinho =====
+  // ===== Livros =====
 
   addBook(): void {
-    const isbn = this.newIsbn.trim();
+    // Enter durante busca por nome: usa a primeira sugestão, nunca o texto cru.
+    if (this.isSearchingByName) {
+      if (this.suggestions.length > 0) this.selectSuggestion(this.suggestions[0]);
+      return;
+    }
+
+    const isbn = this.normalizeIsbn(this.newIsbn);
     if (!isbn) return;
-    // Evita duplicatas
+
     if (this.books.some(b => b.isbn === isbn)) {
       this.newIsbn = '';
       return;
     }
+
     this.books.push({ isbn, quantity: 1 });
     this.newIsbn = '';
+    this.isbnInput?.nativeElement.focus();
+  }
+
+  // ===== Busca por nome =====
+
+  /** Texto que parece ISBN (10 ou 13 dígitos) segue o fluxo antigo; o resto vira busca por nome. */
+  get isSearchingByName(): boolean {
+    const raw = this.normalizeIsbn(this.newIsbn);
+    return raw.length > 0 && !/^\d{9}[\dXx]$|^\d{13}$/.test(raw) && !/^\d+$/.test(raw);
+  }
+
+  onQueryChange(): void {
+    this.suggestionError = '';
+
+    if (!this.isSearchingByName) {
+      this.suggestions = [];
+      this.suggestionsOpen = false;
+      return;
+    }
+
+    this.nameQuery$.next(this.newIsbn.trim());
+  }
+
+  /**
+   * Ao escolher uma sugestão: se o ISBN já é conhecido, adiciona direto;
+   * senão, pede ao backend que descubra na página do produto.
+   */
+  selectSuggestion(suggestion: CatalogSuggestion): void {
+    this.suggestionError = '';
+
+    if (suggestion.isbn) {
+      this.addIsbn(suggestion.isbn);
+      return;
+    }
+
+    this.resolvingSuggestionId = suggestion.id;
+    this.catalogService.resolveIsbn(suggestion.id).subscribe(result => {
+      this.resolvingSuggestionId = null;
+
+      if (result.found && result.isbn) {
+        this.addIsbn(result.isbn);
+      } else {
+        this.suggestionError = result.error || 'Não foi possível identificar o ISBN deste título.';
+      }
+    });
+  }
+
+  private addIsbn(isbn: string): void {
+    if (!this.books.some(b => b.isbn === isbn)) {
+      this.books.push({ isbn, quantity: 1 });
+    }
+
+    this.newIsbn = '';
+    this.suggestions = [];
+    this.suggestionsOpen = false;
+    this.isbnInput?.nativeElement.focus();
+  }
+
+  closeSuggestions(): void {
+    this.suggestionsOpen = false;
   }
 
   removeBook(isbn: string): void {
     this.books = this.books.filter(b => b.isbn !== isbn);
   }
 
-  // ===== Providers dropdown =====
+  changeQuantity(isbn: string, delta: number): void {
+    this.books = this.books.map(b =>
+      b.isbn === isbn ? { ...b, quantity: Math.max(1, Math.min(99, b.quantity + delta)) } : b,
+    );
+  }
+
+  clearBooks(): void {
+    this.books = [];
+  }
+
+  // Remove hífens e espaços; ISBN é digitado de várias formas
+  private normalizeIsbn(raw: string): string {
+    return raw.replace(/[\s-]/g, '').trim();
+  }
+
+  /** Formato plausível de ISBN — serve só para avisar, não bloqueia a busca. */
+  get isbnLooksValid(): boolean {
+    if (this.isSearchingByName) return true;
+
+    const isbn = this.normalizeIsbn(this.newIsbn);
+    if (!isbn) return true;
+    return /^\d{9}[\dXx]$|^\d{13}$/.test(isbn);
+  }
+
+  get canAdd(): boolean {
+    if (this.isSearchingByName) return this.suggestions.length > 0;
+    return this.normalizeIsbn(this.newIsbn).length > 0;
+  }
+
+  // ===== Sites =====
 
   toggleProviders(): void {
     this.providersOpen = !this.providersOpen;
   }
 
   toggleProvider(url: string): void {
-    if (this.selectedProviderUrls.includes(url)) {
-      this.selectedProviderUrls = this.selectedProviderUrls.filter(u => u !== url);
-    } else {
-      this.selectedProviderUrls = [...this.selectedProviderUrls, url];
-    }
+    this.selectedProviderUrls = this.selectedProviderUrls.includes(url)
+      ? this.selectedProviderUrls.filter(u => u !== url)
+      : [...this.selectedProviderUrls, url];
   }
 
   selectAllProviders(): void {
@@ -112,7 +227,10 @@ export class SearchPage implements OnInit {
     return this.providers.filter(p => p.name.toLowerCase().includes(q));
   }
 
-  // Fecha o dropdown ao clicar fora
+  get allProvidersSelected(): boolean {
+    return this.providers.length > 0 && this.selectedProviderUrls.length === this.providers.length;
+  }
+
   @HostListener('document:click', ['$event'])
   onDocClick(e: MouseEvent): void {
     if (this.providersOpen && this.providersBox && !this.providersBox.nativeElement.contains(e.target)) {
@@ -120,94 +238,70 @@ export class SearchPage implements OnInit {
     }
   }
 
-  // ===== Custo estimado =====
+  // ===== Custo e disparo =====
 
   get estimatedCredits(): number {
-    // Cada combinação livro × provider = 1 query = 1 crédito (estimativa)
+    // Cada combinação livro × site é uma query = 1 crédito.
+    // A quantidade não multiplica: o mesmo ISBN é consultado uma vez só.
     return this.books.length * this.selectedProviderUrls.length;
   }
 
   get canSearch(): boolean {
-    return this.books.length > 0 && this.selectedProviderUrls.length > 0 && !this.isLoading;
+    return this.books.length > 0 && this.selectedProviderUrls.length > 0;
   }
-
-  // ===== Busca =====
 
   search(): void {
     if (!this.canSearch) return;
 
-    this.isLoading = true;
-    this.errorMessage = '';
-    this.result = null;
+    // A tela de resultado é quem dispara a consulta; aqui só passamos o contexto
+    this.state.selectedProviderUrls = this.selectedProviderUrls;
+    this.saveRecent(this.books.map(b => b.isbn));
 
-    // Mostra cada provider selecionado como "consultando..." enquanto a busca roda
-    this.progressItems = this.providers
-      .filter(p => this.selectedProviderUrls.includes(p.url))
-      .map(p => ({ providerId: p.id, providerName: p.name, providerUrl: p.url, status: 'pending' as const }));
-
-    this.cartService
-      .optimizeCart({
-        books: this.books,
-        strategy: OptimizationStrategy.LowestTotal,
-        maxProviders: 0,
-        includeShipping: true,
-        providerUrls: this.selectedProviderUrls,
-      })
-      .subscribe({
-        next: r => {
-          this.applyProgressFromResult(r);
-          this.result = r;
-          this.isLoading = false;
-          if (r.creditsUsed) this.userService.updateCreditsAfterConsumption(r.creditsUsed);
-        },
-        error: err => {
-          // Em caso de falha geral, marca todos como erro
-          this.progressItems = this.progressItems.map(p => ({ ...p, status: 'error' }));
-          this.errorMessage = err?.error?.message || 'Erro ao consultar livros.';
-          this.isLoading = false;
-        },
-      });
-  }
-
-  // Resolve o status de cada provider da lista de progresso a partir do resultado agregado.
-  // Comparamos por providerName porque o backend retorna providerId=0 / providerUrl="" em providerComparisons.
-  private applyProgressFromResult(r: CartOptimizationResult): void {
-    const byName = new Map(r.providerComparisons.map(c => [c.providerName, c]));
-    this.progressItems = this.progressItems.map(item => {
-      const cmp = byName.get(item.providerName);
-      if (!cmp) {
-        return { ...item, status: 'error' };
-      }
-      if (cmp.booksFound === 0) {
-        return { ...item, status: 'not_found' };
-      }
-      return {
-        ...item,
-        status: 'success',
-        price: cmp.totalPrice,
-      };
+    this.router.navigate(['/resultado'], {
+      queryParams: { isbn: this.books.map(b => (b.quantity > 1 ? `${b.isbn}*${b.quantity}` : b.isbn)) },
     });
   }
 
-  // ===== Helpers de exibição =====
+  // ===== Buscas recentes =====
+
+  private loadRecent(): void {
+    try {
+      const raw = localStorage.getItem(RECENT_KEY);
+      this.recent = raw ? (JSON.parse(raw) as RecentSearch[]) : [];
+    } catch {
+      this.recent = [];
+    }
+  }
+
+  private saveRecent(isbns: string[]): void {
+    const key = isbns.join(',');
+    const next = [
+      { isbns, at: Date.now() },
+      ...this.recent.filter(r => r.isbns.join(',') !== key),
+    ].slice(0, MAX_RECENT);
+
+    this.recent = next;
+    try {
+      localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+    } catch {
+      /* ignora */
+    }
+  }
+
+  useRecent(r: RecentSearch): void {
+    this.books = r.isbns.map(isbn => ({ isbn, quantity: 1 }));
+  }
+
+  clearRecent(): void {
+    this.recent = [];
+    try {
+      localStorage.removeItem(RECENT_KEY);
+    } catch {
+      /* ignora */
+    }
+  }
 
   trackByIsbn(_: number, item: CartBookItem): string {
     return item.isbn;
-  }
-
-  get topProviders() {
-    if (!this.result) return [];
-    // Já vem ordenado pelo backend; pega top 5 que têm todos os livros
-    return this.result.providerComparisons.slice(0, 5);
-  }
-
-  get bestProvider() {
-    return this.result?.providerComparisons.find(p => p.hasAllBooks) ?? null;
-  }
-
-  // Link do resultado: aponta para a página do livro na loja (productUrl do
-  // primeiro livro encontrado); cai para a home da loja se não houver.
-  providerLink(p: ProviderComparison): string {
-    return p.bookPrices?.find(b => b.productUrl)?.productUrl || p.providerUrl || '#';
   }
 }
