@@ -138,7 +138,9 @@ public class TransactionPersistenceService : ITransactionPersistenceService
         {
             isbn = searchParameter.Isbn,
             // Marca se a transação faz parte de um carrinho; o histórico usa isso para classificar
-            isCart = searchParameter.IsCart
+            isCart = searchParameter.IsCart,
+            // Busca do aquecedor, não de gente: o ranking exclui estas
+            isPrefetch = searchParameter.IsPrefetch
         };
 
         return JsonSerializer.Serialize(parameters, JsonOptions);

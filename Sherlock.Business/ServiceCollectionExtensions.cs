@@ -4,6 +4,7 @@ using Sherlock.Business.Configuration;
 using Sherlock.Business.Core.Base;
 using Sherlock.Business.Core.Crawling;
 using Sherlock.Business.Core.Optimization;
+using Sherlock.Business.Core.Prefetch;
 using Sherlock.Business.Core.Progress;
 using Sherlock.Business.Core.Resilience;
 using Sherlock.Business.Core.Scrapers.Amazon;
@@ -25,6 +26,8 @@ public static class ServiceCollectionExtensions
             configuration.GetSection(SearchSettings.SectionName));
         services.Configure<AmazonSettings>(
             configuration.GetSection(AmazonSettings.SectionName));
+        services.Configure<PrefetchSettings>(
+            configuration.GetSection(PrefetchSettings.SectionName));
         // Services
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IBookService, BookService>();
@@ -57,6 +60,9 @@ public static class ServiceCollectionExtensions
 
         // Optimization
         services.AddScoped<CartOptimizer>();
+
+        // Mantém os livros mais procurados quentes no cache
+        services.AddHostedService<PopularBooksPrefetcher>();
 
         return services;
     }

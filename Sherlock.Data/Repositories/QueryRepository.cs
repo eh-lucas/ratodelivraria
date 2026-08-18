@@ -61,8 +61,18 @@ public class QueryRepository : RepositoryBase<Query>, IQueryRepository
     {
         await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
+        // As buscas do aquecedor de cache ficam de fora: se contassem, ele votaria
+        // nos proprios livros a cada rodada e o ranking congelaria.
+        // input_parameters e jsonb: LIKE nao existe para esse tipo. JsonContains vira
+        // o operador @> do Postgres, que e o jeito certo de perguntar isso.
+        var doAquecedor = context.Set<Transaction>()
+            .Where(t => t.InputParameters != null
+                        && EF.Functions.JsonContains(t.InputParameters, "{\"isPrefetch\": true}"))
+            .Select(t => t.Id);
+
         var agregado = await context.Set<Query>()
-            .Where(q => q.SearchIsbn != null && q.SearchIsbn != "")
+            .Where(q => q.SearchIsbn != null && q.SearchIsbn != ""
+                        && !doAquecedor.Contains(q.TransactionId))
             .GroupBy(q => q.SearchIsbn!)
             .Select(g => new
             {
