@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
 import { CartService, CartBookItem, ProviderOption } from '../../services/cart-service';
 import { CatalogService, CatalogSuggestion } from '../../services/catalog-service';
+import { RankingService, PopularBook } from '../../services/ranking-service';
 import { SearchStateService } from '../../services/search-state';
 import { TranslatePipe } from '../../i18n/translate-pipe';
 import { PluralPipe } from '../../i18n/plural-pipe';
@@ -39,6 +40,9 @@ export class SearchPage implements OnInit {
   errorMessage = '';
   recent: RecentSearch[] = [];
 
+  // Os mais consultados: serve de ponto de partida para quem chega sem ISBN
+  popular: PopularBook[] = [];
+
   // Sugestões por nome (catálogo local)
   suggestions: CatalogSuggestion[] = [];
   suggestionsOpen = false;
@@ -52,6 +56,7 @@ export class SearchPage implements OnInit {
   constructor(
     private cartService: CartService,
     private catalogService: CatalogService,
+    private rankingService: RankingService,
     private state: SearchStateService,
     private router: Router,
   ) {}
@@ -70,6 +75,8 @@ export class SearchPage implements OnInit {
         this.suggestions = list;
         this.suggestionsOpen = list.length > 0;
       });
+
+    this.rankingService.mostSearched(10).subscribe(list => (this.popular = list));
 
     this.cartService.getActiveProviders().subscribe({
       next: list => {
@@ -286,6 +293,19 @@ export class SearchPage implements OnInit {
     } catch {
       /* ignora */
     }
+  }
+
+  // ===== Mais consultados =====
+
+  /** Um toque no ranking já busca aquele livro: é o caminho mais curto da tela. */
+  buscarPopular(livro: PopularBook): void {
+    this.books = [{ isbn: livro.isbn, quantity: 1 }];
+    this.search();
+  }
+
+  formatarPreco(valor: number | null): string {
+    if (valor == null || valor <= 0) return '';
+    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
 
   useRecent(r: RecentSearch): void {

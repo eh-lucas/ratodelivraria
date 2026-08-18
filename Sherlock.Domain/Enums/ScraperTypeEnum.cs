@@ -2,4 +2,5 @@
 public enum ScraperTypeEnum
 {
     CedetScraper = 3,
+    AmazonScraper = 4,
 }

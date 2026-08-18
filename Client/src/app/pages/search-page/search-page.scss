@@ -1,7 +1,36 @@
-.search {
+// Duas colunas: ranking à esquerda, painel de consulta no meio. As duas
+// colunas juntas somam ~1020px e ainda dividem a tela com a sidebar do app, por
+// isso a quebra para coluna única acontece cedo, em 1100px.
+.search-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 300px) minmax(0, 680px);
+  gap: var(--space-8);
+  justify-content: center;
+  align-items: start;
   padding: var(--space-8) var(--space-5) var(--space-10);
+}
+
+.search {
   max-width: 680px;
-  margin: 0 auto;
+  min-width: 0;
+}
+
+// Um @media só por condição: dois blocos com a mesma media query neste arquivo
+// derrubam o compilador (segfault, não erro de sintaxe).
+@media (max-width: 1100px) {
+  .search-wrap {
+    grid-template-columns: minmax(0, 680px);
+    justify-content: center;
+  }
+
+  // Numa coluna só, quem manda é a busca: o ranking desce para depois dela.
+  .search { order: 1; }
+
+  .rank-rail {
+    order: 2;
+    position: static;
+    margin-top: var(--space-6);
+  }
 }
 
 .sr-only {
@@ -435,4 +464,94 @@
   flex-shrink: 0;
   font-size: var(--fs-sm);
   color: var(--accent-strong);
+}
+
+// ===== Mais consultados =====
+//
+// Coluna própria à esquerda do painel de consulta. Acompanha a rolagem porque
+// a lista é curta e o painel do lado é alto: sem isso ela sumiria de vista
+// assim que a pessoa adicionasse alguns livros.
+
+.rank-rail {
+  position: sticky;
+  top: var(--space-5);
+  padding: var(--space-4);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+
+.popular-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.popular-title {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.popular-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  counter-reset: none;
+}
+
+.popular-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  text-align: left;
+  // Alvo de toque: a lista inteira é clicável no celular.
+  min-height: 44px;
+
+  &:hover { background: var(--bg-muted); }
+}
+
+.popular-pos {
+  flex-shrink: 0;
+  width: 1.5rem;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-subtle);
+  text-align: right;
+}
+
+.popular-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.popular-name {
+  font-size: var(--fs-sm);
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popular-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+  font-size: var(--fs-sm);
+  color: var(--text-subtle);
+}
+
+.popular-price {
+  color: var(--accent-strong);
+  font-weight: 500;
 }

@@ -22,6 +22,12 @@ public class SearchProgress
 
     public void Increment() => Interlocked.Increment(ref _completed);
 
+    /// <summary>
+    /// Fecha várias lojas de uma vez. Usado quando uma categoria inteira não tem
+    /// scraper: sem isso a barra ficaria parada em 67 de 68 até o fim.
+    /// </summary>
+    public void Increment(int count) => Interlocked.Add(ref _completed, count);
+
     public void Complete(object result)
     {
         Result = result;

@@ -382,6 +382,20 @@
   }
 
   &.is-partial { background: var(--bg-card); }
+
+  // A Amazon fica no topo da lista mesmo sem ser a mais barata, entao precisa
+  // se distinguir sozinha do card vizinho. Laranja da propria marca, e nao o
+  // verde de "menor preco", para nao confundir destaque com melhor oferta.
+  &.is-amazon {
+    border-color: #ff9900;
+    box-shadow: inset 3px 0 0 #ff9900;
+  }
+
+  // Quando a Amazon e a mais barata as duas regras valem: o verde de menor
+  // preco manda no fundo, a faixa laranja continua marcando quem e.
+  &.is-amazon.is-best {
+    border-color: #10b981;
+  }
 }
 
 .offer-main {
@@ -413,6 +427,8 @@
   &.best { background: #10b981; color: #fff; }
   &.partial { background: #fef3c7; color: #92400e; }
   &.muted { background: var(--bg-muted); color: var(--text-subtle); }
+  // Posicao real da Amazon quando ela nao e a mais barata.
+  &.rank { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
 }
 
 .offer-items {

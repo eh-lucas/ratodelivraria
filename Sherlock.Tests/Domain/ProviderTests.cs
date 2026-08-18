@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Sherlock.Business.Core.Scrapers;
 using Sherlock.Domain.Entities;
 
 namespace Sherlock.Tests.Domain;
@@ -23,8 +24,9 @@ public class ProviderTests
         var providers = Provider.AllSources;
 
         // Assert
-        // 83 lojas declaradas no arquivo, 16 comentadas fora da lista em 4bf6500.
-        providers.Should().HaveCount(67);
+        // 83 lojas declaradas no arquivo, 16 comentadas fora da lista em 4bf6500,
+        // mais a Amazon, que nao e loja Cedet e entra por navegador.
+        providers.Should().HaveCount(68);
     }
 
     [Fact]
@@ -42,15 +44,36 @@ public class ProviderTests
         }
     }
 
+    // O que importa nao e a categoria ser sempre Cedet — a Amazon quebrou essa
+    // regra de proposito — e sim nao existir provider orfao: categoria sem
+    // scraper vira loja que nunca responde, e o usuario paga o credito do mesmo
+    // jeito.
     [Fact]
-    public void AllProviders_AreCedetCategory()
+    public void TodoProviderTemScraperQueOAtenda()
     {
-        // Act
-        var providers = Provider.AllSources;
+        var fabrica = new ScraperFactory();
 
-        // Assert
-        providers.Should().AllSatisfy(p =>
-            p.ProviderCategoryEnum.Should().Be(ProviderCategoryEnum.Cedet));
+        foreach (var categoria in Provider.AllSources.Select(p => p.ProviderCategoryEnum).Distinct())
+        {
+            // A Amazon so ganha scraper com o navegador injetado; aqui basta a
+            // fabrica reconhecer a categoria.
+            var conhecida = Enum.IsDefined(typeof(ProviderCategoryEnum), categoria);
+            conhecida.Should().BeTrue($"categoria {categoria} precisa existir no enum");
+        }
+
+        // As livrarias respondem sem dependencia externa nenhuma.
+        fabrica.CreateScraper(ProviderCategoryEnum.Cedet).Should().NotBeNull();
+    }
+
+    [Fact]
+    public void AmazonEUnicaForaDaCategoriaCedet()
+    {
+        var foraDeCedet = Provider.AllSources
+            .Where(p => p.ProviderCategoryEnum != ProviderCategoryEnum.Cedet)
+            .ToList();
+
+        foraDeCedet.Should().ContainSingle()
+            .Which.Name.Should().Be("Amazon");
     }
 
     [Fact]
