@@ -95,6 +95,8 @@ public class Provider
         Name = "Livraria Chesterton Brasil",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariachestertonbrasil.com.br/",
+        // Desativada em 18/08/2026: redireciona para a página institucional da Cedet
+        IsActive = false,
     };
 
     public static Provider LivrariaConstantino = new()
@@ -175,6 +177,8 @@ public class Provider
         Name = "Livraria Paulo Kogos",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariapaulokogos.com.br/",
+        // Desativada em 18/08/2026: redireciona para a página institucional da Cedet
+        IsActive = false,
     };
 
     public static Provider LivrariaLacombe = new()
@@ -292,6 +296,8 @@ public class Provider
         Name = "Livraria Fora da Caixinha",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://www.livrariaforadacaixinha.com.br/",
+        // Desativada em 18/08/2026: redireciona para a página institucional da Cedet
+        IsActive = false,
     };
 
     public static Provider LivrariaBrunaGutstein = new()
@@ -300,6 +306,8 @@ public class Provider
         Name = "Livraria Bruna Gutstein",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariabrunagutstein.com.br/",
+        // Desativada em 18/08/2026: redireciona para a página institucional da Cedet
+        IsActive = false,
     };
 
     public static Provider LivrariaDantas = new()
@@ -308,6 +316,8 @@ public class Provider
         Name = "Livraria do Dantas",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadodantas.com.br/",
+        // Desativada em 18/08/2026: redireciona para a página institucional da Cedet
+        IsActive = false,
     };
 
     public static Provider LivrariaFioDiario = new()
@@ -373,6 +383,8 @@ public class Provider
         Name = "Livraria do Edison Carlos",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadoedisoncarlos.com.br/",
+        // Desativada em 18/08/2026: redireciona para a página institucional da Cedet
+        IsActive = false,
     };
 
     public static Provider LivrariaDiacono = new()
@@ -414,6 +426,8 @@ public class Provider
         Name = "Livraria da Julia",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadajulia.com.br/",
+        // Desativada em 18/08/2026: redireciona para a página institucional da Cedet
+        IsActive = false,
     };
 
     public static Provider LivrariaCamila = new()
@@ -454,6 +468,8 @@ public class Provider
         Name = "Livraria BBP",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariabbp.com/",
+        // Desativada em 18/08/2026: redireciona para a página institucional da Cedet
+        IsActive = false,
     };
 
     public static Provider LivrariaLaise = new()
@@ -503,6 +519,8 @@ public class Provider
         Name = "Livraria da Tati",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadatati.com.br/",
+        // Desativada em 18/08/2026: redireciona para a página institucional da Cedet
+        IsActive = false,
     };
 
     public static Provider LivrariaDanilo = new()
@@ -527,6 +545,8 @@ public class Provider
         Name = "Livraria da Marize",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadamarize.com.br/",
+        // Desativada em 18/08/2026: redireciona para a página institucional da Cedet
+        IsActive = false,
     };
 
     public static Provider LivrariaPriAntunes = new()
@@ -552,6 +572,8 @@ public class Provider
         Name = "Livraria da Pietra",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadapietra.com.br/",
+        // Desativada em 18/08/2026: redireciona para a página institucional da Cedet
+        IsActive = false,
     };
 
     public static Provider LivrariaDoutorPacheco = new()
@@ -568,6 +590,8 @@ public class Provider
         Name = "Livraria Eduardo Bolsonaro",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariaeduardobolsonaro.com.br/",
+        // Desativada em 18/08/2026: redireciona para a página institucional da Cedet
+        IsActive = false,
     };
 
     public static Provider LivrariaCep = new()
@@ -576,6 +600,8 @@ public class Provider
         Name = "Livraria CEP",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariacep.com.br/",
+        // Desativada em 18/08/2026: redireciona para a página institucional da Cedet
+        IsActive = false,
     };
 
 
@@ -601,6 +627,8 @@ public class Provider
         Name = "Livraria da Fran",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadafran.com.br/",
+        // Desativada em 18/08/2026: redireciona para a página institucional da Cedet
+        IsActive = false,
     };
 
     public static Provider LivrariaProf = new()
@@ -649,6 +677,8 @@ public class Provider
         Name = "Livraria Te Atualizei",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariateatualizei.com.br/",
+        // Desativada em 18/08/2026: redireciona para a página institucional da Cedet
+        IsActive = false,
     };
 
     public static Provider LivrariaAlam = new()
@@ -657,6 +687,8 @@ public class Provider
         Name = "Livraria do Alam",
         ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
         Url = "https://livrariadoalam.com.br/",
+        // Desativada em 18/08/2026: redireciona para a página institucional da Cedet
+        IsActive = false,
     };
 
     public static Provider BibliotecaDoLuiz = new()
