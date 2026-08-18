@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Sherlock.Business.Configuration;
 using Sherlock.Business.Core.Base;
 using Sherlock.Business.Core.Scrapers;
 using Sherlock.Domain.Entities;
@@ -29,15 +30,18 @@ public class PopularBooksPrefetcher : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly PrefetchSettings _settings;
+    private readonly RankingSettings _rankingSettings;
     private readonly ILogger<PopularBooksPrefetcher> _logger;
 
     public PopularBooksPrefetcher(
         IServiceScopeFactory scopeFactory,
         IOptions<PrefetchSettings> settings,
+        IOptions<RankingSettings> rankingSettings,
         ILogger<PopularBooksPrefetcher> logger)
     {
         _scopeFactory = scopeFactory;
         _settings = settings?.Value ?? new PrefetchSettings();
+        _rankingSettings = rankingSettings?.Value ?? new RankingSettings();
         _logger = logger;
     }
 
@@ -77,7 +81,10 @@ public class PopularBooksPrefetcher : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var queryRepository = scope.ServiceProvider.GetRequiredService<IQueryRepository>();
 
-        var populares = await queryRepository.GetMostSearchedAsync(_settings.TopBooks, cancellationToken);
+        // Mesma lista que a tela mostra, inclusive o marco de reset: aquecer um
+        // ranking diferente do exibido seria aquecer o livro errado.
+        var populares = await queryRepository.GetMostSearchedAsync(
+            _settings.TopBooks, _rankingSettings.ResetAt, cancellationToken);
 
         if (populares.Count == 0)
         {

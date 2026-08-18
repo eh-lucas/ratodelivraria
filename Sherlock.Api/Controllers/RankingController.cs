@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using Sherlock.Business.Configuration;
 using Sherlock.Domain.Interfaces;
 
 namespace Sherlock.Api.Controllers;
@@ -13,10 +15,12 @@ namespace Sherlock.Api.Controllers;
 public class RankingController : ControllerBase
 {
     private readonly IQueryRepository _queryRepository;
+    private readonly RankingSettings _settings;
 
-    public RankingController(IQueryRepository queryRepository)
+    public RankingController(IQueryRepository queryRepository, IOptions<RankingSettings> settings)
     {
         _queryRepository = queryRepository;
+        _settings = settings.Value;
     }
 
     /// <summary>Os livros mais consultados, do mais procurado para o menos.</summary>
@@ -31,7 +35,7 @@ public class RankingController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var livros = await _queryRepository.GetMostSearchedAsync(
-            Math.Clamp(limit, 1, 50), cancellationToken);
+            Math.Clamp(limit, 1, 50), _settings.ResetAt, cancellationToken);
 
         return Ok(livros);
     }

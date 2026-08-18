@@ -28,6 +28,8 @@ public static class ServiceCollectionExtensions
             configuration.GetSection(AmazonSettings.SectionName));
         services.Configure<PrefetchSettings>(
             configuration.GetSection(PrefetchSettings.SectionName));
+        services.Configure<RankingSettings>(
+            configuration.GetSection(RankingSettings.SectionName));
         // Services
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IBookService, BookService>();

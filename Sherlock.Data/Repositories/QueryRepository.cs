@@ -52,45 +52,61 @@ public class QueryRepository : RepositoryBase<Query>, IQueryRepository
     /// query: uma busca só bate em 68 lojas e viraria 68 pontos se contássemos
     /// linhas.
     ///
+    /// Com marco de reset configurado, o que veio antes dele entra valendo 1 e
+    /// só as buscas posteriores somam. Sem o marco, é o total histórico.
+    ///
     /// O título sai do catálogo local quando existe. O que a loja devolve na
     /// busca por ISBN nem sempre é o livro certo — o scraper aceita o primeiro
     /// resultado —, e num ranking de dez linhas esse erro fica na cara.
     /// </summary>
     public async Task<IReadOnlyList<PopularBook>> GetMostSearchedAsync(
-        int limit, CancellationToken cancellationToken = default)
+        int limit, DateTime? marco = null, CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
         // As buscas do aquecedor de cache ficam de fora: se contassem, ele votaria
         // nos proprios livros a cada rodada e o ranking congelaria.
-        // input_parameters e jsonb: LIKE nao existe para esse tipo. JsonContains vira
-        // o operador @> do Postgres, que e o jeito certo de perguntar isso.
-        var doAquecedor = context.Set<Transaction>()
-            .Where(t => t.InputParameters != null
-                        && EF.Functions.JsonContains(t.InputParameters, "{\"isPrefetch\": true}"))
-            .Select(t => t.Id);
+        var transacoesDeGente = context.Set<Transaction>()
+            .Where(t => t.InputParameters == null
+                        || !EF.Functions.JsonContains(t.InputParameters, "{\"isPrefetch\": true}"));
 
-        var agregado = await context.Set<Query>()
-            .Where(q => q.SearchIsbn != null && q.SearchIsbn != ""
-                        && !doAquecedor.Contains(q.TransactionId))
+        var contamPontos = marco.HasValue
+            ? transacoesDeGente.Where(t => t.StartedAt >= marco.Value).Select(t => t.Id)
+            : transacoesDeGente.Select(t => t.Id);
+
+        // Universo de ISBNs conhecidos. Limitado porque a ordenacao final depende
+        // da contagem pos-marco, que so da para calcular depois — mas nao faz
+        // sentido carregar historico infinito para montar dez linhas.
+        var conhecidos = await context.Set<Query>()
+            .Where(q => q.SearchIsbn != null && q.SearchIsbn != "")
             .GroupBy(q => q.SearchIsbn!)
             .Select(g => new
             {
                 Isbn = g.Key,
-                Searches = g.Select(q => q.TransactionId).Distinct().Count(),
                 LastSearchedAt = g.Max(q => q.QueriedAt),
+                Recentes = g.Where(q => contamPontos.Contains(q.TransactionId))
+                    .Select(q => q.TransactionId).Distinct().Count(),
                 // Título de recurso, para ISBN que ainda não está no catálogo.
                 FallbackTitle = g.Where(q => q.Success && q.Title != null)
                     .OrderByDescending(q => q.QueriedAt)
                     .Select(q => q.Title)
                     .FirstOrDefault(),
             })
+            .OrderByDescending(x => x.LastSearchedAt)
+            .Take(UniversoMaximoDeIsbns)
+            .ToListAsync(cancellationToken);
+
+        // O ponto de partida: com marco, todo livro conhecido vale 1 e as buscas
+        // novas somam em cima. Sem marco, vale o total historico puro.
+        var escolhidos = conhecidos
+            .Select(x => new { x.Isbn, x.LastSearchedAt, x.FallbackTitle,
+                               Searches = marco.HasValue ? x.Recentes + 1 : x.Recentes })
             .OrderByDescending(x => x.Searches)
             .ThenByDescending(x => x.LastSearchedAt)
             .Take(limit)
-            .ToListAsync(cancellationToken);
+            .ToList();
 
-        var isbns = agregado.Select(x => x.Isbn).ToList();
+        var isbns = escolhidos.Select(x => x.Isbn).ToList();
 
         var doCatalogo = await context.Set<CatalogItem>()
             .Where(c => c.Isbn != null && isbns.Contains(c.Isbn))
@@ -100,7 +116,7 @@ public class QueryRepository : RepositoryBase<Query>, IQueryRepository
 
         var menorPreco = await MenoresPrecosConfiaveisAsync(context, isbns, cancellationToken);
 
-        return agregado
+        return escolhidos
             .Select(x => new PopularBook
             {
                 Isbn = x.Isbn,
@@ -111,6 +127,13 @@ public class QueryRepository : RepositoryBase<Query>, IQueryRepository
             })
             .ToList();
     }
+
+    /// <summary>
+    /// Teto de ISBNs carregados para montar o ranking. A ordenacao final depende
+    /// da contagem pos-marco, entao nao da para cortar no banco; este numero
+    /// impede que a consulta cresca junto com o historico para sempre.
+    /// </summary>
+    private const int UniversoMaximoDeIsbns = 500;
 
     /// <summary>
     /// Quantos ISBNs diferentes um mesmo par (loja, título) pode responder antes
