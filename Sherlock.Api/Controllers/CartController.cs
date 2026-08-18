@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Sherlock.Business.DTOs;
+using Sherlock.Business.Core.Progress;
 using Sherlock.Business.Interfaces;
 using Sherlock.Api.Constants;
 using System.Security.Claims;
@@ -14,13 +15,19 @@ namespace Sherlock.Api.Controllers;
 public class CartController : ControllerBase
 {
     private readonly ICartOptimizationService _cartService;
+    private readonly SearchProgressStore _progressStore;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CartController> _logger;
 
     public CartController(
         ICartOptimizationService cartService,
+        SearchProgressStore progressStore,
+        IServiceScopeFactory scopeFactory,
         ILogger<CartController> logger)
     {
         _cartService = cartService;
+        _progressStore = progressStore;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -307,5 +314,68 @@ public class CartController : ControllerBase
             OptimizationStrategy.SingleProvider => "Comprar tudo em um único site",
             _ => "Estratégia desconhecida"
         };
+    }
+
+    /// <summary>
+    /// Inicia a otimização em segundo plano e devolve um identificador para acompanhar.
+    ///
+    /// A busca consulta dezenas de lojas e leva dezenas de segundos; responder na hora
+    /// permite ao front mostrar progresso em vez de uma espera opaca.
+    /// </summary>
+    [HttpPost("optimize-async")]
+    public IActionResult StartOptimization([FromBody] CartOptimizationRequest request)
+    {
+        if (request.Books == null || !request.Books.Any())
+        {
+            return BadRequest(new { error = "A lista de livros não pode estar vazia." });
+        }
+
+        var userId = GetUserId();
+        var jobId = Guid.NewGuid().ToString("N");
+        var progress = _progressStore.Create(jobId);
+
+        // Escopo próprio: o escopo desta requisição morre assim que respondemos.
+        _ = Task.Run(async () =>
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<ICartOptimizationService>();
+
+            SearchProgressScope.Begin(progress);
+            try
+            {
+                var result = await service.OptimizeCartAsync(request, userId, CancellationToken.None);
+                progress.Complete(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Falha na otimização em segundo plano (job {JobId})", jobId);
+                progress.Fail("Não foi possível concluir a busca.");
+            }
+            finally
+            {
+                SearchProgressScope.End();
+            }
+        });
+
+        return Ok(new { jobId, total = request.ProviderUrls?.Count ?? 0 });
+    }
+
+    /// <summary>Andamento de uma busca iniciada por <c>optimize-async</c>.</summary>
+    [HttpGet("progress/{jobId}")]
+    public IActionResult GetProgress(string jobId)
+    {
+        var progress = _progressStore.Get(jobId);
+
+        if (progress is null)
+            return NotFound(new { error = "Busca não encontrada ou expirada." });
+
+        return Ok(new
+        {
+            total = progress.Total,
+            completed = progress.Completed,
+            done = progress.Done,
+            error = progress.Error,
+            result = progress.Done ? progress.Result : null,
+        });
     }
 }
