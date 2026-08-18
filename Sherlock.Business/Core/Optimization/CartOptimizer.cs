@@ -152,7 +152,8 @@ public class CartOptimizer
                     Title = bookPrice.BookTitle,
                     Price = bookPrice.Price,
                     Quantity = qty,
-                    ProductUrl = bookPrice.ProductUrl
+                    ProductUrl = bookPrice.ProductUrl,
+                    ImageUrl = bookPrice.ImageUrl
                 });
             }
         }

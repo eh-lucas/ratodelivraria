@@ -9,12 +9,28 @@ export interface CartBookItem {
   quantity: number;
 }
 
+/** Uma oferta que já chegou, enquanto as outras lojas ainda respondem. */
+export interface PartialOffer {
+  providerId: number;
+  providerName: string;
+  providerUrl: string;
+  title: string | null;
+  author: string | null;
+  price: number;
+  discount: number;
+  productUrl: string | null;
+  imageUrl: string | null;
+  responseTimeMs: number;
+  fromCache: boolean;
+}
+
 export interface SearchProgressResponse {
   total: number;
   completed: number;
   done: boolean;
   error?: string | null;
   result?: CartOptimizationResult | null;
+  offers?: PartialOffer[] | null;
 }
 
 /** Andamento de uma busca em curso, emitido a cada consulta de status. */
@@ -24,6 +40,8 @@ export interface SearchProgressUpdate {
   done: boolean;
   error: string | null;
   result: CartOptimizationResult | null;
+  /** Já ordenadas da mais barata para a mais cara pelo servidor. */
+  offers: PartialOffer[];
 }
 
 export interface CartOptimizationRequest {
@@ -71,6 +89,7 @@ export interface BookPriceDetail {
   quantity: number;
   totalPrice: number;
   productUrl?: string;
+  imageUrl?: string;
 }
 
 export interface ProviderComparison {
@@ -101,6 +120,7 @@ export interface ProviderQueryDetail {
   price: number | null;
   discount: number | null;
   productUrl: string | null;
+  imageUrl: string | null;
   responseTimeMs: number;
   errorMessage: string | null;
   errorType: string | null;
@@ -215,6 +235,7 @@ export class CartService {
               done: p.done,
               error: p.error ?? null,
               result: p.result ?? null,
+              offers: p.offers ?? [],
             })),
             takeWhile(p => !p.done, true),
           ),

@@ -102,7 +102,8 @@ public class CedetSingleSearchHttpClient : IScraper
                 best.Price,
                 best.Discount,
                 stopwatch.ElapsedMilliseconds,
-                productUrl);
+                productUrl,
+                best.ImageUrl);
         }
         catch (TaskCanceledException)
         {

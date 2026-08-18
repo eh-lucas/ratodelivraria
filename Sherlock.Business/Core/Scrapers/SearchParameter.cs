@@ -22,4 +22,13 @@ public class SearchParameter
     /// Usado apenas para distinguir transações no histórico — não afeta o scraping.
     /// </summary>
     public bool IsCart { get; set; }
+
+    /// <summary>
+    /// Marca a busca disparada pelo aquecedor de cache, não por uma pessoa.
+    ///
+    /// Precisa ficar registrado porque o ranking de mais consultados conta
+    /// transações: sem a marca, o aquecedor votaria nos próprios livros e o
+    /// ranking congelaria nos dez primeiros para sempre.
+    /// </summary>
+    public bool IsPrefetch { get; set; }
 }

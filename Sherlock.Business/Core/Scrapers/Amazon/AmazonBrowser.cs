@@ -42,12 +42,14 @@ public class AmazonBrowser : IAmazonBrowser, IAsyncDisposable
           const riscado = card.querySelector('.a-text-price .a-offscreen');
           const titulo = card.querySelector('h2');
           const formato = card.querySelector('a.a-text-bold, .a-size-base.a-link-normal');
+          const capa = card.querySelector('img.s-image');
           return JSON.stringify({
             asin: card.getAttribute('data-asin'),
             title: titulo ? titulo.innerText.trim() : null,
             price: texto(cobrado),
             listPrice: texto(riscado),
             format: formato ? formato.innerText.trim() : null,
+            image: capa ? capa.getAttribute('src') : null,
           });
         })()
         """;

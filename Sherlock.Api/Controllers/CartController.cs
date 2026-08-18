@@ -376,6 +376,10 @@ public class CartController : ControllerBase
             done = progress.Done,
             error = progress.Error,
             result = progress.Done ? progress.Result : null,
+            // Ofertas já respondidas, para a tela mostrar preço antes do fim.
+            // No fim vão junto do resultado completo, que é mais rico; mandar as
+            // duas coisas na última resposta seria peso à toa.
+            offers = progress.Done ? null : progress.Offers,
         });
     }
 }

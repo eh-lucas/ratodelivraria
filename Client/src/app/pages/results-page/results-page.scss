@@ -187,10 +187,19 @@
 
 .layout {
   display: grid;
-  grid-template-columns: 230px 1fr;
+  // minmax(0, 1fr) e nao 1fr: com 1fr puro o min-content da coluna vira piso, e
+  // um titulo de livro longo empurra os cards para fora da tela — o preco, que
+  // fica na direita da linha, some no celular. Mesmo motivo do header.
+  grid-template-columns: 230px minmax(0, 1fr);
   gap: var(--space-6);
   padding: var(--space-5);
   align-items: start;
+}
+
+// A coluna tambem precisa poder encolher abaixo do proprio conteudo; sem isto
+// o minmax do grid sozinho nao resolve.
+.offers-column {
+  min-width: 0;
 }
 
 // ===== Filtros =====
@@ -440,6 +449,10 @@
 
   li {
     display: flex;
+    // A capa entra como primeiro filho; sem alinhar ao centro ela desencontra
+    // do título, e sem o flex:1 no título o space-between joga os três itens
+    // para cantos diferentes.
+    align-items: center;
     justify-content: space-between;
     gap: var(--space-3);
     font-size: var(--fs-sm);
@@ -448,6 +461,8 @@
 }
 
 .item-title {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -615,7 +630,7 @@
 
 @media (max-width: 900px) {
   .layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-4);
   }
 
@@ -697,4 +712,94 @@
   margin-top: var(--space-1);
   font-size: var(--fs-sm);
   color: var(--text-muted);
+}
+
+// ===== Resultado ao vivo =====
+//
+// Aparece durante a busca, no lugar da lista de nomes de loja. A busca inteira
+// continua levando ~17s — teto do servidor que as 67 livrarias dividem — mas a
+// primeira loja responde em ~1,5s, e é isso que a pessoa passa a ver.
+
+.live {
+  margin-top: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.live-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.live-cover {
+  width: 56px;
+  height: auto;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+}
+
+.live-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.live-label {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.live-price {
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  color: #10b981;
+}
+
+.live-count {
+  font-size: var(--fs-sm);
+  color: var(--text-subtle);
+}
+
+.live-list {
+  list-style: none;
+}
+
+.live-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+
+  &:last-child { border-bottom: none; }
+}
+
+.live-provider {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-item-price {
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+// Miniatura da capa dentro do card da oferta
+.item-cover {
+  width: 32px;
+  height: auto;
+  flex-shrink: 0;
+  border-radius: 2px;
+  margin-right: var(--space-2);
 }

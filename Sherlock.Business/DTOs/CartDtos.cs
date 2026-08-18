@@ -165,6 +165,9 @@ public class ProviderQueryDetail
     /// </summary>
     public string? ProductUrl { get; set; }
 
+    /// <summary>Capa do livro, quando a loja mandou.</summary>
+    public string? ImageUrl { get; set; }
+
     public long ResponseTimeMs { get; set; }
 
     public string? ErrorMessage { get; set; }
@@ -255,6 +258,10 @@ public class BookPriceOption
     public decimal Price { get; set; }
     public decimal? Discount { get; set; }
     public string? ProductUrl { get; set; }
+
+    /// <summary>Capa do livro, quando a loja mandou.</summary>
+    public string? ImageUrl { get; set; }
+
     public bool Available { get; set; } = true;
 }
 
@@ -391,4 +398,7 @@ public class BookPriceDetail
     /// URL da página do livro na loja (para linkar direto ao produto)
     /// </summary>
     public string? ProductUrl { get; set; }
+
+    /// <summary>Capa do livro, quando a loja mandou.</summary>
+    public string? ImageUrl { get; set; }
 }

@@ -69,6 +69,12 @@ public class Query
     public string? ProductUrl { get; set; }
 
     /// <summary>
+    /// Capa do livro. Guardada porque o resultado servido do cache precisa dela
+    /// tanto quanto o recém-consultado.
+    /// </summary>
+    public string? ImageUrl { get; set; }
+
+    /// <summary>
     /// Mensagem de erro (se houve falha)
     /// </summary>
     public string? ErrorMessage { get; set; }

@@ -1,6 +1,27 @@
 namespace Sherlock.Business.Core.Progress;
 
 /// <summary>
+/// Uma oferta que já chegou, enquanto as outras lojas ainda respondem.
+///
+/// A busca inteira leva ~17s porque 67 livrarias dividem 2 IPs — esse teto é do
+/// servidor deles, não nosso. Mas a primeira loja responde em 1,5s: mostrar o
+/// que já chegou tira a espera da frente do usuário sem gerar uma requisição a
+/// mais.
+/// </summary>
+public record PartialOffer(
+    int ProviderId,
+    string ProviderName,
+    string ProviderUrl,
+    string? Title,
+    string? Author,
+    decimal Price,
+    int Discount,
+    string? ProductUrl,
+    string? ImageUrl,
+    long ResponseTimeMs,
+    bool FromCache);
+
+/// <summary>
 /// Contador de lojas já respondidas na busca em andamento.
 ///
 /// Propagado por <see cref="AsyncLocal{T}"/> para que o motor possa reportar progresso
@@ -10,6 +31,7 @@ namespace Sherlock.Business.Core.Progress;
 public class SearchProgress
 {
     private int _completed;
+    private readonly System.Collections.Concurrent.ConcurrentBag<PartialOffer> _offers = new();
 
     public int Total { get; private set; }
     public int Completed => Volatile.Read(ref _completed);
@@ -27,6 +49,16 @@ public class SearchProgress
     /// scraper: sem isso a barra ficaria parada em 67 de 68 até o fim.
     /// </summary>
     public void Increment(int count) => Interlocked.Add(ref _completed, count);
+
+    /// <summary>
+    /// Registra uma oferta já respondida. Não conta progresso: quem conta é o
+    /// <see cref="Increment()"/>, chamado para toda loja, com ou sem resultado.
+    /// </summary>
+    public void AddOffer(PartialOffer offer) => _offers.Add(offer);
+
+    /// <summary>Ofertas que chegaram até agora, da mais barata para a mais cara.</summary>
+    public IReadOnlyList<PartialOffer> Offers =>
+        _offers.OrderBy(o => o.Price).ToList();
 
     public void Complete(object result)
     {

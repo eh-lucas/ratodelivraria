@@ -176,6 +176,7 @@ public class W16Engine
             var cachedResult = ConvertQueryToQueryResult(cachedQuery, source);
             queryResults.Add(cachedResult);
             Interlocked.Increment(ref metrics.SuccessCount);
+            PublicarOferta(cachedResult);
             SearchProgressScope.Current?.Increment();
             return true;
         }
@@ -193,6 +194,7 @@ public class W16Engine
             _logger.LogInformation("Cache hit (Redis): {Isbn} no provider {ProviderId}",
                 requestor.SearchParameters.Isbn, source.Id);
             queryResults.Add(cachedResult);
+            PublicarOferta(cachedResult);
             SearchProgressScope.Current?.Increment();
             return true;
         }
@@ -350,6 +352,7 @@ public class W16Engine
 
                 queryResults.Add(queryResult);
                 RecordQueryResult(metrics, queryResult);
+                PublicarOferta(queryResult);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -393,6 +396,7 @@ public class W16Engine
 
             queryResults.Add(queryResult);
             RecordQueryResult(metrics, queryResult);
+            PublicarOferta(queryResult);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -554,6 +558,7 @@ public class W16Engine
             Price = query.Price ?? 0,
             Discount = (int)(query.Discount ?? 0),
             ProductUrl = query.ProductUrl,
+            ImageUrl = query.ImageUrl,
             ResponseTimeMs = 0, // Cache hit - tempo de resposta não aplicável
             QueriedAt = query.QueriedAt,
             FromCache = true
@@ -568,6 +573,29 @@ public class W16Engine
         }
 
         return await scraper.ExecuteSearch(parameters);
+    }
+
+    /// <summary>
+    /// Publica a oferta para a tela antes do fim da busca. Só oferta de verdade
+    /// entra: loja sem o livro ou com erro não vira card.
+    /// </summary>
+    private static void PublicarOferta(QueryResult resultado)
+    {
+        if (!resultado.HasValidResult)
+            return;
+
+        SearchProgressScope.Current?.AddOffer(new PartialOffer(
+            resultado.ProviderId,
+            resultado.ProviderName,
+            resultado.ProviderUrl,
+            resultado.Title,
+            resultado.Author,
+            resultado.Price,
+            resultado.Discount,
+            resultado.ProductUrl,
+            resultado.ImageUrl,
+            resultado.ResponseTimeMs,
+            resultado.FromCache));
     }
 
     private void RecordQueryResult(ParallelismMetrics metrics, QueryResult queryResult)

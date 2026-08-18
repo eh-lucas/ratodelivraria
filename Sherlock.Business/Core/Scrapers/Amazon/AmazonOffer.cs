@@ -11,4 +11,5 @@ public class AmazonOffer
     public int Discount { get; set; }
     public string? Format { get; set; }
     public string? ProductUrl { get; set; }
+    public string? ImageUrl { get; set; }
 }
