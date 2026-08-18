@@ -31,7 +31,6 @@ public static class ServiceCollectionExtensions
         services.Configure<RankingSettings>(
             configuration.GetSection(RankingSettings.SectionName));
         // Services
-        services.AddScoped<IUserService, UserService>();
         services.AddScoped<IBookService, BookService>();
         services.AddScoped<IBookPriceService, BookPriceService>();
         services.AddScoped<IQueryHistoryService, QueryHistoryService>();
@@ -56,6 +55,10 @@ public static class ServiceCollectionExtensions
 
         // Resilience
         services.AddScoped<ResilientScraperWrapper>();
+
+        // Teto global de requisicoes as livrarias, compartilhado por todas as
+        // buscas: singleton de proposito, e o estado que precisa ser unico.
+        services.AddSingleton<StoreRequestGate>();
 
         // Engine
         services.AddScoped<W16Engine>();

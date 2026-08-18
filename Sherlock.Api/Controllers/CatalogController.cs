@@ -7,6 +7,12 @@ namespace Sherlock.Api.Controllers;
 /// <summary>
 /// Catálogo local espelhado das lojas: alimenta a busca por nome.
 /// As sugestões são consulta ao banco — não custam crédito nem disparam scraping.
+///
+/// Não há endpoint de crawl aqui de propósito. Existia um POST /crawl sem
+/// autenticação: qualquer pessoa na internet podia disparar a varredura de 67
+/// lojas (~2.500 requisições pesadas) contra o servidor único que todas elas
+/// dividem. O <see cref="ICatalogService.CrawlAsync"/> continua existindo, mas
+/// só é alcançável por dentro do processo.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -42,40 +48,4 @@ public class CatalogController : ControllerBase
         return result.Found ? Ok(result) : NotFound(result);
     }
 
-    /// <summary>
-    /// Dispara a coleta do catálogo. Operação pesada e manual — roda sob demanda,
-    /// não a cada requisição.
-    /// </summary>
-    [HttpPost("crawl")]
-    public async Task<IActionResult> Crawl(
-        [FromBody] CrawlRequest? request,
-        CancellationToken cancellationToken)
-    {
-        var result = await _catalogService.CrawlAsync(
-            request?.ProviderIds,
-            request?.MaxProviders,
-            request?.Force ?? false,
-            request?.Full ?? false,
-            cancellationToken);
-
-        return Ok(result);
-    }
-
-    public class CrawlRequest
-    {
-        /// <summary>Lojas específicas. Vazio = todas as ativas.</summary>
-        public List<int>? ProviderIds { get; set; }
-
-        /// <summary>Teto de lojas nesta execução — usado para rodar piloto antes da carga completa.</summary>
-        public int? MaxProviders { get; set; }
-
-        /// <summary>Ignora a janela de "varrido recentemente" e refaz tudo.</summary>
-        public bool? Force { get; set; }
-
-        /// <summary>
-        /// Varre o catálogo inteiro em vez de parar quando as páginas só trazem
-        /// produtos conhecidos. Mais lento e bem mais requisições.
-        /// </summary>
-        public bool? Full { get; set; }
-    }
 }

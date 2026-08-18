@@ -187,69 +187,6 @@ public class CedetSingleSearchHttpClient : IScraper
     }
 
     // Validação por ISBN desabilitada temporariamente: confiamos no buscador do provider (busca é feita pelo próprio ISBN)
-    /*
-    private async Task<(bool matched, string productUrl)> TryValidateByIsbnAsync(
-        BookCandidate candidate, string expectedIsbn, string baseUrl, Provider provider)
-    {
-        try
-        {
-            if (string.IsNullOrEmpty(candidate.ProductUrl))
-                return (false, "");
-
-            var productUrl = candidate.ProductUrl.StartsWith("http")
-                ? candidate.ProductUrl
-                : $"{baseUrl.TrimEnd('/')}/{candidate.ProductUrl.TrimStart('/')}";
-
-            var response = await SendAsync(productUrl, provider);
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogDebug("[{Provider}] Falha ao acessar produto (HTTP {StatusCode})",
-                    provider.Name, (int)response.StatusCode);
-                return (false, productUrl);
-            }
-
-            var html = await response.Content.ReadAsStringAsync();
-            var doc = new HtmlDocument();
-            doc.LoadHtml(html);
-
-            // Renderiza o texto do body uma única vez (operação cara) e reusa nas duas verificações
-            var bodyText = doc.DocumentNode.InnerText;
-            var extractedIsbn = IsbnHelper.ExtractFromText(bodyText);
-
-            if (!string.IsNullOrEmpty(extractedIsbn))
-            {
-                if (IsbnHelper.Matches(extractedIsbn, expectedIsbn))
-                    return (true, productUrl);
-
-                _logger.LogDebug("[{Provider}] ISBN não corresponde. Esperado: {Expected}, Encontrado: {Found}",
-                    provider.Name, expectedIsbn, extractedIsbn);
-                return (false, productUrl);
-            }
-
-            // Sem ISBN na página: kits/combos não têm ISBN único, ignoramos silenciosamente
-            if (IsKit(doc, bodyText))
-                _logger.LogDebug("[{Provider}] Produto é um kit, ignorando: {Title}", provider.Name, candidate.Title);
-            else
-                _logger.LogWarning("[{Provider}] ISBN não encontrado na página do produto: {Url}", provider.Name, productUrl);
-
-            return (false, productUrl);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug("[{Provider}] Erro ao validar produto: {Message}", provider.Name, ex.Message);
-            return (false, "");
-        }
-    }
-
-    private static bool IsKit(HtmlDocument doc, string bodyText)
-    {
-        var title = doc.DocumentNode.SelectSingleNode("//h1")?.InnerText?.ToLowerInvariant() ?? "";
-        var bodyLower = bodyText.ToLowerInvariant();
-
-        return title.Contains("kit") || title.Contains("combo") || title.Contains("coleção") ||
-               bodyLower.Contains("kit de livros") || bodyLower.Contains("combo de livros");
-    }
-    */
 
     private async Task<HttpResponseMessage> SendAsync(string url, Provider provider, bool asJson = false)
     {
