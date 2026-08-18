@@ -57,8 +57,10 @@ services:
       # Branch de demonstração: acesso aberto, toda requisição processada como o usuário master.
       # NÃO deve ir para a main (produção mantém login por usuário).
       DemoMode__Enabled: "true"
-      # 67 lojas a ~18s cada: com 10 por vez a busca leva 2min; com 30, cerca de 40s.
-      Search__MaxDegreeOfParallelism: "30"
+      # Medido em 2026-08-18 com a busca via JSON: 67 lojas em 17,0s com 10 por vez
+      # e 14,3s com 20, enquanto a latência por loja sobe de 2,5s para 3,7s. Acima
+      # disso a curva achata e só pressiona o servidor — são 67 domínios em 2 IPs.
+      Search__MaxDegreeOfParallelism: "20"
     ports:
       - "5177:8080"
     depends_on:
