@@ -53,7 +53,8 @@ public class AmazonBrowserScraper : IScraper
                 offer.Price,
                 offer.Discount,
                 stopwatch.ElapsedMilliseconds,
-                offer.ProductUrl);
+                offer.ProductUrl,
+                offer.ImageUrl);
         }
         catch (OperationCanceledException)
         {

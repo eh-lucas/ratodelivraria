@@ -9,6 +9,7 @@ import {
   OptimizationStrategy,
   ProviderComparison,
   ProviderQueryDetail,
+  PartialOffer,
 } from '../../services/cart-service';
 import { UserService } from '../../services/user-service';
 import { SearchStateService } from '../../services/search-state';
@@ -45,6 +46,7 @@ interface OfferItem {
   price: number;
   quantity: number;
   productUrl?: string;
+  imageUrl?: string;
 }
 
 /** Estatísticas de um ISBN entre todos os sites que o encontraram. */
@@ -94,6 +96,15 @@ export class ResultsPage implements OnInit {
   fromCachedSnapshot = false;
 
   progressItems: ProgressItem[] = [];
+
+  /**
+   * Ofertas que já chegaram, enquanto o resto ainda responde.
+   *
+   * A busca toda leva ~17s porque 67 livrarias dividem 2 IPs — teto do servidor
+   * delas. Mas a primeira responde em ~1,5s, e é isso que a pessoa vê agora em
+   * vez de barra de progresso.
+   */
+  partialOffers: PartialOffer[] = [];
 
   // Filtros do rail
   sortKey: SortKey = 'price';
@@ -206,8 +217,11 @@ export class ResultsPage implements OnInit {
         next: update => {
           this.searchedCount = update.completed;
           if (update.total > 0) this.searchTotal = update.total;
+          if (!update.done) this.partialOffers = update.offers;
 
           if (!update.done) return;
+
+          this.partialOffers = [];
 
           if (update.error || !update.result) {
             this.errorMessage = update.error || 'Erro ao consultar os livros.';
@@ -312,6 +326,7 @@ export class ResultsPage implements OnInit {
           price: b.price,
           quantity: b.quantity,
           productUrl: b.productUrl,
+          imageUrl: b.imageUrl,
         })),
         avgResponseMs: times.length > 0 ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : 0,
         fromCache: queries.length > 0 && queries.every(q => q.fromCache),
@@ -411,6 +426,29 @@ export class ResultsPage implements OnInit {
 
   get bestOffer(): Offer | null {
     return this.cachedBestOffer;
+  }
+
+  /**
+   * Capa do livro buscado. Vem no mesmo JSON de preço das lojas, então basta
+   * pegar a primeira que chegou — todas apontam para o mesmo arquivo no
+   * static.cedet.com.br, porque o id do produto é global entre as lojas.
+   */
+  get coverUrl(): string | null {
+    for (const offer of this.allOffers) {
+      for (const item of offer.items) {
+        if (item.imageUrl) return item.imageUrl;
+      }
+    }
+    return null;
+  }
+
+  /** Durante a busca, a capa sai da primeira oferta parcial que trouxe uma. */
+  get partialCoverUrl(): string | null {
+    return this.partialOffers.find(o => o.imageUrl)?.imageUrl ?? null;
+  }
+
+  get partialBestPrice(): number | null {
+    return this.partialOffers.length > 0 ? this.partialOffers[0].price : null;
   }
 
   isBest(o: Offer): boolean {

@@ -42,11 +42,41 @@
           {{ 'Consultando' | t }} {{ totalQueried }} {{ 'site|sites' | tp:totalQueried }} {{ 'em paralelo. Isso leva alguns segundos.' | t }}
         </p>
       }
-      <ul class="loading-providers">
-        @for (p of progressItems; track p.url) {
-          <li>{{ p.name }}</li>
-        }
-      </ul>
+      <!-- O que já chegou, enquanto o resto responde. A busca inteira continua
+           levando ~17s (teto do servidor das livrarias), mas a primeira oferta
+           aparece em ~1,5s em vez de no fim. -->
+      @if (partialOffers.length > 0) {
+        <div class="live">
+          <div class="live-head">
+            @if (partialCoverUrl) {
+              <img class="live-cover" [src]="partialCoverUrl" alt="" loading="lazy"/>
+            }
+            <div class="live-summary">
+              <span class="live-label">{{ 'Menor preço até agora' | t }}</span>
+              <strong class="live-price">{{ formatPrice(partialBestPrice!) }}</strong>
+              <span class="live-count">
+                {{ partialOffers.length }} {{ 'oferta|ofertas' | tp:partialOffers.length }} {{ 'de' | t }}
+                {{ searchedCount }} {{ 'site|sites' | tp:searchedCount }}
+              </span>
+            </div>
+          </div>
+
+          <ul class="live-list">
+            @for (o of partialOffers.slice(0, 8); track o.providerId) {
+              <li class="live-item">
+                <span class="live-provider">{{ o.providerName }}</span>
+                <span class="live-item-price">{{ formatPrice(o.price) }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+      } @else {
+        <ul class="loading-providers">
+          @for (p of progressItems; track p.url) {
+            <li>{{ p.name }}</li>
+          }
+        </ul>
+      }
     </div>
   }
 
@@ -217,6 +247,9 @@
                 <ul class="offer-items">
                   @for (item of o.items; track item.isbn) {
                     <li>
+                      @if (item.imageUrl) {
+                        <img class="item-cover" [src]="item.imageUrl" alt="" loading="lazy"/>
+                      }
                       <span class="item-title" [title]="item.title">{{ item.title }}</span>
                       <span class="item-price">
                         @if (item.quantity > 1) { <span class="item-qty">{{ item.quantity }}×</span> }

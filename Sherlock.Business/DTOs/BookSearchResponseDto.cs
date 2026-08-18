@@ -123,6 +123,11 @@ public class QueryResultItemDto
     public string? ProductUrl { get; set; }
 
     /// <summary>
+    /// Capa do livro, quando a loja mandou
+    /// </summary>
+    public string? ImageUrl { get; set; }
+
+    /// <summary>
     /// Se a consulta foi bem-sucedida
     /// </summary>
     public bool Success { get; set; }
@@ -162,6 +167,7 @@ public class QueryResultItemDto
             Price = query.Price > 0 ? query.Price : null,
             Discount = query.Discount > 0 ? query.Discount : null,
             ProductUrl = query.ProductUrl,
+            ImageUrl = query.ImageUrl,
             Success = query.Success && query.HasValidResult,
             ErrorMessage = query.ErrorMessage,
             ErrorType = query.ErrorType?.ToString(),

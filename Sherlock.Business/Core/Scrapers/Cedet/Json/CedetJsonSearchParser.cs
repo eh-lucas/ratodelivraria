@@ -82,6 +82,7 @@ internal static class CedetJsonSearchParser
             Author = ReadAuthors(product),
             Price = price,
             Discount = discount,
+            ImageUrl = ReadString(product, "thumb"),
             ProductUrl = ReadProductUrl(product),
         };
     }

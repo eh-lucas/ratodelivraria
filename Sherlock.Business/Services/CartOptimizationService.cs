@@ -81,6 +81,7 @@ public class CartOptimizationService : ICartOptimizationService
                     Price = q.Price > 0 ? q.Price : null,
                     Discount = q.Discount > 0 ? q.Discount : null,
                     ProductUrl = q.ProductUrl,
+                    ImageUrl = q.ImageUrl,
                     ResponseTimeMs = q.ResponseTimeMs,
                     ErrorMessage = q.ErrorMessage,
                     ErrorType = q.ErrorType?.ToString(),
@@ -109,6 +110,7 @@ public class CartOptimizationService : ICartOptimizationService
                         Price = q.Price,
                         Discount = q.Discount,
                         ProductUrl = q.ProductUrl,
+                        ImageUrl = q.ImageUrl,
                         Available = true
                     });
                 }

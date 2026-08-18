@@ -59,6 +59,11 @@ public class QueryResult
     public string? ProductUrl { get; set; }
 
     /// <summary>
+    /// Capa do livro (vem junto da busca, sem requisição extra)
+    /// </summary>
+    public string? ImageUrl { get; set; }
+
+    /// <summary>
     /// Mensagem de erro (se houve falha)
     /// </summary>
     public string? ErrorMessage { get; set; }
@@ -98,7 +103,8 @@ public class QueryResult
         decimal price,
         int discount,
         long responseTimeMs,
-        string? productUrl = null)
+        string? productUrl = null,
+        string? imageUrl = null)
     {
         return new QueryResult
         {
@@ -111,6 +117,7 @@ public class QueryResult
             Price = price,
             Discount = discount,
             ProductUrl = productUrl,
+            ImageUrl = imageUrl,
             ResponseTimeMs = responseTimeMs,
             QueriedAt = DateTime.UtcNow
         };
@@ -175,6 +182,7 @@ public class QueryResult
             Price = Price > 0 ? Price : null,
             Discount = Discount > 0 ? Discount : null,
             ProductUrl = ProductUrl,
+            ImageUrl = ImageUrl,
             ErrorMessage = ErrorMessage,
             SearchIsbn = searchIsbn,
             FromCache = FromCache

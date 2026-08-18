@@ -56,6 +56,7 @@ internal static class AmazonSearchResultParser
                 : 0,
             Format = Text(root, "format")?.Trim(),
             ProductUrl = BuildProductUrl(Text(root, "asin")),
+            ImageUrl = Text(root, "image"),
         };
     }
 
