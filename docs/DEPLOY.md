@@ -69,6 +69,10 @@ O cloudflared imprime a URL pública (`https://<aleatorio>.trycloudflare.com`).
 Requer um **domínio na sua conta Cloudflare** (a Cloudflare não dá domínio grátis;
 registre um barato, ~US$1–10/ano, e adicione-o à sua conta — plano Free serve).
 
+> Para registrar um `.com.br` (R$ 40/ano) e delegar o DNS para a Cloudflare, siga o
+> passo a passo em [`DOMINIO-REGISTRO-BR.md`](./DOMINIO-REGISTRO-BR.md) — o `.com.br`
+> tem uma pré-validação de DNS que exige uma ordem específica dos passos.
+
 ```bash
 # 1. Login (abre o navegador; escolha o domínio/zone da conta)
 cloudflared tunnel login
