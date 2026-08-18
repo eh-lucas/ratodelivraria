@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Sherlock.Business.Configuration;
-using Sherlock.Business.Core.Exceptions;
 using Sherlock.Business.Core.Progress;
 using Sherlock.Business.Core.Resilience;
 using Sherlock.Business.Core.Scrapers;
@@ -31,6 +30,7 @@ public class W16Engine
     private readonly ITransactionPersistenceService? _persistenceService;
     private readonly IQueryRepository? _queryRepository;
     private readonly QueryCacheSettings _cacheSettings;
+    private readonly StoreRequestGate _storeGate;
 
     /// <summary>
     /// Nível de paralelismo para buscas. Ajuste este valor para encontrar o melhor desempenho.
@@ -55,7 +55,8 @@ public class W16Engine
         IQueryRepository? queryRepository,
         IOptions<QueryCacheSettings>? cacheSettings,
         IOptions<SearchSettings>? searchSettings = null,
-        IAmazonBrowser? amazonBrowser = null)
+        IAmazonBrowser? amazonBrowser = null,
+        StoreRequestGate? storeGate = null)
     {
         _comparator = new Comparator();
         _scraperFactory = new ScraperFactory(loggerFactory, amazonBrowser);
@@ -65,6 +66,9 @@ public class W16Engine
         _persistenceService = persistenceService;
         _queryRepository = queryRepository;
         _cacheSettings = cacheSettings?.Value ?? new QueryCacheSettings();
+        // Sem o portão injetado (testes), cada busca ganha o seu: o comportamento
+        // volta a ser o de antes, limitado só por busca.
+        _storeGate = storeGate ?? new StoreRequestGate(searchSettings);
 
         var configuredParallelism = searchSettings?.Value.MaxDegreeOfParallelism ?? 0;
         if (configuredParallelism > 0)
@@ -348,7 +352,7 @@ public class W16Engine
             try
             {
                 var parameters = CreateSearchParameter(baseParameters, source);
-                var queryResult = await scraper.ExecuteSearch(parameters);
+                var queryResult = await ExecutarComPortaoAsync(scraper, source, parameters, cancellationToken);
 
                 queryResults.Add(queryResult);
                 RecordQueryResult(metrics, queryResult);
@@ -392,7 +396,7 @@ public class W16Engine
         try
         {
             var parameters = CreateSearchParameter(baseParameters, source);
-            var queryResult = await scraper.ExecuteSearch(parameters);
+            var queryResult = await ExecutarComPortaoAsync(scraper, source, parameters, cancellationToken);
 
             queryResults.Add(queryResult);
             RecordQueryResult(metrics, queryResult);
@@ -420,18 +424,28 @@ public class W16Engine
         }
     }
 
+    /// <summary>
+    /// Consulta a loja respeitando o teto global de requisições simultâneas.
+    ///
+    /// Só as livrarias passam pelo portão: elas dividem 2 IPs e é esse servidor
+    /// que precisa de proteção. A Amazon é outra casa e responde por outro
+    /// caminho (navegador), então segurá-la aqui só atrasaria a busca sem
+    /// aliviar ninguém.
+    /// </summary>
+    private async Task<QueryResult> ExecutarComPortaoAsync(
+        IScraper scraper, Provider source, SearchParameter parameters, CancellationToken cancellationToken)
+    {
+        if (source.ProviderCategoryEnum != ProviderCategoryEnum.Cedet)
+            return await scraper.ExecuteSearch(parameters);
+
+        using var vaga = await _storeGate.EntrarAsync(cancellationToken);
+        return await scraper.ExecuteSearch(parameters);
+    }
+
     private (QueryErrorType errorType, string message, int? httpStatusCode) ClassifyException(Exception ex, string providerName)
     {
         return ex switch
         {
-            // Exceções customizadas do scraper
-            ScraperTimeoutException ste => (QueryErrorType.Timeout, ste.Message, null),
-            ScraperNetworkException sne => (QueryErrorType.Network, sne.Message, null),
-            ScraperHttpException she => (QueryErrorType.HttpError, she.Message, she.StatusCode),
-            ScraperParseException spe => (QueryErrorType.ParseError, spe.Message, null),
-            ScraperBlockedException sbe => (QueryErrorType.Blocked, sbe.Message, null),
-            ScraperRateLimitException sre => (QueryErrorType.Blocked, sre.Message, 429),
-
             // Timeout genérico
             TaskCanceledException or OperationCanceledException => (QueryErrorType.Timeout, "Request timeout", null),
 

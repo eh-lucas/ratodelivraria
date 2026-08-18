@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using System.Threading.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -114,6 +115,21 @@ try
         healthChecks.AddRedis(redisConnection, name: "redis", tags: ["cache", "redis"]);
     }
 
+    // O nginx na frente manda X-Forwarded-For, mas sem isto a API le sempre o IP
+    // do container do nginx — o rate limit vira um balde unico para a internet
+    // inteira, e uma pessoa sozinha derruba o site para as outras.
+    //
+    // KnownNetworks/KnownProxies limpos + ForwardLimit 1: confiamos apenas no
+    // ultimo salto (o nosso nginx). Sem isso qualquer um forja o proprio IP no
+    // cabecalho e escapa do limite.
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.ForwardLimit = 1;
+        options.KnownNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
+
     var app = builder.Build();
 
     // Aplicar migrations automaticamente
@@ -130,6 +146,9 @@ try
         app.UseSwagger();
         app.UseSwaggerUI();
     }
+
+    // Antes de qualquer coisa que dependa do IP de origem — rate limiter e logs.
+    app.UseForwardedHeaders();
 
     app.UseSerilogRequestLogging(options =>
     {

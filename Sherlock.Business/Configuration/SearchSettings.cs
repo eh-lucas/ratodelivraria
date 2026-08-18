@@ -15,4 +15,20 @@ public class SearchSettings
     /// espera para o usuário, sem que nenhuma loja esteja lenta.
     /// </summary>
     public int MaxDegreeOfParallelism { get; set; } = 10;
+
+    /// <summary>
+    /// Padrão do teto global, quando não configurado. É o mesmo 20 medido como
+    /// joelho da curva: abaixo disso a busca demora à toa, acima o servidor das
+    /// livrarias só fica mais lento sem entregar mais.
+    /// </summary>
+    public const int PadraoGlobal = 20;
+
+    /// <summary>
+    /// Teto de requisições simultâneas às livrarias somando TODAS as buscas.
+    ///
+    /// O <see cref="MaxDegreeOfParallelism"/> limita uma busca; este limita o
+    /// site inteiro. Sem ele, cinco pessoas buscando ao mesmo tempo abrem 100
+    /// conexões nos 2 IPs que as 67 lojas dividem.
+    /// </summary>
+    public int MaxGlobalParallelism { get; set; } = PadraoGlobal;
 }
