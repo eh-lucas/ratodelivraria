@@ -22,5 +22,10 @@ public interface IQueryRepository : IRepository<Query>
     /// <summary>
     /// Ranking dos ISBNs mais consultados, com o menor preço já visto para cada um.
     /// </summary>
-    Task<IReadOnlyList<PopularBook>> GetMostSearchedAsync(int limit, CancellationToken cancellationToken = default);
+    /// <param name="marco">
+    /// Marco de reset: só contam buscas a partir desta data, e todo livro
+    /// conhecido entra valendo 1. Null conta o histórico inteiro.
+    /// </param>
+    Task<IReadOnlyList<PopularBook>> GetMostSearchedAsync(
+        int limit, DateTime? marco = null, CancellationToken cancellationToken = default);
 }
