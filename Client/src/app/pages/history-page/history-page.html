@@ -1,23 +1,23 @@
 <section class="history">
-  <h1 class="page-title">Meu histórico</h1>
+  <h1 class="page-title">{{ 'Meu histórico' | t }}</h1>
 
   @if (isLoading) {
-    <p class="placeholder-text">Carregando histórico...</p>
+    <p class="placeholder-text">{{ 'Carregando histórico...' | t }}</p>
   } @else if (errorMessage) {
-    <p class="placeholder-text error">{{ errorMessage }}</p>
+    <p class="placeholder-text error">{{ errorMessage | t }}</p>
   } @else if (transactions.length === 0) {
-    <p class="placeholder-text">Você ainda não fez nenhuma consulta.</p>
+    <p class="placeholder-text">{{ 'Você ainda não fez nenhuma consulta.' | t }}</p>
   } @else {
     <div class="table-wrap">
       <table class="history-table">
         <thead>
           <tr>
-            <th>Data</th>
-            <th>Tipo</th>
-            <th>Consulta</th>
-            <th class="num">Sites</th>
-            <th class="num">Custo</th>
-            <th>Status</th>
+            <th>{{ 'Data' | t }}</th>
+            <th>{{ 'Tipo' | t }}</th>
+            <th>{{ 'Consulta' | t }}</th>
+            <th class="num">{{ 'Sites' | t }}</th>
+            <th class="num">{{ 'Custo' | t }}</th>
+            <th>{{ 'Status' | t }}</th>
           </tr>
         </thead>
         <tbody>
@@ -51,27 +51,27 @@
   @if (detail || detailLoading) {
     <div class="modal-backdrop" (click)="closeDetail()">
       <div class="modal" (click)="$event.stopPropagation()">
-        <button class="modal-close" (click)="closeDetail()" aria-label="Fechar">×</button>
+        <button class="modal-close" (click)="closeDetail()" [aria-label]="'Fechar' | t">×</button>
 
         @if (detailLoading) {
-          <p class="placeholder-text">Carregando detalhes...</p>
+          <p class="placeholder-text">{{ 'Carregando detalhes...' | t }}</p>
         } @else if (detail) {
           @let dParsed = parseInput(detail.inputParameters);
 
-          <h2 class="modal-title">Detalhes da consulta</h2>
+          <h2 class="modal-title">{{ 'Detalhes da consulta' | t }}</h2>
           <div class="meta">
-            <div><span>Data</span><strong>{{ detail.startedAt | date:'dd/MM/yyyy HH:mm:ss' }}</strong></div>
-            <div><span>Tipo</span><strong>{{ dParsed.type === 'cart' ? 'Carrinho' : dParsed.type === 'single' ? 'Unitária' : '—' }}</strong></div>
-            <div><span>Consulta</span><strong>{{ dParsed.description }}</strong></div>
-            <div><span>Sites consultados</span><strong>{{ detail.totalProvidersQueried }}</strong></div>
-            <div><span>Com sucesso</span><strong>{{ detail.successfulQueries }}</strong></div>
-            <div><span>Tempo</span><strong>{{ (detail.executionTimeMs / 1000).toFixed(2) }}s</strong></div>
-            <div><span>Custo</span><strong>{{ detail.costCredits }} créditos</strong></div>
+            <div><span>{{ 'Data' | t }}</span><strong>{{ detail.startedAt | date:'dd/MM/yyyy HH:mm:ss' }}</strong></div>
+            <div><span>{{ 'Tipo' | t }}</span><strong>{{ dParsed.type === 'cart' ? 'Carrinho' : dParsed.type === 'single' ? 'Unitária' : '—' }}</strong></div>
+            <div><span>{{ 'Consulta' | t }}</span><strong>{{ dParsed.description }}</strong></div>
+            <div><span>{{ 'Sites consultados' | t }}</span><strong>{{ detail.totalProvidersQueried }}</strong></div>
+            <div><span>{{ 'Com sucesso' | t }}</span><strong>{{ detail.successfulQueries }}</strong></div>
+            <div><span>{{ 'Tempo' | t }}</span><strong>{{ (detail.executionTimeMs / 1000).toFixed(2) }}s</strong></div>
+            <div><span>{{ 'Custo' | t }}</span><strong>{{ detail.costCredits }} {{ 'créditos' | t }}</strong></div>
           </div>
 
           @if (detail.bestPrice != null) {
             <div class="best">
-              <div class="best-label">Melhor resultado</div>
+              <div class="best-label">{{ 'Melhor resultado' | t }}</div>
               <div class="best-line">
                 <span>{{ detail.bestProvider }}</span>
                 <span class="best-price">{{ formatPrice(detail.bestPrice) }}</span>
@@ -82,16 +82,16 @@
             </div>
           }
 
-          <h3 class="modal-subtitle">Resultados por site ({{ detail.queries.length }})</h3>
+          <h3 class="modal-subtitle">{{ 'Resultados por site' | t }} ({{ detail.queries.length }})</h3>
           <div class="table-wrap">
             <table class="detail-table">
               <thead>
                 <tr>
-                  <th>Site</th>
-                  <th>Título</th>
-                  <th class="num">Preço</th>
-                  <th class="num">Tempo</th>
-                  <th>Status</th>
+                  <th>{{ 'Site' | t }}</th>
+                  <th>{{ 'Título' | t }}</th>
+                  <th class="num">{{ 'Preço' | t }}</th>
+                  <th class="num">{{ 'Tempo' | t }}</th>
+                  <th>{{ 'Status' | t }}</th>
                 </tr>
               </thead>
               <tbody>

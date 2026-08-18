@@ -1,15 +1,27 @@
 <header class="header">
-  <button class="mobile-menu-btn" (click)="onMobileMenu()" aria-label="Abrir menu">
+  <button class="mobile-menu-btn" (click)="onMobileMenu()" [aria-label]="'Abrir menu' | t">
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
     </svg>
   </button>
 
-  <a routerLink="/home" class="title">Sherlock</a>
+  <a routerLink="/home" class="title">
+    <img src="/assets/rato.png" alt="" class="brand-icon" aria-hidden="true" />
+    <span class="wordmark"><span class="wordmark-accent">rato</span>delivraria</span>
+  </a>
 
   <div class="actions">
+    <button type="button" class="lang-btn" (click)="toggleLang()"
+            [title]="otherLang === 'EN' ? 'Switch to English' : 'Mudar para português'">
+      <svg class="lang-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" stroke-width="2"/>
+        <path stroke-width="2" d="M3 12h18M12 3c2.5 2.7 2.5 15 0 18M12 3c-2.5 2.7-2.5 15 0 18"/>
+      </svg>
+      <span>{{ otherLang }}</span>
+    </button>
+
     @if (userCredits) {
-      <a routerLink="/credits" class="credits" title="Comprar créditos">
+      <a routerLink="/credits" class="credits" [title]="'Comprar créditos' | t">
         <svg class="credits-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="9" stroke-width="2"/>
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 7v10M9 10h6M9 14h6"/>
@@ -19,7 +31,7 @@
     }
 
     <div class="user-wrapper">
-      <button type="button" class="avatar" (click)="toggleUserMenu($event)" [attr.aria-expanded]="userMenuOpen" aria-label="Menu do usuário">
+      <button type="button" class="avatar" (click)="toggleUserMenu($event)" [attr.aria-expanded]="userMenuOpen" [aria-label]="'Menu do usuário' | t">
         {{ userInitial }}
       </button>
       @if (userMenuOpen) {

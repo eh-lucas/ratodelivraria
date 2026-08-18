@@ -9,7 +9,7 @@
   transition: all 0.2s;
 
   &:focus-within {
-    border-color: #4f46e5;
+    border-color: var(--accent-strong);
     background: rgba(255, 255, 255, 0.15);
   }
 

@@ -3,16 +3,21 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth-service';
 import { UserService } from '../../services/user-service';
+import { environment } from '../../../environments/environment';
+import { TranslatePipe } from '../../i18n/translate-pipe';
 
 @Component({
   selector: 'app-user-menu',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [TranslatePipe, CommonModule, RouterLink],
   templateUrl: './user-menu.html',
   styleUrl: './user-menu.scss',
 })
 export class UserMenuComponent {
   @Output() close = new EventEmitter<void>();
+
+  // Em modo demo não há login/créditos por usuário — esconde esses itens.
+  readonly demoMode = environment.demoMode;
 
   constructor(
     private elementRef: ElementRef,

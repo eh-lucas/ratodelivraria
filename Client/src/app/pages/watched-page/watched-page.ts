@@ -1,17 +1,26 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { WatchedService, WatchedBook, WatchFrequency } from '../../services/watched-service';
+import { TranslatePipe } from '../../i18n/translate-pipe';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-watched-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe],
+  imports: [TranslatePipe, CommonModule, FormsModule, DatePipe, RouterLink],
   templateUrl: './watched-page.html',
   styleUrl: './watched-page.scss',
 })
 export class WatchedPage implements OnInit, OnDestroy {
+  /**
+   * Observar livros depende de conta e de agendador no servidor. Enquanto a release
+   * pública roda sem login, a tela mostra apenas o aviso.
+   */
+  readonly available = !environment.demoMode;
+
   items: WatchedBook[] = [];
 
   // Form

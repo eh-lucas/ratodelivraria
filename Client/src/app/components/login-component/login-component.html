@@ -1,23 +1,19 @@
 <div class="right-side">
   <h1>  </h1>
-  <a href="" link-button>Teste Grátis.</a>
+  <a href="" link-button>{{ 'Teste Grátis.' | t }}</a>
 </div>
 <div class="left-side">
   <form>
-    <span>Fazer login</span>
+    <span>{{ 'Fazer login' | t }}</span>
     <div class="wrapper-input-field">
-      <input-component iconSrc="assets/icons/user-icon.png" placeholder="Usuário" type="text" [(value)]="username"></input-component>
+      <input-component iconSrc="assets/icons/user-icon.png" [placeholder]="'Usuário' | t" type="text" [(value)]="username"></input-component>
     </div>
     <div class="wrapper-input-field">
-      <input-component iconSrc="assets/icons/password-icon.png" placeholder="Senha" type="password" [(value)]="password"></input-component>
+      <input-component iconSrc="assets/icons/password-icon.png" [placeholder]="'Senha' | t" type="password" [(value)]="password"></input-component>
     </div>
     <div class="button-container">
-      <button type="button" class="create-account-button">
-        Criar conta
-      </button>
-      <button type="button" class="advance-button" (click)="onLogin()">
-        Avançar
-      </button>
+      <button type="button" class="create-account-button"> {{ 'Criar conta' | t }} </button>
+      <button type="button" class="advance-button" (click)="onLogin()"> {{ 'Avançar' | t }} </button>
     </div>
   </form>
 </div>

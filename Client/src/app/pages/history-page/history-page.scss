@@ -78,7 +78,7 @@
   color: var(--text-muted);
 }
 
-.tag-cart { background: #eef2ff; color: #4f46e5; }
+.tag-cart { background: var(--accent-soft); color: var(--accent-strong); }
 .tag-single { background: var(--accent-soft); color: var(--accent); }
 
 .status {

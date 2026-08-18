@@ -4,11 +4,13 @@ import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { UserMenuComponent } from '../user-menu/user-menu';
 import { UserService, UserCredits } from '../../services/user-service';
+import { TranslatePipe } from '../../i18n/translate-pipe';
+import { I18nService } from '../../i18n/i18n-service';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, RouterLink, UserMenuComponent],
+  imports: [TranslatePipe, CommonModule, RouterLink, UserMenuComponent],
   templateUrl: './header.html',
   styleUrl: './header.scss',
 })
@@ -20,7 +22,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   private creditsSub?: Subscription;
 
-  constructor(private userService: UserService) {}
+  constructor(private userService: UserService, private i18n: I18nService) {}
 
   ngOnInit(): void {
     // Dispara fetch inicial e assina o stream global de créditos
@@ -45,6 +47,15 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   onMobileMenu(): void {
     this.menuToggle.emit();
+  }
+
+  /** Idioma que o botão oferece (o oposto do atual). */
+  get otherLang(): string {
+    return this.i18n.lang === 'en' ? 'PT' : 'EN';
+  }
+
+  toggleLang(): void {
+    this.i18n.toggle();
   }
 
   get userInitial(): string {
