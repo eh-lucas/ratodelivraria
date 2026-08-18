@@ -64,6 +64,8 @@ public class QueryRepository : RepositoryBase<Query>, IQueryRepository
     {
         await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
+        marco = ParaUtc(marco);
+
         // As buscas do aquecedor de cache ficam de fora: se contassem, ele votaria
         // nos proprios livros a cada rodada e o ranking congelaria.
         var transacoesDeGente = context.Set<Transaction>()
@@ -126,6 +128,25 @@ public class QueryRepository : RepositoryBase<Query>, IQueryRepository
                 LastSearchedAt = x.LastSearchedAt,
             })
             .ToList();
+    }
+
+    /// <summary>
+    /// O Postgres so aceita UTC em timestamptz, e o binder de configuracao
+    /// devolve DateTime com Kind=Local mesmo quando o JSON traz "Z" — o que
+    /// derruba a consulta em tempo de execucao, nao de compilacao. Data sem
+    /// fuso declarado e lida como UTC, que e como o resto do sistema grava.
+    /// </summary>
+    private static DateTime? ParaUtc(DateTime? valor)
+    {
+        if (valor is not { } data)
+            return null;
+
+        return data.Kind switch
+        {
+            DateTimeKind.Utc => data,
+            DateTimeKind.Local => data.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(data, DateTimeKind.Utc),
+        };
     }
 
     /// <summary>
