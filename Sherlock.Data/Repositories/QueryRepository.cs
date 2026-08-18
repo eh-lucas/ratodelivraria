@@ -47,6 +47,105 @@ public class QueryRepository : RepositoryBase<Query>, IQueryRepository
             .FirstOrDefaultAsync();
     }
 
+    /// <summary>
+    /// Ranking dos mais consultados. Conta transações distintas, e não linhas de
+    /// query: uma busca só bate em 68 lojas e viraria 68 pontos se contássemos
+    /// linhas.
+    ///
+    /// O título sai do catálogo local quando existe. O que a loja devolve na
+    /// busca por ISBN nem sempre é o livro certo — o scraper aceita o primeiro
+    /// resultado —, e num ranking de dez linhas esse erro fica na cara.
+    /// </summary>
+    public async Task<IReadOnlyList<PopularBook>> GetMostSearchedAsync(
+        int limit, CancellationToken cancellationToken = default)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+
+        var agregado = await context.Set<Query>()
+            .Where(q => q.SearchIsbn != null && q.SearchIsbn != "")
+            .GroupBy(q => q.SearchIsbn!)
+            .Select(g => new
+            {
+                Isbn = g.Key,
+                Searches = g.Select(q => q.TransactionId).Distinct().Count(),
+                LastSearchedAt = g.Max(q => q.QueriedAt),
+                // Título de recurso, para ISBN que ainda não está no catálogo.
+                FallbackTitle = g.Where(q => q.Success && q.Title != null)
+                    .OrderByDescending(q => q.QueriedAt)
+                    .Select(q => q.Title)
+                    .FirstOrDefault(),
+            })
+            .OrderByDescending(x => x.Searches)
+            .ThenByDescending(x => x.LastSearchedAt)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+
+        var isbns = agregado.Select(x => x.Isbn).ToList();
+
+        var doCatalogo = await context.Set<CatalogItem>()
+            .Where(c => c.Isbn != null && isbns.Contains(c.Isbn))
+            .GroupBy(c => c.Isbn!)
+            .Select(g => new { Isbn = g.Key, Name = g.Min(c => c.Name) })
+            .ToDictionaryAsync(x => x.Isbn, x => x.Name, cancellationToken);
+
+        var menorPreco = await MenoresPrecosConfiaveisAsync(context, isbns, cancellationToken);
+
+        return agregado
+            .Select(x => new PopularBook
+            {
+                Isbn = x.Isbn,
+                Searches = x.Searches,
+                Title = doCatalogo.TryGetValue(x.Isbn, out var nome) ? nome : (x.FallbackTitle ?? x.Isbn),
+                LowestPrice = menorPreco.TryGetValue(x.Isbn, out var preco) ? preco : null,
+                LastSearchedAt = x.LastSearchedAt,
+            })
+            .ToList();
+    }
+
+    /// <summary>
+    /// Quantos ISBNs diferentes um mesmo par (loja, título) pode responder antes
+    /// de ser considerado busca quebrada. Um título pertence a um livro, não a
+    /// quatro.
+    /// </summary>
+    private const int IsbnsDistintosParaSuspeita = 3;
+
+    /// <summary>
+    /// Menor preço por ISBN, ignorando as lojas cuja busca ignora o termo.
+    ///
+    /// Existe loja que devolve sempre o mesmo produto, qualquer que seja o ISBN
+    /// pedido — e como o scraper usa o primeiro resultado, esse produto entra no
+    /// banco preso a ISBNs que não são dele. Medido em 2026-08-18: a regra
+    /// marcou uma loja e nenhuma outra.
+    ///
+    /// Sem esse filtro o preço errado apareceria como "menor visto" na home, que
+    /// é o lugar mais visível do site.
+    /// </summary>
+    private static async Task<Dictionary<string, decimal>> MenoresPrecosConfiaveisAsync(
+        SherlockDbContext context, List<string> isbns, CancellationToken cancellationToken)
+    {
+        var suspeitos = await context.Set<Query>()
+            .Where(q => q.SearchIsbn != null && q.Title != null && q.Success)
+            .GroupBy(q => new { q.ProviderId, q.Title })
+            .Where(g => g.Select(q => q.SearchIsbn).Distinct().Count() >= IsbnsDistintosParaSuspeita)
+            .Select(g => new { g.Key.ProviderId, g.Key.Title })
+            .ToListAsync(cancellationToken);
+
+        var pares = suspeitos
+            .Select(x => $"{x.ProviderId}|{x.Title}")
+            .ToHashSet();
+
+        var precos = await context.Set<Query>()
+            .Where(q => q.SearchIsbn != null && isbns.Contains(q.SearchIsbn!)
+                        && q.Success && q.Price > 0)
+            .Select(q => new { Isbn = q.SearchIsbn!, q.ProviderId, q.Title, Price = q.Price!.Value })
+            .ToListAsync(cancellationToken);
+
+        return precos
+            .Where(x => !pares.Contains($"{x.ProviderId}|{x.Title}"))
+            .GroupBy(x => x.Isbn)
+            .ToDictionary(g => g.Key, g => g.Min(x => x.Price));
+    }
+
     public async Task<Query> AddQueryAsync(Query query)
     {
         query.QueriedAt = DateTime.UtcNow;

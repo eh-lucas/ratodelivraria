@@ -1,3 +1,31 @@
+<div class="search-wrap">
+  <!-- Mais consultados: quem chega sem ISBN na mão tem por onde começar -->
+  @if (popular.length > 0) {
+    <aside class="rank-rail">
+      <div class="popular-head">
+        <h2 class="popular-title">{{ 'Mais consultados' | t }}</h2>
+      </div>
+      <ol class="popular-list">
+        @for (livro of popular; track livro.isbn; let i = $index) {
+          <li>
+            <button type="button" class="popular-item" (click)="buscarPopular(livro)">
+              <span class="popular-pos">{{ i + 1 }}</span>
+              <span class="popular-info">
+                <span class="popular-name">{{ livro.title }}</span>
+                <span class="popular-meta">
+                  {{ livro.searches }} {{ 'busca|buscas' | tp:livro.searches }}
+                  @if (livro.lowestPrice) {
+                    <span class="popular-price">{{ 'menor visto' | t }} {{ formatarPreco(livro.lowestPrice) }}</span>
+                  }
+                </span>
+              </span>
+            </button>
+          </li>
+        }
+      </ol>
+    </aside>
+  }
+
 <section class="search">
   <header class="hero">
     <h1 class="hero-title">{{ 'Pesquisar livros' | t }}</h1>
@@ -163,3 +191,4 @@
     </div>
   }
 </section>
+</div>

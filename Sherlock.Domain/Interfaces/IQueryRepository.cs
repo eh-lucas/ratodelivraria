@@ -18,4 +18,9 @@ public interface IQueryRepository : IRepository<Query>
     /// <param name="cacheTimeMinutes">Tempo de cache em minutos</param>
     /// <returns>Query cacheada ou null se não encontrada/expirada</returns>
     Task<Query?> GetCachedQueryAsync(string isbn, int providerId, int cacheTimeMinutes);
+
+    /// <summary>
+    /// Ranking dos ISBNs mais consultados, com o menor preço já visto para cada um.
+    /// </summary>
+    Task<IReadOnlyList<PopularBook>> GetMostSearchedAsync(int limit, CancellationToken cancellationToken = default);
 }
