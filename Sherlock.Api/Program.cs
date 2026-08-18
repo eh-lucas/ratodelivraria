@@ -119,13 +119,18 @@ try
     // do container do nginx — o rate limit vira um balde unico para a internet
     // inteira, e uma pessoa sozinha derruba o site para as outras.
     //
-    // KnownNetworks/KnownProxies limpos + ForwardLimit 1: confiamos apenas no
-    // ultimo salto (o nosso nginx). Sem isso qualquer um forja o proprio IP no
-    // cabecalho e escapa do limite.
+    // ForwardLimit 2 porque sao dois saltos nossos: o Cloudflare acrescenta o IP
+    // do visitante ao X-Forwarded-For e o nginx acrescenta o dele por cima. Com
+    // limite 1 a API lia o nginx e o rate limit continuava global — medido: o
+    // limitador registrava 172.18.0.1, o gateway do Docker.
+    //
+    // Nao da para subir mais: o cliente pode injetar entradas a esquerda, e so
+    // as duas ultimas sao escritas por infraestrutura nossa. KnownNetworks e
+    // KnownProxies limpos porque os saltos vem de redes Docker variaveis.
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
     {
         options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-        options.ForwardLimit = 1;
+        options.ForwardLimit = 2;
         options.KnownNetworks.Clear();
         options.KnownProxies.Clear();
     });
