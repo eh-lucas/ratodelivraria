@@ -11,6 +11,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Os parsers são detalhe de implementação, mas é neles que os testes pegam
+         regressão de verdade: a resposta da loja muda sem avisar. -->
+    <InternalsVisibleTo Include="Sherlock.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="HtmlAgilityPack" Version="1.11.70" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.8" />
     <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="8.0.0" />

@@ -2,6 +2,7 @@ using HtmlAgilityPack;
 using Microsoft.Extensions.Logging;
 using Polly;
 using Polly.Retry;
+using Sherlock.Business.Core.Scrapers.Cedet.Json;
 using Sherlock.Business.Core.Scrapers.Common;
 using Sherlock.Business.Interfaces;
 using Sherlock.Domain.Entities;
@@ -12,7 +13,14 @@ namespace Sherlock.Business.Core.Scrapers.Cedet.HttpClient;
 
 public class CedetSingleSearchHttpClient : IScraper
 {
-    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
+    // Medido em 2026-08-18 nas 67 lojas pelo endpoint JSON: p50 2,65s, p95 3,23s,
+    // max 4,28s. O timeout de 30s com 2 retries dava um teto de 91,2s — número que
+    // aparecia cru no banco como max(response_time_ms) = 91205, sempre nosso e nunca
+    // da loja. Retry contra servidor saturado é a carga que ele não tem como absorver.
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(10);
+    // Buscamos pelo ISBN, que casa com um produto só; 20 é folga para kits homônimos.
+    private const int JsonSearchLimit = 20;
+
     private static readonly System.Net.Http.HttpClient _httpClient;
     private static readonly AsyncRetryPolicy<HttpResponseMessage> _retryPolicy;
 
@@ -38,7 +46,7 @@ public class CedetSingleSearchHttpClient : IScraper
             .Or<HttpRequestException>()
             .Or<TaskCanceledException>()
             .WaitAndRetryAsync(
-                retryCount: 2,
+                retryCount: 1,
                 sleepDurationProvider: retryAttempt => TimeSpan.FromMilliseconds(200 * Math.Pow(2, retryAttempt)));
     }
 
@@ -63,11 +71,19 @@ public class CedetSingleSearchHttpClient : IScraper
             }
 
             var baseUrl = NormalizeUrl(provider.Url);
-            var searchUrl = BuildSearchUrl(baseUrl, provider.SearchUrlTemplate, parameters.Isbn);
 
-            _logger.LogDebug("[{Provider}] Iniciando busca: {Url}", provider.Name, searchUrl);
+            // Caminho preferido: o endpoint JSON da própria loja. O HTML fica de rede de
+            // segurança para as lojas que não falam esse protocolo (tema diferente,
+            // WooCommerce, WAF na frente).
+            var candidates = await SearchJsonCandidatesAsync(baseUrl, parameters.Isbn, provider);
 
-            var candidates = await SearchCandidatesAsync(searchUrl, provider);
+            if (candidates is null)
+            {
+                var searchUrl = BuildSearchUrl(baseUrl, provider.SearchUrlTemplate, parameters.Isbn);
+                _logger.LogDebug("[{Provider}] Sem JSON, caindo para HTML: {Url}", provider.Name, searchUrl);
+                candidates = await SearchCandidatesAsync(searchUrl, provider);
+            }
+
             if (candidates.Count == 0)
                 return QueryResult.CreateNoResult(provider, stopwatch.ElapsedMilliseconds);
 
@@ -110,6 +126,38 @@ public class CedetSingleSearchHttpClient : IScraper
             _logger.LogWarning("[{Provider}] Erro de rede: {Message}", provider.Name, ex.Message);
             return QueryResult.CreateFailure(provider, QueryErrorType.Network, ex.Message, stopwatch.ElapsedMilliseconds);
         }
+    }
+
+    /// <summary>
+    /// Busca no endpoint JSON da loja. Devolve <c>null</c> quando a loja não respondeu
+    /// nesse formato — aí o chamador tenta o HTML.
+    ///
+    /// Falha de transporte (timeout, DNS, conexão) sobe: se a loja está fora do ar,
+    /// tentar o HTML só gastaria o dobro do tempo para falhar igual.
+    /// </summary>
+    private async Task<List<BookCandidate>?> SearchJsonCandidatesAsync(
+        string baseUrl, string isbn, Provider provider)
+    {
+        var searchUrl = BuildJsonSearchUrl(baseUrl, isbn);
+        _logger.LogDebug("[{Provider}] Iniciando busca JSON: {Url}", provider.Name, searchUrl);
+
+        var response = await SendAsync(searchUrl, provider, asJson: true);
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogDebug("[{Provider}] Endpoint JSON respondeu HTTP {StatusCode}",
+                provider.Name, (int)response.StatusCode);
+            return null;
+        }
+
+        var payload = await response.Content.ReadAsStringAsync();
+        return CedetJsonSearchParser.TryParse(payload);
+    }
+
+    private static string BuildJsonSearchUrl(string baseUrl, string isbn)
+    {
+        var searchTerm = Uri.EscapeDataString(isbn);
+        return $"{baseUrl.TrimEnd('/')}/index.php?route=product/search/infiniteScroll" +
+               $"&search={searchTerm}&page=1&limit={JsonSearchLimit}";
     }
 
     private async Task<List<BookCandidate>> SearchCandidatesAsync(string searchUrl, Provider provider)
@@ -202,11 +250,13 @@ public class CedetSingleSearchHttpClient : IScraper
     }
     */
 
-    private async Task<HttpResponseMessage> SendAsync(string url, Provider provider)
+    private async Task<HttpResponseMessage> SendAsync(string url, Provider provider, bool asJson = false)
     {
         return await _retryPolicy.ExecuteAsync(async () =>
         {
-            using var request = BrowserRequestFactory.Create(url);
+            using var request = asJson
+                ? BrowserRequestFactory.CreateJson(url)
+                : BrowserRequestFactory.Create(url);
             _logger.LogDebug("[{Provider}] Enviando requisição para {Url}", provider.Name, url);
             return await _httpClient.SendAsync(request);
         });
