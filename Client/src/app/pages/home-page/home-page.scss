@@ -51,7 +51,10 @@
 
   .card {
     aspect-ratio: auto;
-    padding: var(--space-5);
+    // Em linha o cartão não precisa da altura que fazia sentido em coluna: 170px
+    // viravam espaço vazio, e três deles empurravam o conteúdo para fora da tela.
+    min-height: 0;
+    padding: var(--space-4) var(--space-5);
     flex-direction: row;
     justify-content: flex-start;
     text-align: left;

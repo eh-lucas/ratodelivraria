@@ -389,6 +389,9 @@
 @media (max-width: 600px) {
   .search { padding: var(--space-5) var(--space-4) var(--space-8); }
   .btn-search { width: 100%; }
+
+  // Alvo de toque: 32px de altura erra o dedo com frequência.
+  .providers-trigger { min-height: 44px; }
 }
 
 /* Sugestões de título vindas do catálogo local */

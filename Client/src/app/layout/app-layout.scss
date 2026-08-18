@@ -1,6 +1,9 @@
 .layout {
   display: flex;
+  // dvh acompanha a barra de endereço do navegador móvel, que 100vh ignora —
+  // com vh o rodapé fica escondido atrás dela até a pessoa rolar.
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg);
 }
 
