@@ -283,6 +283,27 @@ public class CedetSingleSearchHttpClient : IScraper
         return builder.Uri.ToString();
     }
 
+    /// <summary>
+    /// Acima disso, a pagina nao esta respondendo a nossa busca.
+    ///
+    /// Busca por ISBN casa com um produto so — dois ou tres quando a loja tem
+    /// kits com o mesmo codigo. Uma pagina com dezenas de produtos e vitrine, e
+    /// nao resultado. Medido em 2026-08-18 na Livraria da Marcela: a busca por
+    /// 9788535914849 e a busca por 0000000000000 devolviam a MESMA pagina de
+    /// 145.096 bytes, com 36 produtos; o parser pegava o primeiro e gravava "O
+    /// flautista de Hamelin" a R$ 34,11 preso a qualquer ISBN.
+    /// </summary>
+    private const int MaxHtmlSearchResults = 5;
+
+    /// <summary>
+    /// A pagina respondeu a busca, ou e uma vitrine que ignora o termo?
+    ///
+    /// So o caminho HTML precisa disso: no JSON, busca sem resultado devolve
+    /// lista vazia e nao ha o que confundir.
+    /// </summary>
+    internal static bool PareceResultadoDeBusca(int produtosNaPagina) =>
+        produtosNaPagina > 0 && produtosNaPagina <= MaxHtmlSearchResults;
+
     private HtmlNodeCollection? ExtractProducts(HtmlDocument doc)
     {
         // Tenta seletores comuns: OpenCart (item-product), WooCommerce (li.product), genéricos
@@ -299,11 +320,22 @@ public class CedetSingleSearchHttpClient : IScraper
         foreach (var selector in selectors)
         {
             var products = doc.DocumentNode.SelectNodes(selector);
-            if (products != null && products.Count > 0)
+            if (products == null || products.Count == 0)
+                continue;
+
+            if (!PareceResultadoDeBusca(products.Count))
             {
-                _logger.LogDebug("Produtos encontrados com seletor: {Selector} ({Count})", selector, products.Count);
-                return products;
+                // Melhor nao responder nada do que responder o livro errado: um
+                // preco falso vira "menor preco" e manda a pessoa para a loja
+                // comprar outro livro.
+                _logger.LogWarning(
+                    "Pagina com {Count} produtos para uma busca por ISBN: e vitrine, nao resultado. Ignorando.",
+                    products.Count);
+                return null;
             }
+
+            _logger.LogDebug("Produtos encontrados com seletor: {Selector} ({Count})", selector, products.Count);
+            return products;
         }
 
         return null;
