@@ -44,6 +44,7 @@ public class CartOptimizationService : ICartOptimizationService
 
         // Busca preços para todos os livros
         var allPrices = new List<BookPriceOption>();
+        var providerQueries = new List<ProviderQueryDetail>();
         var searchTasks = new List<Task<(CartBookItem book, SearchResult result)>>();
         int creditsUsed = 0;
 
@@ -63,6 +64,29 @@ public class CartOptimizationService : ICartOptimizationService
         foreach (var (book, result) in searchResults)
         {
             creditsUsed += result.CustoCreditos;
+
+            // Detalhe bruto por provider (inclui falhas e tempos) para a tela de resultado
+            foreach (var q in result.AllQueryResults ?? new List<QueryResult>())
+            {
+                providerQueries.Add(new ProviderQueryDetail
+                {
+                    Isbn = book.Isbn,
+                    ProviderId = q.ProviderId,
+                    ProviderName = q.ProviderName,
+                    ProviderUrl = q.ProviderUrl,
+                    Success = q.Success,
+                    HasResult = q.HasValidResult,
+                    Title = q.Title,
+                    Author = q.Author,
+                    Price = q.Price > 0 ? q.Price : null,
+                    Discount = q.Discount > 0 ? q.Discount : null,
+                    ProductUrl = q.ProductUrl,
+                    ResponseTimeMs = q.ResponseTimeMs,
+                    ErrorMessage = q.ErrorMessage,
+                    ErrorType = q.ErrorType?.ToString(),
+                    FromCache = q.FromCache
+                });
+            }
 
             // Preferimos AllQueryResults: carrega dados completos por provider
             // (ProviderId, ProviderUrl e ProductUrl — a página do livro na loja).
@@ -120,6 +144,7 @@ public class CartOptimizationService : ICartOptimizationService
         optimizationResult.ExecutionTimeMs = stopwatch.ElapsedMilliseconds;
         optimizationResult.CreditsUsed = creditsUsed;
         optimizationResult.TotalQueriesExecuted = totalQueries;
+        optimizationResult.ProviderQueries = providerQueries;
 
         stopwatch.Stop();
 
