@@ -23,7 +23,8 @@ public class ProviderTests
         var providers = Provider.AllSources;
 
         // Assert
-        providers.Should().HaveCount(93);
+        // 83 lojas declaradas no arquivo, 16 comentadas fora da lista em 4bf6500.
+        providers.Should().HaveCount(67);
     }
 
     [Fact]

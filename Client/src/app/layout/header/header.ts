@@ -61,4 +61,18 @@ export class HeaderComponent implements OnInit, OnDestroy {
   get userInitial(): string {
     return this.userCredits?.username?.[0]?.toUpperCase() ?? '?';
   }
+
+  /**
+   * Saldo em forma curta (12,3 mil / 1,2 mi).
+   *
+   * O número cru cabia no desenho até o token demo entrar com sete dígitos: o selo
+   * passou de 50px para 133px e arrastou o header inteiro para além da tela do
+   * celular. Saldo é informação de relance — o dígito exato mora na tela de créditos.
+   */
+  get creditsLabel(): string {
+    const value = this.userCredits?.availableCredits ?? 0;
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace('.', ',')} mi`;
+    if (value >= 10_000) return `${Math.round(value / 1000)} mil`;
+    return value.toLocaleString('pt-BR');
+  }
 }

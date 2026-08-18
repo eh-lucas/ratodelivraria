@@ -1,6 +1,9 @@
 .header {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  // minmax(0, 1fr) e não 1fr: a coluna precisa poder encolher abaixo do próprio
+  // conteúdo. Com 1fr puro o min-content vira piso, e um selo largo (saldo com
+  // muitos dígitos) empurra o header para além da tela — arrastando a página toda.
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   height: var(--header-h);
   padding: 0 var(--space-5);
@@ -30,6 +33,7 @@
   color: var(--text);
   letter-spacing: 0.5px;
   justify-self: center;
+  min-width: 0;
 
   .brand-icon {
     width: 2rem;
@@ -42,6 +46,9 @@
     font-weight: 800;
     letter-spacing: -0.02em;
     color: #000000;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 
     .wordmark-accent { color: var(--accent); }
   }
@@ -53,6 +60,7 @@
   align-items: center;
   gap: var(--space-3);
   justify-self: end;
+  min-width: 0;
 }
 
 .credits {
@@ -106,12 +114,37 @@
 @media (max-width: 767px) {
   .mobile-menu-btn { display: flex; }
 
-  .header { padding: 0 var(--space-3); }
-
-  .credits .credits-value::after {
-    // No mobile mantém compacto
-    content: '';
+  .header {
+    padding: 0 var(--space-3);
+    gap: var(--space-2);
   }
+
+  // Numa tela de 360px o wordmark inteiro não cabe junto com menu e ações.
+  .title {
+    font-size: var(--fs-lg);
+
+    .brand-icon { width: 1.5rem; }
+  }
+
+  // Alvos de toque: o dedo não acerta 26px de altura. 44px é a recomendação do iOS.
+  .lang-btn,
+  .credits,
+  .title {
+    min-height: 44px;
+  }
+
+  .lang-btn,
+  .credits {
+    padding-inline: var(--space-2);
+  }
+
+  .credits-icon { display: none; }
+}
+
+// Abaixo disso o saldo dá lugar ao que a pessoa veio fazer: buscar livro.
+// O número continua a um toque de distância, na tela de créditos.
+@media (max-width: 400px) {
+  .credits { display: none; }
 }
 
 .lang-btn {
