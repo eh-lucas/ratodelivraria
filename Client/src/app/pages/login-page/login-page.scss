@@ -1,155 +1,140 @@
-:host {
+.login {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
-  background-color: #000000;
-
+  // min-height, não height: com height fixo o cartão vaza da tela quando o
+  // teclado do celular sobe e o erro aparece, e não há como rolar até o botão.
+  min-height: 100vh;
+  padding: var(--space-5);
+  background: var(--bg-muted);
+}
 
 .login-card {
-  background: linear-gradient(
-    to top right,
-    #d4d8dd 0%,
-    #ffffff 90%
-  );
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3),
-              0 4px 8px rgba(60, 64, 67, 0.15);
-  width: 70%;
-  height: 80%;
-  padding: 3rem 2.5rem;
+  width: 100%;
+  // Era 70% de largura por 80% de altura, deitado em duas colunas: num monitor
+  // largo virava um cartão gigante com dois campos perdidos no meio, e no
+  // celular as colunas não cabiam. Formulário de login é uma coluna só.
+  max-width: 420px;
+  padding: var(--space-8) var(--space-6);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+/* Assinatura da marca: mesma composição do logotipo usada na home e no header */
+.brand {
+  text-align: center;
+  margin-bottom: var(--space-6);
+}
+
+.brand-mascote {
+  width: 4.5rem;
+  height: auto;
+  margin-bottom: var(--space-2);
+}
+
+.wordmark {
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #000000;
+
+  .wordmark-accent { color: var(--accent); }
+}
+
+.title {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+}
+
+.subtitle {
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-6);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+form {
   display: flex;
-  flex-direction: row;
-  gap: 3rem;
-  align-items: center;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: var(--space-4);
+}
 
-    .card-header {
-      width: 100%;
-      text-align: center;
-      margin-bottom: 2rem;
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
 
-      .title-row {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem; 
-        margin-bottom: 0.5rem;
-        justify-content: flex-start;
-      }
+.field-error {
+  font-size: var(--fs-sm);
+  color: var(--danger);
+}
 
-      .app-logo {
-        width: 5.5rem;
-        height: auto;
-        flex-shrink: 0;
-      }
+/* Falha do servidor, não de preenchimento: ocupa a largura e é impossível não ver */
+.form-error {
+  padding: var(--space-3);
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+  color: var(--danger);
+}
 
-      h1 {
-        color: #000000;
-        font-size: 2rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        text-align-last: justify;
-      }
+.submit {
+  // Laranja da marca com texto preto, igual ao botão principal da home. O botão
+  // preto de antes não existia em lugar nenhum da paleta.
+  height: 44px;
+  background: var(--accent);
+  color: #000000;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  transition: background 0.15s ease;
 
-      .divider {
-        width: 100%;
-        height: 1px;
-        background-color: #000000;
-        border-radius: 4px;
-        margin: 0 auto;
-      }
-    }
+  &:hover:not(:disabled) { background: var(--accent-strong); }
 
-    .text-section {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      padding-left: 2rem;
+  &:disabled {
+    background: var(--bg-hover);
+    color: var(--text-subtle);
+    cursor: not-allowed;
+  }
+}
 
-      .title {
-        color: #000000;
-        font-size: 2.5rem;
-        font-weight: 600;
-        margin-bottom: 6rem;
-        text-align: left;
-      }
-    }
+.alt-action {
+  margin-top: var(--space-5);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  text-align: center;
 
-    form {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-      padding-right: 2rem;
+  a {
+    color: var(--accent);
+    font-weight: 500;
 
-      .wrapper-input-field {
-        display: flex;
-        flex-direction: column;
-        width: 100%;
-      }
-
-      .button-container {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 1.5rem;
-      }
-
-      .forgot-password-button {
-        background: #000000;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 10px 24px;
-        font-size: 0.95rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-
-        &:hover {
-          background-color: #332f2f;
-        }
-
-        &:disabled {
-          background: #ccc;
-          cursor: not-allowed;
-        }
-      }
-
-      .register-link {
-        background: transparent;
-        color: var(--accent);
-        border: none;
-        font-size: 0.9rem;
-        font-weight: 500;
-        cursor: pointer;
-        text-decoration: none;
-        transition: color 0.2s ease;
-        border-radius: 4px;
-
-        &:hover {
-          color: var(--accent-strong);
-          text-decoration: underline;
-        }
-      }
+    &:hover {
+      color: var(--accent-strong);
+      text-decoration: underline;
     }
   }
-  .error-message {
-    color: #d93025;
-    font-size: 1rem;
-    margin-top: 6px;
-    font-weight: 500;
-    letter-spacing: 0.2px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
+}
 
-    small {
-      background: rgba(217, 48, 37, 0.1);
-      padding: 3px 8px;
-      border-radius: 6px;
-      color: #d93025;
-    }
+@media (max-width: 480px) {
+  .login {
+    padding: var(--space-4);
+    background: var(--bg);
+  }
+
+  .login-card {
+    padding: var(--space-6) var(--space-4);
+    // Sem borda e sem sombra o cartão deixa de parecer uma caixa espremida numa
+    // tela que ele já ocupa inteira.
+    border: none;
+    box-shadow: none;
+    background: transparent;
   }
 }

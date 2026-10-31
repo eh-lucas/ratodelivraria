@@ -247,4 +247,18 @@ export const EN: Record<string, string> = {
   'em breve': 'coming soon',
   'mais de': 'more than',
   'as primeiras respostas levam alguns segundos': 'the first answers take a few seconds',
+
+  // Tela de login
+  'Entrar': 'Sign in',
+  'Entrando…': 'Signing in…',
+  'E-mail': 'Email',
+  'Acesse para ver seus livros observados e seu histórico.':
+    'Sign in to see your watched books and your history.',
+  'Informe seu e-mail.': 'Enter your email.',
+  'E-mail inválido.': 'Invalid email.',
+  'Informe sua senha.': 'Enter your password.',
+  'E-mail ou senha incorretos.': 'Wrong email or password.',
+  'Não foi possível entrar agora. Tente de novo em instantes.':
+    'Could not sign you in right now. Try again in a moment.',
+  'Ainda não tem conta?': "Don't have an account?",
 };
