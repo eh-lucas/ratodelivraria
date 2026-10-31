@@ -261,4 +261,14 @@ export const EN: Record<string, string> = {
   'Não foi possível entrar agora. Tente de novo em instantes.':
     'Could not sign you in right now. Try again in a moment.',
   'Ainda não tem conta?': "Don't have an account?",
+
+  // Telas que exigem conta
+  'Entre para ver seu histórico': 'Sign in to see your history',
+  'O histórico é só seu: mostra as buscas que você fez, com o preço de cada loja no dia da consulta.':
+    'The history is yours alone: it shows the searches you made, with each store price on the day you searched.',
+  'Entre para observar livros': 'Sign in to watch books',
+  'A lista de observados é sua, e o aviso de queda de preço vai para o seu e-mail.':
+    'The watch list is yours, and the price-drop alert goes to your email.',
+  'Entre para ver esta página': 'Sign in to see this page',
+  'É preciso ter uma conta para continuar.': 'You need an account to continue.',
 };

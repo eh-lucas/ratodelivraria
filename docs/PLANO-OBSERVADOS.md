@@ -502,8 +502,8 @@ Cada fatia é mergeável sozinha.
    parada.
 7. **`WatchSweepWorker`** (03h, modo enxuto, advisory lock, orçamento no gate).
 8. **`WatchNotifyWorker`** (09h, digest, antifadiga, descadastro).
-9. **`demoMode`**: busca segue aberta, login passa a ser exigido só em `/watched` e
-   `/profile`.
+9. ~~**`demoMode`**: busca segue aberta, login passa a ser exigido só em `/watched` e
+   `/profile`.~~ **Feito** — ver §10.
 
 Entre a 5 e a 7 a feature já é usável manualmente — dá para validar a tela antes de
 escrever uma linha de worker.
@@ -756,3 +756,41 @@ docker compose -f docker-compose.dev.yml up -d mailpit   # SMTP :1025, web :8025
 > **Não verifiquei o caminho do Mailpit nesta máquina** — o Docker aqui pede `sudo`. Os
 > arquivos de compose passam no `docker compose config`, e o protocolo é o mesmo que os
 > testes exercitam, mas a primeira subida do Mailpit continua por conferir.
+
+---
+
+## 10. Acesso aberto: o que é público e o que exige conta
+
+Feito em 2026-10-31, junto com a tela de login.
+
+Até aqui o `authGuard` cobria o layout inteiro e `/` desviava para `/login`: **ninguém
+via o site sem ter conta**, numa home que promete "sem cadastro". O site no ar não sofria
+disso porque a branch `feat/demo-master-token` autentica todo visitante como um usuário
+master — o que resolve o acesso criando um problema pior, abaixo.
+
+A fronteira agora é uma só pergunta: **o conteúdo é de uma pessoa?**
+
+| | Rota / endpoint | Por quê |
+|---|---|---|
+| **Aberto** | home, busca, resultado, `/api/BookSearch`, `/api/Cart`, `/api/Catalog`, `/api/Providers`, ranking | Comparar preço é o que o site faz. A transação é gravada com `user_id` nulo — o ranking continua alimentado sem prender a busca a ninguém. |
+| **Convida a entrar** | `/watched`, `/history` | A página abre e mostra "entre para continuar". Guard desviaria para o login escondendo que ela existe. |
+| **Desvia para o login** | `/profile`, `/credits`, `/api/User`, `/api/Transactions` | Não têm estado deslogado que faça sentido. |
+
+### O histórico de todos
+
+O backend **sempre** filtrou certo — `GetUserHistoryAsync` chama
+`GetByUserIdAsync(userId, limit)`, e o detalhe confere posse. O que faz o histórico
+aparecer como "o geral de todos" é o `DemoAuthenticationHandler` da branch de demo: se
+todo visitante é o mesmo usuário master, o histórico dele é, literalmente, o de todos.
+
+**É o motivo para não levar aquele handler para a main.** Com acesso aberto de verdade,
+busca anônima grava `user_id` nulo e não aparece no histórico de ninguém.
+
+`Sherlock.Tests/Integration/AcessoAbertoTests.cs` fixa essa fronteira, inclusive o caso
+de duas contas novas verem cada uma o próprio histórico vazio.
+
+### Crédito deixou de barrar
+
+Os três portões de 402 saíram do `BookSearchController` (§3.4: busca é de graça). O
+`CreditService` continua registrando o consumo de quem tem conta — vira medida de quanto
+cada busca custa, e o mecanismo fica no lugar para o dia em que precisar voltar.

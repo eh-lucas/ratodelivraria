@@ -1,5 +1,10 @@
 <section class="watched">
-  @if (!available) {
+  @if (!isAuthenticated) {
+    <app-auth-required
+      title="Entre para observar livros"
+      text="A lista de observados é sua, e o aviso de queda de preço vai para o seu e-mail."
+    ></app-auth-required>
+  } @else if (!available) {
     <div class="unavailable">
       <img src="/assets/rato.png" alt="" class="unavailable-icon" aria-hidden="true" />
       <h1 class="unavailable-title">{{ 'Seu rato ainda não tem a capacidade de observar livros.' | t }}</h1>

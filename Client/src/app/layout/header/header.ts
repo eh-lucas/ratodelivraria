@@ -6,6 +6,7 @@ import { UserMenuComponent } from '../user-menu/user-menu';
 import { UserService, UserCredits } from '../../services/user-service';
 import { TranslatePipe } from '../../i18n/translate-pipe';
 import { I18nService } from '../../i18n/i18n-service';
+import { AuthService } from '../../services/auth-service';
 
 @Component({
   selector: 'app-header',
@@ -22,9 +23,17 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   private creditsSub?: Subscription;
 
-  constructor(private userService: UserService, private i18n: I18nService) {}
+  isAuthenticated = false;
+
+  constructor(private userService: UserService, private i18n: I18nService, private auth: AuthService) {}
 
   ngOnInit(): void {
+    this.isAuthenticated = this.auth.isAuthenticated();
+
+    // Visitante sem sessão não tem saldo nem perfil: buscar isso só renderia um
+    // 401 por carregamento de página, em toda página do site.
+    if (!this.isAuthenticated) return;
+
     // Dispara fetch inicial e assina o stream global de créditos
     this.userService.getCurrentUser().subscribe();
     this.creditsSub = this.userService.credits$.subscribe(c => {

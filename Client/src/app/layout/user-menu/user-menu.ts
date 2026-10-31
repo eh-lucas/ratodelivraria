@@ -16,8 +16,17 @@ import { TranslatePipe } from '../../i18n/translate-pipe';
 export class UserMenuComponent {
   @Output() close = new EventEmitter<void>();
 
-  // Em modo demo não há login/créditos por usuário — esconde esses itens.
+  // Em modo demo não há compra de créditos por usuário — esconde esse item.
   readonly demoMode = environment.demoMode;
+
+  /**
+   * O menu agora atende os dois estados. Antes, "Sair" só aparecia fora do modo
+   * demo e não havia "Entrar" em lugar nenhum — num site aberto, o visitante não
+   * tinha por onde chegar ao login a não ser digitando a URL.
+   */
+  get isAuthenticated(): boolean {
+    return this.authService.isAuthenticated();
+  }
 
   constructor(
     private elementRef: ElementRef,

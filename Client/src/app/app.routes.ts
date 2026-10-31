@@ -12,25 +12,35 @@ import { AppLayoutComponent } from './layout/app-layout';
 import { authGuard } from './guards/auth-guard';
 
 export const routes: Routes = [
-  { path: '', redirectTo: '/login', pathMatch: 'full' },
+  // O site é aberto: quem chega cai na apresentação, não num formulário de login.
+  // Antes '' ia para /login e o authGuard cobria o layout inteiro, então ninguém
+  // via o site sem ter conta — numa home que promete "sem cadastro".
+  { path: '', redirectTo: '/home', pathMatch: 'full' },
+
   { path: 'login', component: LoginPage },
   { path: 'register', component: RegisterPage },
 
-  // Rotas autenticadas compartilham o shell (sidebar + header)
   {
     path: '',
     component: AppLayoutComponent,
-    canActivate: [authGuard],
     children: [
+      // Abertas a qualquer visitante
       { path: 'home', component: HomePage },
       { path: 'search', component: SearchPage },
       { path: 'resultado', component: ResultsPage },
+
+      // Conteúdo de uma pessoa só. Não levam guard de propósito: a página abre e
+      // mostra "entre para continuar" em vez de desviar para /login escondendo
+      // que ela existe. Quem busca os dados é o componente, e só se houver sessão.
       { path: 'watched', component: WatchedPage },
       { path: 'history', component: HistoryPage },
-      { path: 'profile', component: ProfilePage },
-      { path: 'credits', component: CreditsPage },
+
+      // Estas não têm estado deslogado que faça sentido — perfil e saldo não
+      // existem sem conta —, então seguem desviando para o login.
+      { path: 'profile', component: ProfilePage, canActivate: [authGuard] },
+      { path: 'credits', component: CreditsPage, canActivate: [authGuard] },
     ],
   },
 
-  { path: '**', redirectTo: '/login' },
+  { path: '**', redirectTo: '/home' },
 ];

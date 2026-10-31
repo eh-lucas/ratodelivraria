@@ -40,7 +40,7 @@ public class CartOptimizationService : ICartOptimizationService
 
     public async Task<CartOptimizationResult> OptimizeCartAsync(
         CartOptimizationRequest request,
-        int userId,
+        int? userId,
         CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -180,7 +180,7 @@ public class CartOptimizationService : ICartOptimizationService
     private async Task<(CartBookItem book, SearchResult result)> SearchBookPricesAsync(
         CartBookItem book,
         List<Provider> sources,
-        int userId,
+        int? userId,
         bool isCart,
         CancellationToken cancellationToken)
     {

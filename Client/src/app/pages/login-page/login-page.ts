@@ -2,7 +2,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, Validators, FormBuilder, FormGroup } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 //Services
 import { AuthService } from '../../services/auth-service';
 //Components
@@ -24,9 +24,24 @@ export class LoginPage implements OnInit {
   errorMessage = '';
   loading = false;
 
-  constructor(private authService: AuthService, private router: Router, private formBuilder: FormBuilder) { }
+  /** Para onde voltar depois de entrar, quando o guard desviou de alguma tela. */
+  private redirectTo = '/home';
+
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    private route: ActivatedRoute,
+    private formBuilder: FormBuilder,
+  ) { }
 
   ngOnInit(): void {
+    // Só aceita caminho interno: 'redirect' vem da URL, e um valor absoluto
+    // viraria um salto para fora do site logo depois do login.
+    const pedido = this.route.snapshot.queryParamMap.get('redirect');
+    if (pedido?.startsWith('/') && !pedido.startsWith('//')) {
+      this.redirectTo = pedido;
+    }
+
     this.loginForm = this.formBuilder.group({
       email: ['', [Validators.required, Validators.email]],
       password: ['', Validators.required],
@@ -61,7 +76,7 @@ export class LoginPage implements OnInit {
 
         if (response?.token) {
           this.authService.setToken(response.token);
-          this.router.navigate(['/home']);
+          this.router.navigateByUrl(this.redirectTo);
           return;
         }
 

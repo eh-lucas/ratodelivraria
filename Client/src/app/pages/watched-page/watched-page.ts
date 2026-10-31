@@ -6,18 +6,27 @@ import { Subscription } from 'rxjs';
 import { WatchedService, WatchedBook, WatchFrequency } from '../../services/watched-service';
 import { TranslatePipe } from '../../i18n/translate-pipe';
 import { environment } from '../../../environments/environment';
+import { AuthRequiredComponent } from '../../components/auth-required/auth-required';
+import { AuthService } from '../../services/auth-service';
 
 @Component({
   selector: 'app-watched-page',
   standalone: true,
-  imports: [TranslatePipe, CommonModule, FormsModule, DatePipe, RouterLink],
+  imports: [TranslatePipe, CommonModule, FormsModule, DatePipe, RouterLink, AuthRequiredComponent],
   templateUrl: './watched-page.html',
   styleUrl: './watched-page.scss',
 })
 export class WatchedPage implements OnInit, OnDestroy {
   /**
-   * Observar livros depende de conta e de agendador no servidor. Enquanto a release
-   * pública roda sem login, a tela mostra apenas o aviso.
+   * Observar livros depende de conta: a lista é de uma pessoa, e o aviso de preço
+   * vai para o e-mail dela. Sem sessão, a tela convida a entrar em vez de mostrar
+   * uma lista que não pertence a ninguém.
+   */
+  isAuthenticated = false;
+
+  /**
+   * Mesmo logado, a observação ainda não roda no servidor — falta o agendador
+   * (docs/PLANO-OBSERVADOS.md §4). Até lá a tela avisa que está em construção.
    */
   readonly available = !environment.demoMode;
 
@@ -39,9 +48,10 @@ export class WatchedPage implements OnInit, OnDestroy {
 
   private sub?: Subscription;
 
-  constructor(private service: WatchedService) {}
+  constructor(private service: WatchedService, private auth: AuthService) {}
 
   ngOnInit(): void {
+    this.isAuthenticated = this.auth.isAuthenticated();
     this.sub = this.service.items$.subscribe(list => (this.items = list));
   }
 

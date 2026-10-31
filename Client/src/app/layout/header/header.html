@@ -20,7 +20,7 @@
       <span>{{ otherLang }}</span>
     </button>
 
-    @if (userCredits) {
+    @if (isAuthenticated && userCredits) {
       <a routerLink="/credits" class="credits" [title]="'Comprar créditos' | t">
         <svg class="credits-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="9" stroke-width="2"/>
@@ -31,8 +31,16 @@
     }
 
     <div class="user-wrapper">
-      <button type="button" class="avatar" (click)="toggleUserMenu($event)" [attr.aria-expanded]="userMenuOpen" [aria-label]="'Menu do usuário' | t">
-        {{ userInitial }}
+      <button type="button" class="avatar" [class.anon]="!isAuthenticated" (click)="toggleUserMenu($event)" [attr.aria-expanded]="userMenuOpen" [aria-label]="'Menu do usuário' | t">
+        @if (isAuthenticated) {
+          {{ userInitial }}
+        } @else {
+          <!-- Sem conta não há inicial: o ícone genérico evita o "?" que parecia defeito -->
+          <svg class="avatar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="8" r="4" stroke-width="2"/>
+            <path stroke-linecap="round" stroke-width="2" d="M4 20c0-3.5 3.6-6 8-6s8 2.5 8 6"/>
+          </svg>
+        }
       </button>
       @if (userMenuOpen) {
         <app-user-menu (close)="closeUserMenu()"></app-user-menu>
