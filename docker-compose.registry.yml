@@ -1,0 +1,21 @@
+# Override para rodar a partir de imagens ja publicadas, sem buildar no host.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.registry.yml pull
+#   docker compose -f docker-compose.yml -f docker-compose.registry.yml up -d
+#
+# Existe porque o build e o pico de memoria do deploy, nao o runtime: o
+# "npm run build" do Angular pede ~2 GB e morre por OOM numa VPS pequena.
+# Builde numa maquina com folga, publique no GHCR e aqui so baixe.
+#
+# O "!reset" apaga o "build:" herdado do compose base (requer Compose >= 2.24);
+# sem ele o compose ainda tentaria buildar quando a imagem faltasse no host.
+# Troque "latest" pelo SHA do commit quando quiser deploy reproduzivel.
+
+services:
+  api:
+    build: !reset null
+    image: ghcr.io/eh-lucas/sherlock-api:latest
+
+  client:
+    build: !reset null
+    image: ghcr.io/eh-lucas/sherlock-client:latest
