@@ -78,5 +78,14 @@
       {{ 'Ainda não tem conta?' | t }}
       <a routerLink="/register">{{ 'Criar conta' | t }}</a>
     </p>
+
+    <!-- Exigência do Google para publicar o login, e boa prática de qualquer
+         forma: quem vai entregar o e-mail merece ver o que acontece com ele
+         antes de clicar, não depois. -->
+    <p class="legal-links">
+      <a routerLink="/privacidade">{{ 'Política de Privacidade' | t }}</a>
+      <span aria-hidden="true">·</span>
+      <a routerLink="/termos">{{ 'Termos de Uso' | t }}</a>
+    </p>
   </div>
 </main>

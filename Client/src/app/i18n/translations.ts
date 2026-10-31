@@ -262,6 +262,12 @@ export const EN: Record<string, string> = {
     'Could not sign you in right now. Try again in a moment.',
   'Ainda não tem conta?': "Don't have an account?",
 
+  // Páginas legais
+  'Política de Privacidade': 'Privacy Policy',
+  'Termos de Uso': 'Terms of Use',
+  'Ao criar conta você concorda com os': 'By creating an account you agree to the',
+  'e a': 'and the',
+
   // Telas que exigem conta
   'Entre para ver seu histórico': 'Sign in to see your history',
   'O histórico é só seu: mostra as buscas que você fez, com o preço de cada loja no dia da consulta.':

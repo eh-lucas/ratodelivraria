@@ -20,6 +20,27 @@
   background: var(--bg-muted);
 }
 
+.site-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-5) var(--space-5);
+  color: var(--text-subtle);
+  font-size: 0.75rem;
+
+  a {
+    color: var(--text-muted);
+    text-decoration: none;
+
+    &:hover {
+      color: var(--accent-strong);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+  }
+}
+
 .overlay {
   display: none;
 }

@@ -172,3 +172,22 @@ form {
     background: transparent;
   }
 }
+
+/* Links legais: presentes e legíveis, mas claramente secundários ao formulário. */
+.legal-links {
+  margin: var(--space-5) 0 0;
+  text-align: center;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--text-subtle);
+
+  a {
+    color: var(--text-muted);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    &:hover { color: var(--accent-strong); }
+  }
+
+  span { margin: 0 var(--space-1); }
+}

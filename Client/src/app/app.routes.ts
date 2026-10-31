@@ -8,6 +8,8 @@ import { WatchedPage } from './pages/watched-page/watched-page';
 import { HistoryPage } from './pages/history-page/history-page';
 import { ProfilePage } from './pages/profile-page/profile-page';
 import { CreditsPage } from './pages/credits-page/credits-page';
+import { PrivacyPage } from './pages/legal/privacy-page';
+import { TermsPage } from './pages/legal/terms-page';
 import { AppLayoutComponent } from './layout/app-layout';
 import { authGuard } from './guards/auth-guard';
 
@@ -28,6 +30,13 @@ export const routes: Routes = [
       { path: 'home', component: HomePage },
       { path: 'search', component: SearchPage },
       { path: 'resultado', component: ResultsPage },
+
+      // Páginas legais. Abertas de propósito e sem guard: o Google exige a URL da
+      // política de privacidade publicamente acessível para publicar o app de
+      // login, e não adianta exigir conta para ler o documento que explica o que
+      // acontece com os dados de quem ainda vai criar a conta.
+      { path: 'privacidade', component: PrivacyPage },
+      { path: 'termos', component: TermsPage },
 
       // Conteúdo de uma pessoa só. Não levam guard de propósito: a página abre e
       // mostra "entre para continuar" em vez de desviar para /login escondendo

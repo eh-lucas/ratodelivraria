@@ -13,6 +13,18 @@
     <app-header (menuToggle)="toggleSidebar()"></app-header>
     <main class="content">
       <router-outlet></router-outlet>
+
+      <!-- Rodapé discreto. Existe porque documento legal alcançável só por URL
+           digitada na prática não existe — e o Google verifica se a URL da
+           política está acessível a partir do site.
+
+           Fica dentro de .content, que é quem rola: como irmão dele viraria
+           barra fixa roubando altura em toda tela do site. -->
+      <footer class="site-footer">
+        <a routerLink="/privacidade">{{ 'Política de Privacidade' | t }}</a>
+        <span aria-hidden="true">·</span>
+        <a routerLink="/termos">{{ 'Termos de Uso' | t }}</a>
+      </footer>
     </main>
   </div>
 </div>

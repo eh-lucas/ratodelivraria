@@ -118,5 +118,14 @@
       {{ 'Já tem conta?' | t }}
       <a routerLink="/login">{{ 'Entrar' | t }}</a>
     </p>
+
+    <!-- No cadastro o aceite é explícito, não só um link solto: é aqui que a
+         pessoa entrega o e-mail. Exigência do Google para publicar o login. -->
+    <p class="legal-links">
+      {{ 'Ao criar conta você concorda com os' | t }}
+      <a routerLink="/termos">{{ 'Termos de Uso' | t }}</a>
+      {{ 'e a' | t }}
+      <a routerLink="/privacidade">{{ 'Política de Privacidade' | t }}</a>.
+    </p>
   </div>
 </main>
