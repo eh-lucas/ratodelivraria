@@ -30,6 +30,8 @@ public static class ServiceCollectionExtensions
             configuration.GetSection(PrefetchSettings.SectionName));
         services.Configure<RankingSettings>(
             configuration.GetSection(RankingSettings.SectionName));
+        services.Configure<CartRequerySettings>(
+            configuration.GetSection(CartRequerySettings.SectionName));
         // Services
         services.AddScoped<IBookService, BookService>();
         services.AddScoped<IBookPriceService, BookPriceService>();
@@ -65,6 +67,10 @@ public static class ServiceCollectionExtensions
 
         // Optimization
         services.AddScoped<CartOptimizer>();
+
+        // Quem decide de quem é a vez entre o aquecedor e a busca de gente.
+        // Singleton pelo mesmo motivo do portão acima: o estado tem que ser único.
+        services.AddSingleton<SearchPriority>();
 
         // Mantém os livros mais procurados quentes no cache
         services.AddHostedService<PopularBooksPrefetcher>();

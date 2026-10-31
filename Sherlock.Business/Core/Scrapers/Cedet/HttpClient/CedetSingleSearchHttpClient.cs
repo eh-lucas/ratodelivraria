@@ -75,13 +75,15 @@ public class CedetSingleSearchHttpClient : IScraper
             // Caminho preferido: o endpoint JSON da própria loja. O HTML fica de rede de
             // segurança para as lojas que não falam esse protocolo (tema diferente,
             // WooCommerce, WAF na frente).
-            var candidates = await SearchJsonCandidatesAsync(baseUrl, parameters.Isbn, provider);
+            var budget = RequestBudget.From(parameters);
+
+            var candidates = await SearchJsonCandidatesAsync(baseUrl, parameters.Isbn, provider, budget);
 
             if (candidates is null)
             {
                 var searchUrl = BuildSearchUrl(baseUrl, provider.SearchUrlTemplate, parameters.Isbn);
                 _logger.LogDebug("[{Provider}] Sem JSON, caindo para HTML: {Url}", provider.Name, searchUrl);
-                candidates = await SearchCandidatesAsync(searchUrl, provider);
+                candidates = await SearchCandidatesAsync(searchUrl, provider, budget);
             }
 
             if (candidates.Count == 0)
@@ -137,12 +139,12 @@ public class CedetSingleSearchHttpClient : IScraper
     /// tentar o HTML só gastaria o dobro do tempo para falhar igual.
     /// </summary>
     private async Task<List<BookCandidate>?> SearchJsonCandidatesAsync(
-        string baseUrl, string isbn, Provider provider)
+        string baseUrl, string isbn, Provider provider, RequestBudget budget)
     {
         var searchUrl = BuildJsonSearchUrl(baseUrl, isbn);
         _logger.LogDebug("[{Provider}] Iniciando busca JSON: {Url}", provider.Name, searchUrl);
 
-        var response = await SendAsync(searchUrl, provider, asJson: true);
+        var response = await SendAsync(searchUrl, provider, budget, asJson: true);
         if (!response.IsSuccessStatusCode)
         {
             _logger.LogDebug("[{Provider}] Endpoint JSON respondeu HTTP {StatusCode}",
@@ -161,9 +163,9 @@ public class CedetSingleSearchHttpClient : IScraper
                $"&search={searchTerm}&page=1&limit={JsonSearchLimit}";
     }
 
-    private async Task<List<BookCandidate>> SearchCandidatesAsync(string searchUrl, Provider provider)
+    private async Task<List<BookCandidate>> SearchCandidatesAsync(string searchUrl, Provider provider, RequestBudget budget)
     {
-        var response = await SendAsync(searchUrl, provider);
+        var response = await SendAsync(searchUrl, provider, budget);
         // EnsureSuccessStatusCode lança HttpRequestException com StatusCode preenchido em 4xx/5xx
         response.EnsureSuccessStatusCode();
 
@@ -188,16 +190,43 @@ public class CedetSingleSearchHttpClient : IScraper
 
     // Validação por ISBN desabilitada temporariamente: confiamos no buscador do provider (busca é feita pelo próprio ISBN)
 
-    private async Task<HttpResponseMessage> SendAsync(string url, Provider provider, bool asJson = false)
+    private async Task<HttpResponseMessage> SendAsync(
+        string url, Provider provider, RequestBudget budget, bool asJson = false)
     {
-        return await _retryPolicy.ExecuteAsync(async () =>
+        // O HttpClient é estático e carrega o teto padrão; um teto menor só pode vir
+        // de um token por chamada. O CancellationToken cancelado vira
+        // TaskCanceledException, que o ExecuteSearch já traduz para Timeout.
+        async Task<HttpResponseMessage> EnviarAsync()
         {
             using var request = asJson
                 ? BrowserRequestFactory.CreateJson(url)
                 : BrowserRequestFactory.Create(url);
             _logger.LogDebug("[{Provider}] Enviando requisição para {Url}", provider.Name, url);
-            return await _httpClient.SendAsync(request);
-        });
+
+            if (budget.Timeout is not { } limite)
+                return await _httpClient.SendAsync(request);
+
+            using var cts = new CancellationTokenSource(limite);
+            return await _httpClient.SendAsync(request, cts.Token);
+        }
+
+        if (budget.SkipRetry)
+            return await EnviarAsync();
+
+        return await _retryPolicy.ExecuteAsync(EnviarAsync);
+    }
+
+    /// <summary>
+    /// Teto de tempo e política de retry de uma chamada. A repescagem do carrinho
+    /// corre com orçamento curto e sem retry; todo o resto usa o padrão da loja.
+    /// </summary>
+    private readonly record struct RequestBudget(TimeSpan? Timeout, bool SkipRetry)
+    {
+        public static RequestBudget From(SearchParameter parameters) => new(
+            parameters.RequestTimeoutSeconds is > 0 and var s
+                ? TimeSpan.FromSeconds(s)
+                : null,
+            parameters.SkipRetry);
     }
 
     private static string BuildSearchUrl(string baseUrl, string searchUrlTemplate, string isbn)

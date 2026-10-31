@@ -20,9 +20,14 @@ public class CartOptimizer
     /// Otimiza o carrinho: encontra o melhor provider único que tem todos os livros
     /// pelo menor preço total
     /// </summary>
+    /// <param name="semResposta">
+    /// Pares loja+ISBN que não responderam nem na repescagem. Só marca a loja na
+    /// comparação; a ordenação segue idêntica.
+    /// </param>
     public CartOptimizationResult Optimize(
         List<BookPriceOption> allPrices,
-        CartOptimizationRequest request)
+        CartOptimizationRequest request,
+        ISet<(string ProviderName, string Isbn)>? semResposta = null)
     {
         var totalBooks = request.Books.Count;
         var requestedIsbns = request.Books
@@ -53,12 +58,18 @@ public class CartOptimizer
                 providerName,
                 prices,
                 requestedIsbns,
-                quantities);
+                quantities,
+                semResposta);
 
             providerComparisons.Add(comparison);
         }
 
-        // Ordena: primeiro os que têm todos os livros (pelo menor total), depois os parciais
+        // Ordena: primeiro os que têm todos os livros (pelo menor total), depois os parciais.
+        //
+        // A loja que não respondeu continua exatamente aqui, entre as parciais.
+        // Promovê-la pelo total parcial seria afirmar que ela é a mais barata
+        // justamente quando não sabemos — o que falta é a marca UnansweredIsbns,
+        // para a tela dizer que aquele total está incompleto por silêncio da loja.
         providerComparisons = providerComparisons
             .OrderByDescending(p => p.HasAllBooks)
             .ThenBy(p => p.TotalPrice)
@@ -117,7 +128,8 @@ public class CartOptimizer
         string providerName,
         List<BookPriceOption> prices,
         List<string> requestedIsbns,
-        Dictionary<string, int> quantities)
+        Dictionary<string, int> quantities,
+        ISet<(string ProviderName, string Isbn)>? semResposta)
     {
         var firstPrice = prices.First();
         var comparison = new ProviderComparison
@@ -163,6 +175,14 @@ public class CartOptimizer
         comparison.MissingIsbns = requestedIsbns
             .Where(isbn => !foundIsbns.Contains(isbn))
             .ToList();
+
+        // Entre os que faltam, separa os que faltam por silêncio da loja.
+        if (semResposta is { Count: > 0 })
+        {
+            comparison.UnansweredIsbns = comparison.MissingIsbns
+                .Where(isbn => semResposta.Contains((providerName, isbn)))
+                .ToList();
+        }
 
         return comparison;
     }

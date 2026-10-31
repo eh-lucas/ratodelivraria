@@ -31,17 +31,20 @@ public class PopularBooksPrefetcher : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly PrefetchSettings _settings;
     private readonly RankingSettings _rankingSettings;
+    private readonly SearchPriority _priority;
     private readonly ILogger<PopularBooksPrefetcher> _logger;
 
     public PopularBooksPrefetcher(
         IServiceScopeFactory scopeFactory,
         IOptions<PrefetchSettings> settings,
         IOptions<RankingSettings> rankingSettings,
+        SearchPriority priority,
         ILogger<PopularBooksPrefetcher> logger)
     {
         _scopeFactory = scopeFactory;
         _settings = settings?.Value ?? new PrefetchSettings();
         _rankingSettings = rankingSettings?.Value ?? new RankingSettings();
+        _priority = priority;
         _logger = logger;
     }
 
@@ -100,6 +103,16 @@ public class PopularBooksPrefetcher : BackgroundService
         {
             if (cancellationToken.IsCancellationRequested) return;
 
+            if (_priority.HaBuscaDeGente)
+            {
+                // Não entra na fila atrás de alguém que está olhando a tela. O
+                // livro espera a próxima rodada; o aquecimento é conveniência.
+                _logger.LogInformation(
+                    "[Prefetch] ISBN {Isbn} adiado: busca de usuário em curso", livro.Isbn);
+                await Task.Delay(TimeSpan.FromSeconds(_settings.DelayBetweenBooksSeconds), cancellationToken);
+                continue;
+            }
+
             await AquecerLivroAsync(livro.Isbn, lojas, cancellationToken);
 
             await Task.Delay(TimeSpan.FromSeconds(_settings.DelayBetweenBooksSeconds), cancellationToken);
@@ -121,14 +134,30 @@ public class PopularBooksPrefetcher : BackgroundService
             SourcesToSearch = lojas,
         };
 
-        var resultado = await engine.ExecuteTransaction(requestor, PrefetchUserId, cancellationToken);
+        // Uma varredura leva mais de um minuto. Se alguém buscar no meio dela, o
+        // token cai e o aquecimento abandona o livro na hora — foi a varredura
+        // ainda no ar que, em 31/10/2026, levou um carrinho de 34s para 136s.
+        var cts = _priority.AbrirAquecimento(cancellationToken);
+        try
+        {
+            var resultado = await engine.ExecuteTransaction(requestor, PrefetchUserId, cts.Token);
 
-        var doCache = resultado.AllQueryResults?.Count(q => q.FromCache) ?? 0;
-        var total = resultado.AllQueryResults?.Count ?? 0;
+            var doCache = resultado.AllQueryResults?.Count(q => q.FromCache) ?? 0;
+            var total = resultado.AllQueryResults?.Count ?? 0;
 
-        _logger.LogInformation(
-            "[Prefetch] ISBN {Isbn}: {Total} lojas, {Cache} ainda no cache, {Ms}ms",
-            isbn, total, doCache, resultado.TempoDecorrido);
+            _logger.LogInformation(
+                "[Prefetch] ISBN {Isbn}: {Total} lojas, {Cache} ainda no cache, {Ms}ms",
+                isbn, total, doCache, resultado.TempoDecorrido);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogInformation("[Prefetch] ISBN {Isbn} interrompido: a vez é de quem está na tela", isbn);
+        }
+        finally
+        {
+            _priority.FecharAquecimento(cts);
+            cts.Dispose();
+        }
     }
 
     /// <summary>

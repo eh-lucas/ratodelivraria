@@ -381,6 +381,27 @@ public class ProviderComparison
     /// ISBNs não encontrados neste provider
     /// </summary>
     public List<string> MissingIsbns { get; set; } = new();
+
+    /// <summary>
+    /// ISBNs em que a loja não respondeu, mesmo depois da repescagem.
+    ///
+    /// É um subconjunto de <see cref="MissingIsbns"/>, e a diferença entre os
+    /// dois é a diferença entre "a loja não vende" e "a loja não respondeu" —
+    /// que até 31/10/2026 davam no mesmo e custaram a um usuário a melhor oferta
+    /// do carrinho: a Brodbeck perdeu 1 de 7 volumes por timeout e foi parar
+    /// atrás da Guilherme Freire, R$ 10,10 mais cara.
+    ///
+    /// Não muda a posição da loja no ranking. Serve para a tela poder avisar que
+    /// aquele total está incompleto por falta de resposta, não por falta de
+    /// estoque.
+    /// </summary>
+    public List<string> UnansweredIsbns { get; set; } = new();
+
+    /// <summary>
+    /// O total desta loja está incompleto porque ela não respondeu, e portanto
+    /// pode ser menor do que o exibido.
+    /// </summary>
+    public bool HasUnansweredBooks => UnansweredIsbns.Count > 0;
 }
 
 /// <summary>
