@@ -241,6 +241,17 @@
                   @if (!o.hasAllBooks) {
                     <span class="badge partial">{{ o.booksFound }} {{ 'de' | t }} {{ o.totalBooks }} {{ 'livros' | t }}</span>
                   }
+                  <!-- Loja muda não é loja sem o livro. Sem este aviso, o total
+                       parcial passa por preço final e a loja parece pior do que
+                       talvez seja - foi assim que um carrinho indicou a opcao
+                       R$ 10,10 mais cara. -->
+                  @if (o.unansweredCount > 0) {
+                    <span class="badge unanswered"
+                          [title]="'O total acima está incompleto e pode ser menor.' | t">
+                      {{ o.unansweredCount }} {{ 'sem resposta|sem resposta' | tp:o.unansweredCount }}
+                      · {{ 'pode sair mais barata' | t }}
+                    </span>
+                  }
                   @if (o.fromCache) { <span class="badge muted">{{ 'cache' | t }}</span> }
                 </div>
 

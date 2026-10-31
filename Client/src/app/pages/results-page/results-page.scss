@@ -438,6 +438,10 @@
   &.muted { background: var(--bg-muted); color: var(--text-subtle); }
   // Posicao real da Amazon quando ela nao e a mais barata.
   &.rank { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
+  // A loja ficou muda em algum livro: o total e um piso, nao o preco final.
+  // Azul de propriedade, nao vermelho - nao e erro da loja nem defeito da
+  // oferta, e informacao que falta do nosso lado.
+  &.unanswered { background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
 }
 
 .offer-items {

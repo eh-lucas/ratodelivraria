@@ -38,6 +38,11 @@ interface Offer {
   priceRank: number;
   /** Quanto esta oferta custa a mais que a melhor. 0 quando é a melhor. */
   overBest: number;
+  /**
+   * Em quantos livros a loja não respondeu. Enquanto for > 0, o total acima é
+   * um piso: a loja pode sair mais barata do que aparece.
+   */
+  unansweredCount: number;
 }
 
 interface OfferItem {
@@ -338,6 +343,7 @@ export class ResultsPage implements OnInit {
         isAmazon: (c.providerUrl || queries[0]?.providerUrl || '').includes('amazon.com.br'),
         priceRank: 0,
         overBest: 0,
+        unansweredCount: (c.unansweredIsbns ?? []).length,
       };
     });
   }

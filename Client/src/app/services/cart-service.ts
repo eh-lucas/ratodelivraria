@@ -102,6 +102,13 @@ export interface ProviderComparison {
   totalPrice: number;
   bookPrices: BookPriceDetail[];
   missingIsbns: string[];
+  /**
+   * Subconjunto de missingIsbns em que a loja não respondeu, nem na repescagem.
+   * A diferença entre os dois é "a loja não vende" versus "a loja ficou muda" —
+   * no segundo caso o total exibido está incompleto e pode ser menor.
+   */
+  unansweredIsbns?: string[];
+  hasUnansweredBooks?: boolean;
 }
 
 /**

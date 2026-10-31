@@ -166,6 +166,11 @@ export const EN: Record<string, string> = {
   'sites': 'sites',
   'crédito': 'credit',
   'créditos': 'credits',
+  'sem resposta': 'unanswered',
+
+  // Aviso da loja que ficou muda em algum livro do carrinho
+  'pode sair mais barata': 'may be cheaper',
+  'O total acima está incompleto e pode ser menor.': 'The total above is incomplete and may be lower.',
 
   // Fragmentos de frases com números interpolados
   'Informe um ou mais ISBNs e compare o preço em': 'Enter one or more ISBNs and compare the price across',
