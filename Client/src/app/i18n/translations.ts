@@ -271,4 +271,32 @@ export const EN: Record<string, string> = {
     'The watch list is yours, and the price-drop alert goes to your email.',
   'Entre para ver esta página': 'Sign in to see this page',
   'É preciso ter uma conta para continuar.': 'You need an account to continue.',
+
+  // Entrar com Google
+  'ou': 'or',
+  'Esta conta entra pelo Google. Use o botão acima.':
+    'This account signs in with Google. Use the button above.',
+  'Não foi possível entrar com o Google. Tente de novo em instantes.':
+    'Could not sign you in with Google. Try again in a moment.',
+  'Não foi possível validar sua conta Google.': 'Could not validate your Google account.',
+  'Sua conta Google precisa ter o e-mail verificado.':
+    'Your Google account needs a verified email.',
+  'Esta conta está desativada.': 'This account is disabled.',
+
+  // Tela de criar conta
+  'Criando…': 'Creating…',
+  'Primeiro nome': 'First name',
+  'Repita a senha': 'Repeat the password',
+  'Conta serve para observar livros e guardar seu histórico. Buscar preço continua sem cadastro.':
+    'An account is for watching books and keeping your history. Searching prices stays sign-up free.',
+  'Informe seu primeiro nome.': 'Enter your first name.',
+  'A senha precisa de pelo menos 8 caracteres.': 'The password needs at least 8 characters.',
+  'Pelo menos 8 caracteres.': 'At least 8 characters.',
+  'As senhas não são iguais.': 'The passwords do not match.',
+  'Repita a senha.': 'Repeat the password.',
+  'Já existe conta com este e-mail. Tente entrar.':
+    'An account with this email already exists. Try signing in.',
+  'Não foi possível criar sua conta agora. Tente de novo em instantes.':
+    'Could not create your account right now. Try again in a moment.',
+  'Já tem conta?': 'Already have an account?',
 };

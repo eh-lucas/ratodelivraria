@@ -59,6 +59,32 @@
   text-align: center;
 }
 
+/* O Google desenha o botão num iframe de largura própria; o slot só o centraliza
+   e reserva a altura, para a tela não pular quando ele termina de carregar. */
+.google-slot {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+  margin-bottom: var(--space-5);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  color: var(--text-subtle);
+  font-size: var(--fs-sm);
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+}
+
 form {
   display: flex;
   flex-direction: column;
@@ -84,6 +110,14 @@ form {
   border-radius: var(--radius-md);
   font-size: var(--fs-sm);
   color: var(--danger);
+
+  /* "Esta conta entra pelo Google" não é erro da pessoa — é orientação. Vermelho
+     de alarme aqui faria parecer que ela fez algo errado. */
+  &.hint {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--text);
+  }
 }
 
 .submit {

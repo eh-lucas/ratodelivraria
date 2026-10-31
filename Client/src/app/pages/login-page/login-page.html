@@ -10,6 +10,16 @@
     <h1 class="title">{{ 'Entrar' | t }}</h1>
     <p class="subtitle">{{ 'Acesse para ver seus livros observados e seu histórico.' | t }}</p>
 
+    <!-- Caminho principal. O container é preenchido pelo próprio Google: ele desenha
+         o botão num iframe, então a aparência dele não é nossa para estilizar. -->
+    <div class="google-slot" [hidden]="!googleAvailable">
+      <div #googleButton class="google-button"></div>
+    </div>
+
+    @if (googleAvailable) {
+      <div class="divider"><span>{{ 'ou' | t }}</span></div>
+    }
+
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
       <div class="field">
         <input-component
@@ -56,7 +66,7 @@
       <!-- role="alert" para o leitor de tela anunciar a falha sem a pessoa
            ter que ir procurar o texto na tela. -->
       @if (errorMessage) {
-        <div class="form-error" role="alert">{{ errorMessage | t }}</div>
+        <div class="form-error" [class.hint]="suggestGoogle" role="alert">{{ errorMessage | t }}</div>
       }
 
       <button type="submit" class="submit" [disabled]="loading">
