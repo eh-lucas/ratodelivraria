@@ -1,5 +1,8 @@
 version: '3.8'
 
+# Nome do projeto fixo: nao deriva do nome da pasta (ver docker-compose.yml).
+name: sherlock-dev
+
 # Docker Compose para desenvolvimento
 # Apenas banco de dados e Redis - API e Client rodam localmente
 

@@ -1,3 +1,7 @@
+# Nome do projeto fixo: nao deriva do nome da pasta, para que renomear o
+# diretorio nao desassocie containers e volumes (sherlock_postgres_data).
+name: sherlock
+
 services:
   # PostgreSQL Database
   postgres:

@@ -1,7 +1,8 @@
-# Deploy — Hospedando o Sherlock neste PC
+# Deploy — Hospedando o Sherlock
 
-Guia para rodar a aplicação nesta máquina (sempre ligada) e expô-la na internet
-com **Cloudflare Tunnel** — sem abrir portas do roteador e sem expor o IP residencial.
+Guia para rodar a aplicação numa máquina sempre ligada e expô-la na internet com
+**Cloudflare Tunnel** — sem abrir portas do roteador e sem expor o IP residencial.
+As seções 1 a 3 descrevem o deploy neste PC; a seção 4, como levá-lo para outra máquina.
 
 ## Arquitetura do deploy
 
@@ -105,6 +106,128 @@ sudo systemctl status cloudflared
 ```
 
 Pronto: `https://app.SEUDOMINIO.com` fica permanente, com HTTPS automático.
+
+---
+
+## 4. Subir em outra máquina
+
+O deploy é todo em container, então trocar de máquina é `git clone` + `docker compose up`.
+Três coisas **não** vêm no git e precisam ser levadas à mão:
+
+1. o `.env` (segredos);
+2. o volume `sherlock_postgres_data` (dados), se você quiser o histórico;
+3. as credenciais do túnel Cloudflare.
+
+### 4.1 Preparar a máquina
+
+Docker + plugin Compose, git, e **~2 GB de RAM livre para o build** — o pico é o
+`npm run build` do Angular, não o runtime. Máquina menor que isso: veja o 4.4.
+
+```bash
+git clone https://github.com/eh-lucas/Sherlock.git && cd Sherlock
+cp .env.example .env
+```
+
+O que vai no `.env` depende do destino dos dados:
+
+- **Banco novo, vazio** — gere segredos novos (`openssl rand -base64 24` / `48`).
+  O `scripts/db-init/01-create-app-user.sh` cria o `sherlock_app` na primeira
+  inicialização, as migrations rodam no startup e os providers vêm do código.
+- **Migrando os dados atuais** — o que precisa casar depende do método (4.2):
+  no dump lógico, só os **nomes** `POSTGRES_DB` e `APP_DB_USER` (o dump traz
+  `OWNER TO sherlock_app`, mas nenhuma senha) — as senhas podem ser novas. Na
+  cópia do volume, o `pg_authid` vem junto e o init script não roda, então o
+  `.env` tem de ser o antigo inteiro, senhas incluídas. Copie-o por `scp`,
+  nunca por git.
+
+### 4.2 Levar os dados (opcional)
+
+```bash
+# maquina antiga
+docker compose exec -T postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc > sherlock.dump
+scp sherlock.dump usuario@maquina-nova:~/
+
+# maquina nova, com o postgres de pe
+docker compose up -d postgres
+docker compose exec -T postgres pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists < sherlock.dump
+```
+
+A ordem importa: o dump não cria o banco nem os roles, só referencia os nomes. Quem
+os cria é a primeira subida do container (`POSTGRES_DB` + `01-create-app-user.sh`),
+por isso `up -d postgres` **antes** do restore e a API só depois. Restaure como
+`POSTGRES_USER` (admin), não como o usuário da app, senão os `OWNER TO` falham.
+
+Dos 88 MB, o que dói perder é `catalog_items` (~54 mil linhas, 29 MB): é a colheita
+do catalog crawler nas 67 lojas, e refazer significa recrawlear tudo. `queries`
+(130 mil linhas, 50 MB) é cache de preço com TTL de 60 min — dado que já nasceu
+velho. Para deixar o peso morto para trás sem mexer no schema:
+
+```bash
+docker compose exec -T postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc \
+  --exclude-table-data=queries --exclude-table-data=transactions > sherlock.dump
+```
+
+O preço disso é o ranking e o prefetch dos mais buscados, que leem dessas duas
+tabelas: sem elas, ambos começam do zero.
+
+Prefira o dump à cópia do volume mesmo quando quiser tudo: o dump atravessa
+versão maior do Postgres (16 → 17), o volume não.
+
+Depois, suba tudo e valide com os comandos da seção 1, mais:
+
+```bash
+docker compose exec -T postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  -c '\dt' -c 'SELECT count(*) FROM catalog_items;'
+```
+
+### 4.3 Apontar o túnel
+
+`cloudflared tunnel login` abre um navegador, que máquina headless não tem. Duas saídas:
+
+**Túnel novo, por token** (recomendado para VPS): no dashboard Zero Trust →
+Networks → Tunnels → Create tunnel, copie o `cloudflared service install <TOKEN>`
+que ele gera e rode na máquina nova. O public hostname (`http://localhost:4200`)
+se configura pelo próprio dashboard — nenhum arquivo para copiar.
+
+**Reaproveitar o túnel `sherlock`**: copie `~/.cloudflared/cert.pem`, o
+`<UUID>.json` e o `config.yml`, corrigindo o path de `credentials-file`.
+Atenção: com as duas máquinas rodando o mesmo túnel, a Cloudflare as trata como
+réplicas e divide o tráfego entre elas. Pare o serviço na antiga
+(`sudo systemctl stop cloudflared`) antes de subir a nova — ou use isso de
+propósito, validando a stack nova por um hostname alternativo
+(`novo.ratodelivraria.com.br`) e só então movendo o hostname principal.
+
+### 4.4 Quando o build não cabe na máquina
+
+Builde onde tem folga, publique no GHCR, e a máquina nova só baixa — é para isso
+que existe o `docker-compose.registry.yml`:
+
+```bash
+# maquina com folga (precisa de `docker login ghcr.io`)
+docker build -t ghcr.io/eh-lucas/sherlock-api:latest -f Sherlock.Api/Dockerfile .
+docker build -t ghcr.io/eh-lucas/sherlock-client:latest ./Client
+docker push ghcr.io/eh-lucas/sherlock-api:latest
+docker push ghcr.io/eh-lucas/sherlock-client:latest
+
+# maquina nova
+docker compose -f docker-compose.yml -f docker-compose.registry.yml pull
+docker compose -f docker-compose.yml -f docker-compose.registry.yml up -d
+```
+
+As arquiteturas têm de casar: imagem buildada em x86 não roda em ARM. Para
+Graviton ou Raspberry Pi, builde na própria máquina alvo ou use
+`docker buildx build --platform linux/arm64`.
+
+### 4.5 Ajustes que a máquina nova pede
+
+- `Search__MaxDegreeOfParallelism: 20` foi medido aqui, com dois IPs. Em host de
+  IP único — e de datacenter, que as lojas bloqueiam primeiro — comece em 5–8 e
+  suba medindo.
+- **Remova os `ports` de `postgres` (5433) e `redis` (6379)** se o host tiver IP
+  público: ali eles ficam expostos à internet, e os containers já se falam pela
+  `sherlock-network`.
+- O container da API instala chromium (scraper da Amazon): conte ~400 MB de RAM
+  a mais enquanto `Amazon:Enabled` estiver ligado.
 
 ---
 
