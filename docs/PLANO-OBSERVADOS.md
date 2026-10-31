@@ -328,10 +328,27 @@ exatamente a variável que dimensiona o trabalho noturno.
 > linha de defesa — e o `StoreRequestGate` vira ainda mais importante, porque é ele que
 > garante que abuso vire fila e não vire carga nas lojas.
 >
-> Recomendação: **não apagar o sistema de créditos — parar de bloquear com ele.**
-> `CreditService` continua registrando o consumo; só o `HasSufficientCreditsAsync` deixa
-> de barrar. O ledger segue útil como telemetria de quanto cada busca custa de verdade, e
-> o dia em que a conta apertar, o mecanismo já está no lugar.
+> Recomendação: **não apagar o sistema de créditos — desligar o débito.** O código fica
+> inteiro atrás de `Credits:Enabled` (back) e `environment.creditsEnabled` (front), os dois
+> em `false`. O dia em que a conta apertar, é um `true`.
+
+#### Correção de 2026-10-31
+
+A recomendação acima, na primeira versão, dizia "`CreditService` continua registrando o
+consumo; só o `HasSufficientCreditsAsync` deixa de barrar — o ledger segue útil como
+telemetria". **Estava errada em duas frentes, e deu para ver na tela.**
+
+1. Tirar os três portões de 402 não bastava. O `ConsumeCreditsAsync` carrega a *própria*
+   checagem de saldo: chegando a zero ele passa a recusar sozinho. A busca continuava
+   funcionando (a recusa só virava log), mas o número no cabeçalho descia de 100 até parar
+   — **a tela anunciava um teto que o backend não aplica mais.** Saldo visível é promessa
+   de limite, mesmo quando nada bloqueia.
+2. O ledger não era a telemetria que eu disse que era. O custo real de cada busca já é
+   gravado em `transactions.cost_credits`, que é **melhor**: cobre também quem busca sem
+   conta, e não para em 100. O `credit_transactions` duplicava isso pior.
+
+Então: o débito não roda, e o selo de saldo sai do cabeçalho. Quem continua segurando
+abuso é o rate limiter mais o `StoreRequestGate`, como o parágrafo acima já avisava.
 
 ## 4. O motor: por que isso não escala por usuário
 

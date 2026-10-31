@@ -7,6 +7,7 @@ import { UserService, UserCredits } from '../../services/user-service';
 import { TranslatePipe } from '../../i18n/translate-pipe';
 import { I18nService } from '../../i18n/i18n-service';
 import { AuthService } from '../../services/auth-service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-header',
@@ -25,6 +26,12 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   isAuthenticated = false;
 
+  /**
+   * Saldo só aparece se a busca for cobrada. Hoje não é (§3.4 do plano), e mostrar
+   * "100 créditos" fazia a tela prometer um teto que o backend não aplica mais.
+   */
+  readonly creditsEnabled = environment.creditsEnabled;
+
   constructor(private userService: UserService, private i18n: I18nService, private auth: AuthService) {}
 
   ngOnInit(): void {
@@ -32,6 +39,8 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
     // Visitante sem sessão não tem saldo nem perfil: buscar isso só renderia um
     // 401 por carregamento de página, em toda página do site.
+    // Segue buscando mesmo com a cobrança desligada: é essa chamada que traz o
+    // username, de onde sai a inicial do avatar.
     if (!this.isAuthenticated) return;
 
     // Dispara fetch inicial e assina o stream global de créditos

@@ -21,17 +21,20 @@ public class BookSearchController : ControllerBase
     private readonly ISingleBookSearchService _singleBookSearchService;
     private readonly ICreditService _creditService;
     private readonly ILogger<BookSearchController> _logger;
+    private readonly bool _cobrancaLigada;
 
     public BookSearchController(
         W16Engine engine,
         ISingleBookSearchService singleBookSearchService,
         ICreditService creditService,
-        ILogger<BookSearchController> logger)
+        ILogger<BookSearchController> logger,
+        IConfiguration configuration)
     {
         _engine = engine;
         _singleBookSearchService = singleBookSearchService;
         _creditService = creditService;
         _logger = logger;
+        _cobrancaLigada = configuration.GetValue("Credits:Enabled", false);
     }
 
     /// <summary>
@@ -51,13 +54,21 @@ public class BookSearchController : ControllerBase
     }
 
     /// <summary>
-    /// Registra o consumo de quem tem conta. Não bloqueia ninguém: a busca é de
-    /// graça para todos, e o saldo segue existindo só como medida de quanto cada
-    /// busca custou de verdade.
+    /// Debita o saldo de quem tem conta — e hoje não debita nada, porque
+    /// `Credits:Enabled` está desligado: buscar preço é de graça para todo mundo
+    /// (docs/PLANO-OBSERVADOS.md §3.4).
+    ///
+    /// Não basta ter tirado os bloqueios de 402: enquanto o débito rodava, o saldo
+    /// caía até zero e aí `ConsumeCreditsAsync` passava a recusar. A busca seguia
+    /// funcionando (a falha só virava log), mas o número no cabeçalho descia sozinho
+    /// até parar em zero — a tela anunciava um limite que não existe mais.
+    ///
+    /// O custo real de cada busca não se perde: ele já é gravado em
+    /// `transactions.cost_credits`, que cobre também quem busca sem conta.
     /// </summary>
     private async Task RegistrarConsumoAsync(int? userId, int custo, string descricao)
     {
-        if (userId == null || custo <= 0) return;
+        if (!_cobrancaLigada || userId == null || custo <= 0) return;
 
         var consumo = await _creditService.ConsumeCreditsAsync(userId.Value, custo, description: descricao);
 

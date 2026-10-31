@@ -20,7 +20,7 @@
       <span>{{ otherLang }}</span>
     </button>
 
-    @if (isAuthenticated && userCredits) {
+    @if (creditsEnabled && isAuthenticated && userCredits) {
       <a routerLink="/credits" class="credits" [title]="'Comprar créditos' | t">
         <svg class="credits-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="9" stroke-width="2"/>
