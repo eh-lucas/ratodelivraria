@@ -1,0 +1,758 @@
+# Plano: observar livros (login sem senha + vigia de preço)
+
+> Escrito em 2026-10-31. Dimensionado em cima dos números já medidos em
+> [PLATAFORMA-CEDET.md](PLATAFORMA-CEDET.md) — nada aqui é estimativa nova.
+
+## O que já existe e muda o plano
+
+Antes de desenhar qualquer coisa, o que o repo já entrega:
+
+| Peça | Onde | O que significa para esta feature |
+|---|---|---|
+| Tela de observados (mock) | `Client/src/app/pages/watched-page/`, `services/watched-service.ts` | A UI já existe em `localStorage`. É trocar o serviço por HTTP, não construir a tela. |
+| Sugestão por nome | `GET /api/Catalog/suggest` → `catalog_items` | O "box de pesquisa" do observados é o mesmo box. Custa uma consulta ao banco, zero requisição às lojas. |
+| Resolver ISBN | `POST /api/Catalog/{id}/resolve-isbn` | Já abre a página do produto. É aqui que a capa entra de carona. |
+| Capa do livro | `queries.image_url` | Toda busca já guarda a capa. Para livro já consultado, a capa sai do banco — nenhuma requisição. |
+| Cache por (ISBN, loja) | `QueryRepository.GetCachedQueryAsync`, 60 min | **A peça que faz a feature escalar.** Ver §4. |
+| Teto global de requisições | `StoreRequestGate`, 20 simultâneas | O vigia tem que caber dentro desse teto, não ao lado dele. |
+| Worker periódico de exemplo | `PopularBooksPrefetcher` (`BackgroundService`) | Molde pronto: delay de startup, espaçamento entre livros, falha sem derrubar nada. |
+| Créditos | `users.available_credits`, `CreditService` | Decidir se a observação consome crédito (§3.4). |
+| **Nada de e-mail** | — | `Sherlock.Infrastructure` está vazio (só o `.csproj`). É o lugar do `EmailSender`. |
+
+---
+
+## 1. Login sem senha
+
+### 1.1 Código de 6 dígitos, não link mágico
+
+Recomendação: **código numérico de 6 dígitos**. O link mágico parece mais simples e na
+prática não é:
+
+1. **O link abre no navegador errado.** No celular, o app de e-mail abre o link no
+   webview interno dele. A sessão nasce lá dentro e morre lá dentro — a pessoa volta
+   para o Chrome e continua deslogada. É a reclamação nº 1 de quem usa magic link.
+2. **Antivírus e filtro corporativo pré-abrem o link.** Outlook SafeLinks, Gmail,
+   Proofpoint: todos fazem GET nos links antes de entregar. Como o token é de uso
+   único, ele chega **já queimado**. Tem contorno (exigir POST na página de destino),
+   mas é complexidade que o código não tem.
+3. **O código funciona entre dispositivos.** Pediu no notebook, leu no celular, digitou
+   no notebook. O link não faz isso.
+4. **Menos superfície.** Sem token na URL, sem histórico do navegador, sem `Referer`
+   vazando, sem rota de redirect para tratar.
+
+O único preço é digitar 6 dígitos — resolvido com `inputmode="numeric"` e
+`autocomplete="one-time-code"`, que faz o iOS e o Android oferecerem o código lido do
+SMS/e-mail direto no teclado.
+
+> Se quiser os dois, o link pode ir **junto** no mesmo e-mail como atalho opcional, com
+> o código como caminho principal. Mas isso é a v2; o código sozinho resolve.
+
+### 1.2 O fluxo (cadastro e login são o mesmo fluxo)
+
+```
+1. pessoa digita o e-mail           →  POST /api/auth/code
+2. sistema sempre responde "enviamos um código"   (sempre a mesma resposta)
+3. e-mail chega com 6 dígitos, validade 10 min
+4. pessoa digita o código           →  POST /api/auth/verify
+5. e-mail novo?  → responde { needsName: true } e um token temporário de cadastro
+                    pessoa informa o primeiro nome → POST /api/auth/complete
+   e-mail conhecido? → responde o JWT direto, entra
+```
+
+Três coisas que esse desenho resolve de graça:
+
+- **Não existe enumeração de e-mail.** Como cadastrar e entrar são a mesma porta, a
+  resposta do passo 2 é idêntica para e-mail conhecido e desconhecido. Hoje o
+  `AuthController` devolve `409 Conflict` no registro e `401` no login — qualquer um
+  descobre quem tem conta no site.
+- **O nome é pedido depois do e-mail provado.** Nada de conta fantasma criada por
+  quem digitou o e-mail de outra pessoa e nunca confirmou.
+- **Uma tela a menos.** Some a `register-page`; sobra a `login-page` em dois passos.
+
+### 1.3 A entidade do código
+
+```csharp
+public class LoginCode
+{
+    public int Id { get; set; }
+    public string Email { get; set; }        // normalizado (lower/trim)
+    public string CodeHash { get; set; }     // BCrypt — é credencial, não se guarda em claro
+    public DateTime ExpiresAt { get; set; }  // CreatedAt + 10 min
+    public DateTime? ConsumedAt { get; set; }// uso único
+    public int Attempts { get; set; }        // invalida em 5 erros
+    public string? RequestIp { get; set; }   // para o limite por IP, descartado em 30 dias
+    public DateTime CreatedAt { get; set; }
+}
+```
+
+Regras, todas obrigatórias:
+
+- **Gerar com `RandomNumberGenerator`**, nunca `Random`. `Random` é previsível a partir
+  de poucas amostras — e qualquer um coleta amostras pedindo códigos para o próprio
+  e-mail.
+- **Guardar o hash.** Um vazamento do banco não pode entregar códigos vivos.
+- **Comparar em tempo constante** (o `BCrypt.Verify` já faz).
+- **Uso único + 5 tentativas.** 6 dígitos = 1 em 1.000.000 por palpite; sem limite de
+  tentativa, 10 minutos de força bruta quebram.
+- **Ao pedir código novo, invalidar os anteriores** daquele e-mail.
+
+### 1.4 Limite de envio — isto não é opcional
+
+O rate limiter global de hoje é 100 req/min por IP. Para um endpoint que **dispara
+e-mail** isso é frouxo demais: dá para usar o site como ferramenta de inundar a caixa de
+entrada de alguém, e cada mensagem dessas queima cota e reputação do nosso domínio.
+
+Política dedicada em `/api/auth/code`:
+
+| Chave | Limite |
+|---|---|
+| por e-mail | 3 códigos por hora, 10 por dia |
+| por IP | 10 códigos por hora |
+| global | teto diário alinhado à cota do provedor |
+
+Entre o 1º e o 2º pedido do mesmo e-mail, impor 60s de espera (a UI mostra o contador
+no botão "reenviar").
+
+### 1.5 Envio do e-mail
+
+Não existe nada de e-mail no projeto. O que precisa:
+
+- `IEmailSender` em `Sherlock.Business/Interfaces/`, implementação em
+  **`Sherlock.Infrastructure`** (hoje vazio — é exatamente o caso de uso dele).
+- Provedor transacional. Para o volume inicial: **Resend** (3k/mês grátis, API HTTP
+  simples) ou **Brevo** (300/dia). SES é mais barato na escala mas pede sair do sandbox.
+- **SPF + DKIM + DMARC no domínio** (ver [DOMINIO-REGISTRO-BR.md](DOMINIO-REGISTRO-BR.md)).
+  Sem isso o código de login cai no spam e a feature morre na primeira tela — é o item
+  de maior risco de todo este plano, e é configuração de DNS, não código.
+- Em desenvolvimento: implementação que só escreve o código no log, sem sair requisição.
+
+### 1.6 A sessão: o JWT de 30 minutos não serve
+
+Com senha, expirar em 30 min é aceitável — a pessoa redigita a senha. Sem senha, expirar
+significa **pedir um e-mail novo a cada 30 minutos**. Insuportável.
+
+Proposta: JWT de acesso continua curto (30 min) e entra um **refresh token** opaco,
+rotativo, guardado na tabela `tokens` — que já existe no domínio e está sem uso.
+Validade 60 dias, renovado a cada uso, revogável (é o que faz o "sair de todos os
+aparelhos" funcionar). O refresh vai em cookie `HttpOnly; Secure; SameSite=Lax`, não em
+`localStorage`.
+
+> Alternativa mais simples, se quiser cortar escopo: JWT único de 30 dias em
+> `localStorage`. Funciona, mas não dá para revogar — um token roubado vale 30 dias.
+> Com o que vamos guardar (nome e e-mail), é um risco defensável. Decisão sua (§8).
+
+### 1.7 O que acontece com o login atual
+
+`users.password_hash` vira opcional e deixa de ser preenchido. `POST /auth/register` e
+`POST /auth/login` saem do ar (ou ficam só para o usuário master do `DemoMode`).
+A migration adiciona `first_name` e **remove `cpf`** — ver §2.3.
+
+---
+
+## 2. Segurança dos dados
+
+> Pergunta sua: guardar só nome e e-mail exige cuidado, ou é exagero?
+
+Exige — mas o cuidado não é onde normalmente se imagina.
+
+### 2.1 O ativo perigoso é o login, não o banco
+
+Nome e e-mail, em si, são dado de baixa sensibilidade. O que é perigoso é que **esse
+e-mail é a chave da conta**: quem consegue um código válido vira a pessoa. Então o
+esforço de segurança vai todo para o §1.3 e §1.4 (hash do código, uso único, limite de
+tentativa, limite de envio), não para criptografar a coluna `email`.
+
+### 2.2 O que **não** fazer
+
+**Não criptografar e-mail no banco.** É o reflexo errado e custa caro:
+
+- Login precisa de `WHERE email = ?`. Com o campo cifrado, ou você usa criptografia
+  determinística (que vaza igualdade e não protege de quase nada), ou mantém um índice
+  de hash ao lado — e aí o hash é o alvo, o cifrado não protegeu.
+- A chave mora no mesmo servidor que o banco. Quem leu o banco leu a chave.
+- O que protege de verdade contra "roubaram o dump" é: banco sem porta para a internet,
+  usuário de aplicação com privilégio mínimo (**já feito** — `sherlock_app` no
+  `scripts/db-init`), backup cifrado, TLS no transporte.
+
+### 2.3 Dois achados concretos no código de hoje
+
+**(a) O e-mail está indo para o log.** `AuthController.cs`:
+
+```csharp
+_logger.LogWarning("Tentativa de registro com email já existente: {Email}", normalizedEmail);
+_logger.LogWarning("Tentativa de login com email não encontrado: {Email}", normalizedEmail);
+```
+
+O Serilog grava em `logs/sherlock-.log` com `retainedFileCountLimit: 30`. Ou seja: a
+base de e-mails está em arquivo texto, 30 dias, fora de qualquer controle do banco. Os
+outros logs já fazem a coisa certa e registram `{UserId}`. Corrigir junto com o §1 —
+**nunca logar e-mail, nome ou código**, nem em `Debug`.
+
+**(b) `users.cpf` existe e não é usado.** É `long Cpf` no `User`, nunca preenchido,
+nunca lido. É o único campo de verdade sensível do modelo. **Dropar na migration.**
+O melhor jeito de proteger um dado é não ter o dado — e isso vale como resposta à sua
+pergunta: a estratégia de segurança aqui *é* a minimização que você já escolheu ao pedir
+só nome e e-mail.
+
+### 2.4 LGPD, o mínimo que não dá para pular
+
+- **Base legal**: execução de contrato (a pessoa pediu para ser avisada) para o aviso de
+  preço; consentimento só seria necessário se formos mandar outra coisa.
+- **"Excluir minha conta"** na tela de perfil, apagando de verdade — `users`,
+  `login_codes`, `watched_books`, `tokens`. As `transactions` ficam anonimizadas
+  (`user_id` nulo), porque alimentam o ranking.
+- **Rodapé de descadastro** em todo e-mail de aviso. O e-mail de código de login não
+  precisa (é transacional, pedido pela própria pessoa).
+- Nada de analytics de terceiro carregando o e-mail.
+
+---
+
+## 3. A tela de observados
+
+### 3.1 Fluxo
+
+```
+1. pessoa digita no mesmo box de busca     → GET /api/Catalog/suggest  (banco, 0 requisição)
+2. escolhe um título                       → vira um cartão: capa, título, autor
+3. repete para quantos quiser
+4. por livro, escolhe a regra              → preço-alvo  OU  queda considerável
+5. clica OK                                → POST /api/Watched  (lote)
+                                             dispara a busca normal, estabelece o preço de referência,
+                                             e passa a observar todo dia
+```
+
+A lista não vira entidade. "A lista ativa" é simplesmente as linhas de `watched_books`
+com `active = true` daquela pessoa — você pediu o mais simples possível, e um agregado
+`WatchList` só acrescentaria uma tabela sem ganhar nada.
+
+### 3.2 A capa, sem requisição extra
+
+Ordem de busca, da mais barata para a mais cara:
+
+1. **`queries.image_url`** pelo ISBN — livro já consultado alguma vez tem capa no banco.
+   Custo zero. Como o ranking de mais consultados alimenta esse acervo, a maioria dos
+   livros populares cai aqui.
+2. **`POST /api/Catalog/{id}/resolve-isbn`** — já abre a página do produto para pegar o
+   ISBN. Estender o parser para extrair **capa, autor e editora na mesma leitura**. Uma
+   requisição que já estava acontecendo passa a trazer três coisas em vez de uma.
+3. Sem capa: placeholder. Não sai requisição só por imagem.
+
+Guardar a URL da capa em `watched_books.image_url` no momento de adicionar — se a loja
+tirar o produto do ar depois, o cartão não fica quebrado. (Hotlink da imagem da loja é
+aceitável nesta fase; espelhar imagem é problema de outro dia.)
+
+### 3.3 A regra de aviso — "queda considerável" em relação a quê?
+
+Essa é a decisão que faz a diferença entre um aviso útil e um aviso que a pessoa
+desliga na segunda semana.
+
+**A queda de ontem para hoje conta — mas sozinha ela mente.** O caso que quebra é um
+só, e é justamente o que a nossa própria medição diz ser a norma nessa plataforma:
+
+```
+preço normal há um mês ........ R$100
+ontem ......................... R$130
+hoje .......................... R$105
+```
+
+Pela queda diária isso é "−19%, corre que vai acabar". Na prática a pessoa compraria por
+R$105 um livro que custa R$100 na maior parte do tempo — **ela sai pior por causa do
+nosso e-mail**. E não é hipótese: [PLANO-PRECO-FRESCO.md](PLANO-PRECO-FRESCO.md) registra
+que **98,8% dos produtos estão com `special`** (promoção). Preço de referência inflado é
+o estado normal dessas lojas, não a exceção.
+
+O custo disso não é incomodar. É que depois de dois ou três avisos que não eram
+oportunidade, a pessoa para de abrir o e-mail — e aí o aviso que era de verdade também
+passa batido. Um vigia de preço só vale o que vale a confiança no aviso dele.
+
+**A correção não é descartar a queda diária, é pôr um piso nela.** Dispara se
+**qualquer** uma das duas:
+
+| | Condição | Pega o quê |
+|---|---|---|
+| (a) | `hoje <= menor_30d × 0,85` | A queda **acumulada**: 100 → 97 → 94 → 91 → 88 → 85 ao longo da semana. Nenhum dia caiu 15%, mas hoje é o melhor preço do mês. |
+| (b) | `hoje <= ontem × 0,85` **e** `hoje <= menor_30d` | A queda **de ontem para hoje** que você pediu, com um guarda-corpo: só avisa se hoje também não estiver mais caro que o melhor preço do mês. |
+
+A segunda linha é a sua regra. O `e hoje <= menor_30d` é a única coisa que acrescentei, e
+ele é exatamente o filtro do exemplo de cima: R$105 não passa por R$100. Repare que (b)
+ainda pega um caso que a regra do menor-30d sozinha perdia — spike de R$200 e volta para
+R$90 com o normal em R$100: é novo piso e caiu forte, avisa.
+
+Os 15% são o padrão, ajustável pela pessoa, e valem para os dois lados da regra.
+
+A série histórica já existe — `queries` guarda `search_isbn`, `price` e `queried_at` de
+toda consulta. Nenhuma tabela nova:
+
+```sql
+SELECT MIN(price) FROM queries
+WHERE search_isbn = @isbn AND success AND queried_at > now() - interval '30 days';
+```
+
+Para a regra de preço-alvo é direto: `preço_hoje <= alvo`.
+
+> **Nos primeiros dias a discussão é acadêmica.** Livro recém-adicionado tem histórico de
+> um ponto só, então `menor_30d` é o preço de referência da adição e as duas regras dão a
+> mesma resposta. O guarda-corpo só começa a filtrar quando já existe histórico — ou
+> seja, ele não custa nada no lançamento e protege depois.
+
+### 3.3.1 A variação diária vai para a tela, sempre
+
+O ponto que você levantou vale independente do e-mail: a pessoa quer saber que mexeu.
+Então separa os dois canais —
+
+- **A tela é de graça.** Todo cartão mostra a variação desde ontem (`−R$12 desde ontem`)
+  e o menor preço do mês ao lado, sempre, tenha disparado aviso ou não. Quem abrir a
+  lista vê tudo que se moveu e decide sozinho.
+- **O e-mail é escasso.** Um por dia, disputando atenção e reputação de entrega. Esse
+  passa pelo filtro.
+
+Isso exige guardar `PreviousPrice` junto com `LastPrice` no `WatchedBook` (§5) — uma
+coluna, e some a necessidade de consultar `queries` só para desenhar a seta.
+
+**Antifadiga**, igualmente importante:
+
+- **Um e-mail por pessoa por dia**, com todos os livros que dispararam. Nunca um e-mail
+  por livro — é o que detona entrega e paciência ao mesmo tempo.
+- Depois de avisar sobre um livro, **silêncio de 7 dias** para ele, a menos que caia
+  mais 10% abaixo do preço já avisado.
+- Avisou de preço-alvo? O livro entra em pausa automática. O alvo foi atingido; o
+  trabalho acabou. A pessoa reativa se quiser.
+
+### 3.4 Limite por pessoa — e nada de crédito
+
+**Busca é de graça para todo mundo, e observar também.** Decidido em 2026-10-31.
+
+Para a observação isso já era o certo por outro motivo: o custo marginal de um livro que
+outra pessoa já observa é **zero** (§4.1), então cobrar por ele seria cobrar por trabalho
+que não acontece.
+
+O controle é **teto de 20 livros observados por pessoa**. Simples de explicar, e é
+exatamente a variável que dimensiona o trabalho noturno.
+
+> **Consequência que precisa de atenção:** os créditos estavam fazendo dois trabalhos ao
+> mesmo tempo — preço *e* freio de abuso. Uma busca custa 67 requisições às lojas, e o
+> `available_credits` era o que impedia alguém de ficar disparando busca em sequência.
+> Tirando a cobrança, **o único freio que sobra é o rate limiter** (token bucket de 20,
+> 10/min por usuário no `Program.cs`). Isso provavelmente basta, mas passa a ser a única
+> linha de defesa — e o `StoreRequestGate` vira ainda mais importante, porque é ele que
+> garante que abuso vire fila e não vire carga nas lojas.
+>
+> Recomendação: **não apagar o sistema de créditos — parar de bloquear com ele.**
+> `CreditService` continua registrando o consumo; só o `HasSufficientCreditsAsync` deixa
+> de barrar. O ledger segue útil como telemetria de quanto cada busca custa de verdade, e
+> o dia em que a conta apertar, o mecanismo já está no lugar.
+
+## 4. O motor: por que isso não escala por usuário
+
+> Pergunta sua: consultar todos os livros de todos os usuários não sobrecarrega?
+
+Sobrecarregaria se o laço fosse por usuário. **Não vai ser.**
+
+### 4.1 O laço é por ISBN distinto
+
+O custo não é "nº de usuários × nº de livros". É **nº de ISBNs distintos** — porque o
+cache já é por `(isbn, provider)` e o `W16Engine` pula a loja cujo resultado ainda está
+fresco (`GetCacheFromDatabase`, linha 170). Se 500 pessoas observam *O Hobbit*, ele é
+varrido **uma vez**; as outras 499 leem do cache.
+
+```sql
+SELECT DISTINCT isbn FROM watched_books WHERE active;
+```
+
+Isso é a feature inteira em uma linha. E tem um efeito colateral bom: a varredura
+noturna deixa o cache quente, então o livro observado também responde rápido para quem
+buscar ele de dia — o vigia e o `PopularBooksPrefetcher` fazem o mesmo trabalho.
+
+### 4.2 A conta, com os números medidos
+
+De [PLATAFORMA-CEDET.md](PLATAFORMA-CEDET.md): busca por ISBN custa **1,8s / 0,7 KB**,
+com vazão sustentada de **~21.500 req/h** no caminho leve. Uma varredura completa de um
+ISBN = 67 requisições, 166 KB, ~11s.
+
+Tomando **1 req/s** — menos de 20% do que o servidor deles aguenta, deixando o resto
+para gente de verdade:
+
+| Modo | Lojas por ISBN | ISBNs por hora | Em 5h (03h→08h) |
+|---|---|---|---|
+| Varredura completa | 67 | ~54 | **~270 ISBNs** |
+| Só as lojas que têm o livro | ~10 | ~360 | **~1.800 ISBNs** |
+
+O modo enxuto é o que torna isso confortável: **depois da primeira varredura sabemos
+quais lojas devolveram aquele livro**. Nas seguintes, consultar só essas — e uma
+varredura completa semanal por livro para pegar loja que passou a ter estoque.
+
+Com teto de 20 livros por pessoa e muita repetição entre pessoas, ~1.800 ISBNs/noite
+cobre uma base na casa dos milhares de usuários sem nenhuma mudança de arquitetura.
+
+### 4.3 Separar a varredura do aviso
+
+Você pediu "todo dia às 9h". Proponho desmembrar, e a razão é concreta:
+
+- **Varrer às 9h em ponto** significa 67 × N requisições de uma vez no mesmo instante em
+  que as pessoas começam a usar o site — e o e-mail só sairia ao meio-dia, quando a
+  varredura terminasse.
+- **Varrer das 03h às 08h, espalhado; mandar o e-mail às 09h.** A pessoa continua
+  recebendo às 9h em ponto, que é o que ela percebe. As lojas levam o trabalho diluído
+  de madrugada, quando estão ociosas.
+
+Dois workers, não um:
+
+```
+WatchSweepWorker    03h00  varre os ISBNs distintos, espaçado, dentro do StoreRequestGate
+WatchNotifyWorker   09h00  avalia as regras, monta um e-mail por pessoa, envia
+```
+
+### 4.4 Como o worker se comporta
+
+Molde é o `PopularBooksPrefetcher` — `BackgroundService` registrado no
+`ServiceCollectionExtensions`, nada de Hangfire ou Quartz nesta escala.
+
+- **Orçamento próprio dentro do `StoreRequestGate`**, não ao lado dele. O vigia usa no
+  máximo ~5 das 20 vagas; busca de gente acordada sempre tem vaga. Concretamente: um
+  semáforo de 5 no worker, e cada requisição ainda passa pelo gate global.
+- **Espaçamento entre livros** (`DelayBetweenBooksSeconds`), igual ao prefetcher.
+- **Falha de um ISBN não derruba a rodada** — loga e segue.
+- **Trava entre instâncias**: `pg_try_advisory_lock(<id fixo>)` no início da rodada. Com
+  uma réplica é inócuo; no dia em que o compose subir duas, evita varredura dobrada.
+  São três linhas, e é o tipo de coisa que só se descobre que faltou em produção.
+- **Interruptor de desligar** em `appsettings`, como o `Prefetch:Enabled`.
+
+---
+
+## 5. Modelo de dados
+
+Duas tabelas novas, duas colunas novas, uma coluna a menos.
+
+```csharp
+public class WatchedBook
+{
+    public int Id { get; set; }
+    public int UserId { get; set; }
+    public string Isbn { get; set; }
+
+    // Congelados na adição: o cartão não depende da loja continuar no ar
+    public string Title { get; set; }
+    public string? Author { get; set; }
+    public string? ImageUrl { get; set; }
+
+    public WatchRule Rule { get; set; }         // TargetPrice | PercentDrop
+    public decimal? TargetPrice { get; set; }   // quando Rule = TargetPrice
+    public int DropPercent { get; set; } = 15;  // quando Rule = PercentDrop
+
+    public decimal? ReferencePrice { get; set; }   // menor preço na adição
+    public DateTime? ReferencePriceAt { get; set; }
+
+    public decimal? LastPrice { get; set; }        // última varredura
+    public decimal? PreviousPrice { get; set; }    // a anterior — a seta "desde ontem" na tela (§3.3.1)
+    public DateTime? LastCheckedAt { get; set; }
+    public decimal? LastNotifiedPrice { get; set; }
+    public DateTime? LastNotifiedAt { get; set; }  // base do silêncio de 7 dias
+
+    public bool Active { get; set; } = true;
+    public DateTime CreatedAt { get; set; }
+}
+```
+
+Índices: `(user_id, active)` para a tela, `(isbn)` para o `DISTINCT` do worker,
+único em `(user_id, isbn)` para não duplicar.
+
+`LoginCode` conforme §1.3, índice em `(email, created_at)`.
+
+Em `users`: `+ first_name varchar(100)`, `password_hash` passa a nullable, **`- cpf`**.
+
+**Histórico de preço não precisa de tabela.** A varredura cria `Transaction` + `Query`
+como qualquer busca, e a série fica em `queries` — é de lá que sai o menor-30-dias.
+
+---
+
+## 6. Endpoints
+
+```
+POST   /api/auth/code        { email }                      → 200 sempre, resposta idêntica
+POST   /api/auth/verify      { email, code }                → { token } ou { needsName, setupToken }
+POST   /api/auth/complete    { setupToken, firstName }      → { token }
+POST   /api/auth/refresh                                    → { token }        (cookie)
+POST   /api/auth/logout
+
+GET    /api/Watched                                         → lista da pessoa
+POST   /api/Watched          { items: [...] }               → adiciona em lote + dispara a busca
+PATCH  /api/Watched/{id}     { rule, targetPrice, active }
+DELETE /api/Watched/{id}
+
+GET    /api/User/me                                         → { firstName, email, ... }
+DELETE /api/User/me                                         → exclusão de conta (§2.4)
+```
+
+---
+
+## 7. Ordem de implementação
+
+Cada fatia é mergeável sozinha.
+
+1. ~~**`IEmailSender` + implementação** em `Sherlock.Infrastructure`, com a versão de
+   desenvolvimento que só loga.~~ **Feito** — ver §9.
+2. **SPF/DKIM/DMARC no domínio.** Em paralelo, porque depende de propagação de DNS e é
+   o maior risco do plano.
+3. **Login por código**: `LoginCode`, migration, endpoints, rate limit dedicado,
+   `login-page` em dois passos, `first_name`, drop do `cpf`, tirar e-mail dos logs.
+4. **Refresh token** sobre a tabela `tokens`.
+5. **`WatchedBook` + CRUD**, e o `watched-service.ts` sai do `localStorage` para HTTP.
+   A tela praticamente não muda.
+6. **Capa e metadados** no `resolve-isbn`, com o `queries.image_url` como primeira
+   parada.
+7. **`WatchSweepWorker`** (03h, modo enxuto, advisory lock, orçamento no gate).
+8. **`WatchNotifyWorker`** (09h, digest, antifadiga, descadastro).
+9. **`demoMode`**: busca segue aberta, login passa a ser exigido só em `/watched` e
+   `/profile`.
+
+Entre a 5 e a 7 a feature já é usável manualmente — dá para validar a tela antes de
+escrever uma linha de worker.
+
+---
+
+## 8. Decisões — fechadas
+
+### 8.1 Sessão: refresh token rotativo
+
+**Decidido: JWT de acesso de 30 min + refresh token opaco e rotativo na tabela `tokens`,
+em cookie `HttpOnly`.** Não o JWT de 30 dias.
+
+Dois fatos empurram para cá:
+
+- ~~A conta tem valor em dinheiro.~~ **Cai**: com a busca liberada para todos (§3.4),
+  não há saldo a roubar. Era metade do meu argumento e não vale mais — a decisão se
+  mantém pelos outros dois, não por este.
+- **O cookie sai de graça em produção.** O `environment.prod` aponta para `/api` — mesmo
+  nginx, mesma origem, cookie funciona sem nada. Em dev o CORS já tem
+  `AllowCredentials()` configurado no `Configurator`. A infraestrutura do caminho "certo"
+  já está montada; só falta usar.
+
+E o argumento que de fato decide: **sem senha, expirar sessão custa uma ida ao
+e-mail.** Com rotação, quem usa o site nunca é deslogado — a sessão se renova sozinha.
+Com JWT de 30 dias fixo, no dia 31 a pessoa cai no meio de uma busca e tem que abrir a
+caixa de entrada. Passwordless existe para tirar fricção; não faz sentido reintroduzi-la
+no outro lado.
+
+Isto também é o que faz "sair de todos os aparelhos" e a exclusão de conta (§2.4)
+funcionarem de verdade em vez de só sumirem da tela.
+
+### 8.2 Horário: varrer 03h→08h, avisar 09h — e tudo em UTC
+
+**Decidido: varredura das 03h às 08h, e-mail às 09h, horário de Brasília.**
+
+O detalhe que não pode passar: **o servidor roda em UTC e o commit `406c453
+("fix(ranking): marco de reset em UTC")` mostra que este repo já se queimou exatamente
+nisso.** Então a configuração guarda UTC, explicitamente:
+
+| Evento | Brasília | UTC (o que vai no `appsettings`) |
+|---|---|---|
+| Início da varredura | 03h00 | **06h00** |
+| Fim da janela | 08h00 | **11h00** |
+| Envio do digest | 09h00 | **12h00** |
+
+O Brasil não tem horário de verão desde 2019, então `America/Sao_Paulo` é −03:00 fixo e a
+conversão é constante — nada de `TimeZoneInfo` em tempo de execução, só o comentário
+explicando de onde veio o número.
+
+### 8.3 Frete: fica de fora — e o `CLAUDE.md` está errado
+
+**Decidido: a comparação é no preço do livro. Frete não entra.**
+
+A pergunta estava mal formulada da minha parte, porque eu assumi o que o `CLAUDE.md`
+afirma:
+
+> `Each has: Id, Name, Url, ProviderCategoryEnum, MinFreeShipping, BaseShippingCost, ...`
+
+**Nenhum desses dois campos existe.** `Provider` tem `Id`, `Url`,
+`ProviderCategoryEnum`, `Name`, `IsActive`, `SearchUrlTemplate` — e mais nada. O
+`includeShipping` do exemplo de request do `/api/Cart/optimize` também não é lido em
+lugar nenhum. Busca por `shipping` e `frete` em todo o `.cs` do repo: **zero
+ocorrências.**
+
+Ou seja, não era escolher entre duas bases de comparação: era construir um subsistema de
+frete do zero. E frete depende de CEP, o que significa raspar cotação por CEP por loja —
+uma varredura maior que a do preço, para um número que muda por pessoa.
+
+Fica para quando o frete existir no produto. Quando existir, o caso que obriga a
+revisitar é o do frete grátis por valor mínimo: livro cai de R$105 para R$95 e cruza para
+baixo o mínimo de R$100, o total sobe de R$105 para R$115 e o nosso "−10%" piora a vida
+da pessoa. É a mesma família do falso desconto do §3.3, e merece o mesmo guarda-corpo.
+
+> **Ação à parte:** corrigir o `CLAUDE.md`. Esses três pontos estão descrevendo código
+> que não existe, e é o arquivo que orienta quem chega no repo.
+
+### 8.4 Teto de 20 e intervalo diário: confirmados, sem ação
+
+**Decidido: 20 livros por pessoa, varredura diária, nada a fazer agora.**
+
+Fica registrado só o número que dimensiona isso, para quando fizer falta: a janela de 5h
+no modo enxuto comporta **~1.800 ISBNs distintos por noite**, o que com 20 livros por
+pessoa e **nenhuma** sobreposição dá **90 usuários**. Na prática a sobreposição é alta —
+o repo tem ranking de mais consultados e prefetcher construídos justamente porque a
+procura é concentrada em poucos títulos.
+
+Quando apertar, os botões em ordem, antes de mexer em arquitetura:
+
+| Lever | De → para | Capacidade |
+|---|---|---|
+| hoje | 5h, 1 req/s | ~1.800 ISBNs |
+| alargar a janela | 01h→08h (7h) | ~2.500 ISBNs |
+| subir o ritmo | 2 req/s (as lojas sustentam ~6) | ~5.000 ISBNs |
+
+A única coisa a implementar agora é o **log da rodada**: nº de ISBNs distintos, duração e
+quantos sobraram sem varrer. Enquanto o terceiro for zero, não há decisão a tomar — e
+quando deixar de ser, o aviso chega antes do problema.
+
+E o comportamento quando não couber: o worker **prioriza, não falha**. Varre primeiro os
+livros com preço-alvo próximo e os que se mexeram nos últimos 7 dias; o resto escorrega
+para o dia seguinte. Degradar para "verificado a cada 2 dias" é melhor que estourar a
+janela e entrar no horário de pico.
+
+### 8.5 E-mail: o código é nosso, a entrega não
+
+A pergunta foi "dá para fazermos nosso próprio sistema de envio?". A resposta depende de
+separar duas coisas que a pergunta junta:
+
+| | O que é | Dificuldade |
+|---|---|---|
+| **(a)** Escrever o código que envia | `IEmailSender` + MailKit + os templates | **Fácil. ~meio dia. E vamos fazer.** |
+| **(b)** Operar o servidor que *entrega* | MTA próprio (Postfix/Maddy) falando com Gmail e Outlook | **Nesta máquina, impossível. Em VPS, caro em tempo para sempre.** |
+
+A parte (a) nunca esteve em questão — é nossa de qualquer jeito. O problema é a (b).
+
+#### Por que "deixar rodando localmente" não entrega
+
+O [DEPLOY.md](DEPLOY.md) diz onde isso roda: **um PC de casa, atrás de Cloudflare
+Tunnel, sem abrir portas do roteador**. Três consequências, nessa ordem:
+
+1. **O túnel não ajuda em nada aqui.** Cloudflare Tunnel resolve tráfego *de entrada*
+   (HTTP). E-mail que sai é conexão *de saída* na porta 25 — o túnel não participa.
+2. **A porta 25 de saída é bloqueada pelo provedor.** Praticamente todo ISP residencial
+   brasileiro bloqueia, justamente para conter máquina infectada mandando spam. O
+   pacote não sai da rede.
+3. **IP residencial está na Spamhaus PBL — por desenho.** A PBL não é lista de punição:
+   é a faixa que o *próprio ISP* declara como "daqui não sai e-mail legítimo". Gmail,
+   Outlook e Yahoo **recusam na conexão**. Não é cair no spam; é não ser aceito.
+
+Ou seja, não é "difícil": nessa topologia **não funciona**, e nenhuma quantidade de
+código resolve, porque o obstáculo não é código.
+
+#### E numa VPS, com IP próprio?
+
+Aí passa a ser possível, e vira trabalho permanente: PTR/rDNS batendo com o HELO,
+SPF+DKIM+DMARC (que precisaríamos de qualquer forma), **tratamento de bounce e lista de
+supressão** (sem isso você insiste em endereço morto e afunda a própria reputação), e
+monitoramento de blacklist — IP novo não tem reputação, e o Outlook em particular
+costuma descartar silenciosamente mensagem de IP sem histórico por semanas.
+
+Estimativa honesta: **2 a 5 dias para subir, e manutenção para sempre** — com entrega
+irregular nos primeiros meses, que é exatamente o período em que o produto não pode
+falhar.
+
+#### O argumento que fecha
+
+**O código de login é a porta de entrada.** Se ele não chega, ninguém usa o site — não é
+uma funcionalidade degradada, é o produto inteiro parado. Auto-hospedar significa pôr a
+mensagem mais crítica e menos tolerante a falha no canal menos confiável que temos. É o
+inverso de onde se quer correr risco.
+
+#### O que fazemos então
+
+```
+Sherlock.Business/Interfaces/IEmailSender.cs       ← nossa interface
+Sherlock.Infrastructure/Email/SmtpEmailSender.cs   ← MailKit, ~60 linhas, nossa
+Sherlock.Infrastructure/Email/Templates/           ← nossos templates
+```
+
+Um `SmtpEmailSender` falando SMTP puro. Quem está do outro lado é configuração:
+
+| Ambiente | Do outro lado | Observação |
+|---|---|---|
+| **dev** | **Mailpit** no `docker-compose.dev.yml` | ~10 linhas de YAML. Captura tudo, interface web em `:8025`, **nenhum e-mail sai da máquina**. É literalmente "nosso sistema rodando localmente" — e para desenvolver é melhor que qualquer provedor. |
+| **prod** | relay SMTP da Brevo | 4 variáveis de ambiente. |
+
+**Zero lock-in.** Trocar de provedor é mudar host, porta e credencial no `.env` — nenhuma
+linha de C# muda. Brevo hoje, SES quando passar de ~10k/mês, MTA próprio se um dia houver
+VPS e vontade. A decisão fica reversível porque a abstração é nossa; o que delegamos é só
+a reputação de IP, que é a única coisa que não se escreve.
+
+#### Uma ressalva sobre "um serviço separado que o ratodelivraria aciona"
+
+Mesmo que um dia o MTA seja nosso, **o remetente deve continuar dentro do processo da
+API**. Quebrar o envio num serviço à parte acrescenta um salto de rede, um esquema de
+autenticação entre os dois e um modo de falha novo — "o serviço de e-mail caiu, ninguém
+consegue entrar no site" — sem nada em troca. O que faz sentido isolar é a *fila* (tentar
+de novo quando o envio falha), e isso é uma tabela e um `BackgroundService`, não um
+serviço separado.
+
+#### Provedor: a 20 usuários, a conta muda
+
+Com **no máximo 20 usuários**, são ~20 e-mails por dia. O limite diário deixa de ser a
+restrição, e com isso **cai o motivo que eu tinha dado para preferir Brevo a Resend** —
+eu havia escolhido pelo teto de 100/dia do Resend, que a 20 usuários sobra cinco vezes.
+
+Nessa escala o mais rápido de pôr no ar hoje é **SMTP do Gmail com App Password**:
+
+| | Para funcionar hoje | Entrega |
+|---|---|---|
+| **Gmail + App Password** | Ativar 2FA na conta, gerar a senha de app. **~15 min, zero DNS.** | Ótima — é a infraestrutura do próprio Gmail. 500/dia. |
+| Brevo / Resend | Criar conta, verificar remetente, idealmente DKIM no domínio (espera de DNS). | Ótima, e com painel de entrega. |
+
+```
+Email__Host=smtp.gmail.com   Email__Port=587   Email__UseStartTls=true
+Email__Username=<sua conta>  Email__Password=<app password, 16 letras>
+```
+
+O que você abre mão com o Gmail: o remetente é o endereço `@gmail.com` (o Gmail reescreve
+o *From* se não for um alias verificado), não há painel de entrega, e não há alinhamento
+de DMARC com `ratodelivraria.com.br`. Para 20 pessoas que te conhecem, nada disso pesa.
+Quando pesar, é trocar quatro variáveis de ambiente — **nenhuma linha de C#** — e aí vale
+voltar para a separação por subdomínio abaixo.
+
+> O resto continua valendo para quando crescer: `auth.` para o código de login e `mail.`
+> para o aviso diário, com DKIM próprio em cada, porque a reputação queimada pelo aviso
+> recorrente não pode derrubar a entrega do código de login.
+
+---
+
+## 9. O que já está implementado
+
+A fatia 1 do §7 está pronta e no repo (2026-10-31).
+
+| Arquivo | O que é |
+|---|---|
+| `Sherlock.Business/Interfaces/IEmailSender.cs` | A interface + `EmailSendException` |
+| `Sherlock.Infrastructure/Email/EmailSettings.cs` | Configuração (seção `Email`) |
+| `Sherlock.Infrastructure/Email/SmtpEmailSender.cs` | MailKit, SMTP puro, 3 tentativas com espera de 1s e 3s |
+| `Sherlock.Infrastructure/Email/LogEmailSender.cs` | Padrão: escreve no log, não envia nada |
+| `Sherlock.Infrastructure/ServiceCollectionExtensions.cs` | `AddInfrastructure`, escolhe os dois pelo `Email:Enabled` |
+| `Sherlock.Tests/Infrastructure/` | `FakeSmtpServer` (SMTP em processo) + 5 testes |
+
+Mais: `Sherlock.Api` passou a referenciar `Sherlock.Infrastructure`, o `Configurator`
+chama `AddInfrastructure`, e o **Mailpit** entrou no `docker-compose.dev.yml`.
+
+**O padrão é não enviar nada.** `Email:Enabled` é `false`, então quem clonar o repo roda
+o `LogEmailSender` — a mensagem aparece no log da API (dá para pegar o código de login e
+entrar) e nenhuma conexão sai da máquina. O `LogEmailSender` avisa no startup, porque em
+produção esse log significa que ninguém consegue entrar.
+
+### Verificar
+
+```bash
+dotnet test Sherlock.Tests/Sherlock.Tests.csproj --filter "FullyQualifiedName~Infrastructure"
+```
+
+Os testes sobem um servidor SMTP de mentira em processo e exercitam o MailKit de verdade
+— socket, EHLO/MAIL/RCPT/DATA, `multipart/alternative` e a repetição quando a conexão
+cai. Sem Docker e sem rede.
+
+Para ver o e-mail montado, com HTML:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d mailpit   # SMTP :1025, web :8025
+# e na API:  Email__Enabled=true
+```
+
+> **Não verifiquei o caminho do Mailpit nesta máquina** — o Docker aqui pede `sudo`. Os
+> arquivos de compose passam no `docker compose config`, e o protocolo é o mesmo que os
+> testes exercitam, mas a primeira subida do Mailpit continua por conferir.
