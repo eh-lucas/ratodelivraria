@@ -111,7 +111,7 @@ public class SmtpEmailSender : IEmailSender
         // Mailpit aceita conexão sem autenticação; provedor nenhum aceita.
         if (!string.IsNullOrWhiteSpace(_settings.Username))
         {
-            await client.AuthenticateAsync(_settings.Username, _settings.Password, cancellationToken);
+            await client.AuthenticateAsync(_settings.Username, _settings.Password ?? string.Empty, cancellationToken);
         }
 
         await client.SendAsync(message, cancellationToken);
