@@ -30,8 +30,11 @@
           <span class="progress-fill" [style.width.%]="searchPercent"></span>
         </div>
         <p class="loading-text">
-          <strong>{{ searchedCount }}</strong> {{ 'de' | t }} {{ searchTotal }}
-          {{ 'site|sites' | tp:searchTotal }} {{ 'consultados' | t }}
+          <!-- Conta sites distintos, nao consultas: num carrinho de N livros
+               sao N consultas por site, e o numero de lojas e que interessa. -->
+          {{ 'O rato está garimpando os melhores preços em' | t }}
+          <strong>{{ totalQueried }}</strong>
+          {{ 'site diferente|sites diferentes' | tp:totalQueried }}
           @if (searchedCount === 0) {
             <span class="loading-hint">{{ 'as primeiras respostas levam alguns segundos' | t }}</span>
           }
@@ -39,7 +42,9 @@
       } @else {
         <div class="loading-bar"><span></span></div>
         <p class="loading-text">
-          {{ 'Consultando' | t }} {{ totalQueried }} {{ 'site|sites' | tp:totalQueried }} {{ 'em paralelo. Isso leva alguns segundos.' | t }}
+          {{ 'O rato está garimpando os melhores preços em' | t }}
+          <strong>{{ totalQueried }}</strong>
+          {{ 'site diferente|sites diferentes' | tp:totalQueried }}
         </p>
       }
       <!-- O que já chegou, enquanto o resto responde. A busca inteira continua
@@ -56,7 +61,7 @@
               <strong class="live-price">{{ formatPrice(partialBestPrice!) }}</strong>
               <span class="live-count">
                 {{ partialOffers.length }} {{ 'oferta|ofertas' | tp:partialOffers.length }} {{ 'de' | t }}
-                {{ searchedCount }} {{ 'site|sites' | tp:searchedCount }}
+                {{ partialProviderCount }} {{ 'site|sites' | tp:partialProviderCount }}
               </span>
             </div>
           </div>
