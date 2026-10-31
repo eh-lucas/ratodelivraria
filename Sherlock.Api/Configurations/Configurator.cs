@@ -69,6 +69,11 @@ public class Configurator
     {
         builder.Services.AddScoped<TokenService>();
 
+        builder.Services.Configure<GoogleAuthSettings>(
+            builder.Configuration.GetSection(GoogleAuthSettings.SectionName));
+        builder.Services.AddScoped<UsernameService>();
+        builder.Services.AddScoped<GoogleLoginService>();
+
         builder.Services
             .AddData(builder.Configuration)
             .AddBusiness(builder.Configuration)

@@ -8,6 +8,8 @@ using Sherlock.Data.Context;
 using Sherlock.Domain.Entities;
 using Sherlock.Api.Controllers;
 using Sherlock.Api.DTOs;
+using Microsoft.Extensions.Options;
+using Sherlock.Api.Configurations;
 using Sherlock.Api.Services;
 
 namespace Sherlock.Tests.API;
@@ -43,7 +45,18 @@ public class AuthControllerTests : IDisposable
         _tokenService = new TokenService(_configuration);
         _loggerMock = new Mock<ILogger<AuthController>>();
 
-        _controller = new AuthController(_context, _tokenService, _loggerMock.Object, _configuration);
+        var usernames = new UsernameService(_context);
+
+        // Sem ClientId o GoogleLoginService fica desligado e recusa qualquer
+        // credential — é o que estas provas querem: elas exercitam e-mail e senha.
+        var googleLogin = new GoogleLoginService(
+            _context,
+            Options.Create(new GoogleAuthSettings()),
+            usernames,
+            new Mock<ILogger<GoogleLoginService>>().Object);
+
+        _controller = new AuthController(
+            _context, _tokenService, googleLogin, usernames, _loggerMock.Object, _configuration);
     }
 
     public void Dispose()

@@ -271,7 +271,7 @@ namespace Sherlock.Data.Migrations
                         {
                             Id = 1,
                             BonusCredits = 0,
-                            CreatedAt = new DateTime(2026, 8, 18, 19, 9, 24, 302, DateTimeKind.Utc).AddTicks(1735),
+                            CreatedAt = new DateTime(2026, 10, 31, 20, 37, 28, 450, DateTimeKind.Utc).AddTicks(2682),
                             Credits = 50,
                             Description = "Ideal para testar o serviço",
                             DisplayOrder = 1,
@@ -284,7 +284,7 @@ namespace Sherlock.Data.Migrations
                         {
                             Id = 2,
                             BonusCredits = 10,
-                            CreatedAt = new DateTime(2026, 8, 18, 19, 9, 24, 302, DateTimeKind.Utc).AddTicks(3431),
+                            CreatedAt = new DateTime(2026, 10, 31, 20, 37, 28, 450, DateTimeKind.Utc).AddTicks(6154),
                             Credits = 100,
                             Description = "Para uso casual",
                             DisplayOrder = 2,
@@ -297,7 +297,7 @@ namespace Sherlock.Data.Migrations
                         {
                             Id = 3,
                             BonusCredits = 50,
-                            CreatedAt = new DateTime(2026, 8, 18, 19, 9, 24, 302, DateTimeKind.Utc).AddTicks(3450),
+                            CreatedAt = new DateTime(2026, 10, 31, 20, 37, 28, 450, DateTimeKind.Utc).AddTicks(6161),
                             Credits = 300,
                             Description = "Melhor custo-benefício",
                             DisplayOrder = 3,
@@ -310,7 +310,7 @@ namespace Sherlock.Data.Migrations
                         {
                             Id = 4,
                             BonusCredits = 200,
-                            CreatedAt = new DateTime(2026, 8, 18, 19, 9, 24, 302, DateTimeKind.Utc).AddTicks(3465),
+                            CreatedAt = new DateTime(2026, 10, 31, 20, 37, 28, 450, DateTimeKind.Utc).AddTicks(6166),
                             Credits = 1000,
                             Description = "Para usuários frequentes",
                             DisplayOrder = 4,
@@ -1372,10 +1372,6 @@ namespace Sherlock.Data.Migrations
                         .HasDefaultValue(100)
                         .HasColumnName("available_credits");
 
-                    b.Property<long>("Cpf")
-                        .HasColumnType("bigint")
-                        .HasColumnName("cpf");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -1390,8 +1386,17 @@ namespace Sherlock.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("email");
 
+                    b.Property<string>("FirstName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("first_name");
+
+                    b.Property<string>("GoogleId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("google_id");
+
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
 
@@ -1418,6 +1423,14 @@ namespace Sherlock.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_users");
+
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_email");
+
+                    b.HasIndex("GoogleId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_google_id");
 
                     b.HasIndex("Username")
                         .IsUnique()

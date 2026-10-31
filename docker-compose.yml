@@ -61,6 +61,7 @@ services:
       # e 14,3s com 20, enquanto a latência por loja sobe de 2,5s para 3,7s. Acima
       # disso a curva achata e só pressiona o servidor — são 67 domínios em 2 IPs.
       Search__MaxDegreeOfParallelism: "20"
+      GoogleAuth__ClientId: ${GOOGLE_CLIENT_ID:-}
       # Envio de e-mail. Com EMAIL_ENABLED=false a API nao abre conexao nenhuma e
       # escreve as mensagens no proprio log — ver .env.example.
       Email__Enabled: ${EMAIL_ENABLED:-false}

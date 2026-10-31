@@ -142,10 +142,24 @@ public class SherlockDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Email).HasMaxLength(200);
+            entity.Property(e => e.FirstName).HasMaxLength(100);
+            entity.Property(e => e.Email).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.GoogleId).HasMaxLength(64);
             entity.Property(e => e.AvailableCredits).HasDefaultValue(100);
             entity.Property(e => e.TotalCreditsUsed).HasDefaultValue(0);
             entity.HasIndex(e => e.Username).IsUnique();
+
+            // O e-mail é a identidade: é por ele que as duas portas de entrada se
+            // encontram (§1.4 do docs/PLANO-OBSERVADOS.md). Até aqui a unicidade era
+            // só uma consulta no AuthController antes do insert — duas requisições
+            // simultâneas com o mesmo e-mail passavam as duas pela conferência e
+            // criavam duas contas. Entrar pelo Google torna isso mais provável, porque
+            // achar-ou-criar roda em todo login, não só no cadastro.
+            entity.HasIndex(e => e.Email).IsUnique();
+
+            // Nulo para conta criada por senha. No Postgres vários NULL convivem num
+            // índice único, então isto restringe só quem veio do Google.
+            entity.HasIndex(e => e.GoogleId).IsUnique();
 
             entity.HasMany(e => e.Transactions)
                 .WithOne(e => e.User)

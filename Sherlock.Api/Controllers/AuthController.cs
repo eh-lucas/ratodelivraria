@@ -14,17 +14,23 @@ public class AuthController : ControllerBase
 {
     private readonly SherlockDbContext _context;
     private readonly TokenService _tokenService;
+    private readonly GoogleLoginService _googleLogin;
+    private readonly UsernameService _usernames;
     private readonly ILogger<AuthController> _logger;
     private readonly IConfiguration _configuration;
 
     public AuthController(
         SherlockDbContext context,
         TokenService tokenService,
+        GoogleLoginService googleLogin,
+        UsernameService usernames,
         ILogger<AuthController> logger,
         IConfiguration configuration)
     {
         _context = context;
         _tokenService = tokenService;
+        _googleLogin = googleLogin;
+        _usernames = usernames;
         _logger = logger;
         _configuration = configuration;
     }
@@ -51,14 +57,17 @@ public class AuthController : ControllerBase
 
         if (existingUser != null)
         {
-            _logger.LogWarning("Tentativa de registro com email já existente: {Email}", normalizedEmail);
+            // Sem o e-mail: o Serilog grava em arquivo por 30 dias, e isso punha a
+            // base de e-mails em texto puro fora de qualquer controle do banco (§2.3).
+            _logger.LogWarning("Tentativa de registro com email já cadastrado");
             return Conflict(new { message = "Email já cadastrado." });
         }
 
         var user = new User
         {
             Email = normalizedEmail,
-            Username = request.Username ?? normalizedEmail.Split('@')[0],
+            Username = request.Username ?? await _usernames.GerarAPartirDoEmailAsync(normalizedEmail),
+            FirstName = request.FirstName ?? request.Username,
             Role = "User",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, workFactor: AppConstants.Auth.BcryptWorkFactor),
             Active = true,
@@ -79,7 +88,7 @@ public class AuthController : ControllerBase
             {
                 Token = token,
                 Email = user.Email,
-                Username = user.Username,
+                Username = user.FirstName ?? user.Username,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes)
             });
         }
@@ -113,8 +122,20 @@ public class AuthController : ControllerBase
 
         if (user == null)
         {
-            _logger.LogWarning("Tentativa de login com email não encontrado: {Email}", normalizedEmail);
+            _logger.LogWarning("Tentativa de login com email não cadastrado");
             return Unauthorized(new { message = "Email ou senha inválidos." });
+        }
+
+        // Conta nascida do Google nunca teve senha. Responder "senha incorreta" mandaria
+        // a pessoa tentar lembrar uma que não existe — ver §1.4 do PLANO-OBSERVADOS.
+        if (string.IsNullOrEmpty(user.PasswordHash))
+        {
+            _logger.LogInformation("Login por senha numa conta só-Google: {UserId}", user.Id);
+            return Unauthorized(new
+            {
+                message = "Esta conta entra pelo Google. Use o botão \"Entrar com Google\".",
+                useGoogle = true
+            });
         }
 
         var isValidPassword = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
@@ -137,6 +158,51 @@ public class AuthController : ControllerBase
             Username = user.Username,
             ExpiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes)
         });
+    }
+
+    /// <summary>
+    /// Entra com a conta Google. Recebe o ID token que o navegador obteve do Google.
+    /// </summary>
+    [HttpPost("google")]
+    [ProducesResponseType(typeof(LoginResponseDTO), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GoogleLogin(
+        [FromBody] GoogleLoginRequestDTO request,
+        CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var outcome = await _googleLogin.SignInAsync(request.Credential, cancellationToken);
+
+        if (!outcome.Success || outcome.User == null)
+            return Unauthorized(new { message = outcome.Error });
+
+        var user = outcome.User;
+        var token = _tokenService.GenerateToken(user.Id.ToString(), user.Role);
+        var expiryMinutes = int.Parse(
+            _configuration["JwtSettings:ExpiryInMinutes"] ?? AppConstants.Auth.DefaultTokenExpiryMinutes.ToString());
+
+        return Ok(new LoginResponseDTO
+        {
+            Token = token,
+            Email = user.Email,
+            Username = user.FirstName ?? user.Username,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes)
+        });
+    }
+
+    /// <summary>
+    /// Diz ao front se o botão do Google deve aparecer, e com qual client id.
+    /// O client id é público por desenho — ele vai no HTML da página.
+    /// </summary>
+    [HttpGet("google/config")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public IActionResult GoogleConfig()
+    {
+        var clientId = _configuration["GoogleAuth:ClientId"] ?? string.Empty;
+        return Ok(new { enabled = !string.IsNullOrWhiteSpace(clientId), clientId });
     }
 
     /// <summary>

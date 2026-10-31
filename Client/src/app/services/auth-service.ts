@@ -19,8 +19,13 @@ export class AuthService {
     return this.http.post(`${this.apiUrl}/auth/login`, { email, password });
   }
 
-  register(email: string, password: string, username?: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/auth/register`, { email, password, username });
+  register(email: string, password: string, username?: string, firstName?: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/auth/register`, { email, password, username, firstName });
+  }
+
+  /** Troca o ID token do Google pelo nosso JWT. Quem valida o token é o backend. */
+  loginWithGoogle(credential: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/auth/google`, { credential });
   }
 
   logout(): void {
