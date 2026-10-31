@@ -31,16 +31,29 @@ public record PartialOffer(
 public class SearchProgress
 {
     private int _completed;
+    private int _total;
     private readonly System.Collections.Concurrent.ConcurrentBag<PartialOffer> _offers = new();
 
-    public int Total { get; private set; }
+    public int Total => Volatile.Read(ref _total);
     public int Completed => Volatile.Read(ref _completed);
     public bool Done { get; private set; }
     public string? Error { get; private set; }
     public object? Result { get; private set; }
     public DateTime StartedAt { get; } = DateTime.UtcNow;
 
-    public void SetTotal(int total) => Total = total;
+    /// <summary>
+    /// Soma as lojas de mais uma execucao ao total esperado.
+    ///
+    /// E somatorio, e nao atribuicao, porque um carrinho de N livros roda o
+    /// motor N vezes dentro do mesmo escopo de progresso. Atribuindo, cada
+    /// livro reescrevia o total de volta para o numero de lojas enquanto o
+    /// contador seguia somando as consultas de todos — a tela mostrava
+    /// "136 de 68" com dois livros, e a barra batia 100% no primeiro deles.
+    ///
+    /// Cada execucao registra o seu total antes de disparar qualquer consulta,
+    /// entao o denominador nunca fica atras do numerador.
+    /// </summary>
+    public void AddToTotal(int count) => Interlocked.Add(ref _total, count);
 
     public void Increment() => Interlocked.Increment(ref _completed);
 
