@@ -1,36 +1,25 @@
-// Duas colunas: ranking à esquerda, painel de consulta no meio. As duas
-// colunas juntas somam ~1020px e ainda dividem a tela com a sidebar do app, por
-// isso a quebra para coluna única acontece cedo, em 1100px.
+// Três colunas: o trilho à esquerda, a consulta no meio e um espelho vazio à
+// direita. Com duas colunas o que o grid centralizava era o *par*, e a consulta
+// nascia (300px + gap) / 2 = 174px à direita do centro real.
+//
+// As laterais são 1fr, e não 300px fixos, de propósito: assim a coluna do meio
+// fica no centro em qualquer largura e é o trilho que encolhe quando a janela
+// aperta, em vez da consulta. O teto dele é o max-width na seção lá embaixo.
 .search-wrap {
   display: grid;
-  grid-template-columns: minmax(0, 300px) minmax(0, 680px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 680px) minmax(0, 1fr);
   gap: var(--space-8);
-  justify-content: center;
   align-items: start;
   padding: var(--space-8) var(--space-5) var(--space-10);
 }
 
+// Coluna explícita, não auto-placement: enquanto o ranking não chega o <aside>
+// não existe, e a consulta caía sozinha na coluna 1 — nascia estreita e pulava
+// para o meio quando o GET respondia, ~1s depois.
 .search {
+  grid-column: 2;
   max-width: 680px;
   min-width: 0;
-}
-
-// Um @media só por condição: dois blocos com a mesma media query neste arquivo
-// derrubam o compilador (segfault, não erro de sintaxe).
-@media (max-width: 1100px) {
-  .search-wrap {
-    grid-template-columns: minmax(0, 680px);
-    justify-content: center;
-  }
-
-  // Numa coluna só, quem manda é a busca: o ranking desce para depois dela.
-  .search { order: 1; }
-
-  .rank-rail {
-    order: 2;
-    position: static;
-    margin-top: var(--space-6);
-  }
 }
 
 .sr-only {
@@ -473,6 +462,11 @@
 // assim que a pessoa adicionasse alguns livros.
 
 .rank-rail {
+  grid-column: 1;
+  // Encostado na consulta, não solto na borda da tela.
+  justify-self: end;
+  width: 100%;
+  max-width: 300px;
   position: sticky;
   top: var(--space-5);
   padding: var(--space-4);
@@ -554,4 +548,37 @@
 .popular-price {
   color: var(--accent-strong);
   font-weight: 500;
+}
+
+// Coluna única. Este bloco mora no fim do arquivo de propósito: as regras-base
+// de .rank-rail têm a mesma especificidade que as daqui, então lá em cima o
+// `position: sticky` da base vencia o `position: static` daqui e o reset nunca
+// chegava a valer.
+//
+// Um @media só por condição: dois blocos com a mesma media query neste arquivo
+// derrubam o compilador (segfault, não erro de sintaxe).
+//
+// 1400px e não 1100px porque a conta precisa descontar a sidebar do app (220px)
+// e o padding (48px): em 1100px as três colunas passavam na media query mas não
+// cabiam de fato. Neste limite o trilho ainda tem ~178px; abaixo disso, desce.
+@media (max-width: 1400px) {
+  .search-wrap {
+    grid-template-columns: minmax(0, 680px);
+    justify-content: center;
+  }
+
+  // Numa coluna só, quem manda é a busca: o ranking desce para depois dela.
+  .search {
+    grid-column: 1;
+    order: 1;
+  }
+
+  .rank-rail {
+    grid-column: 1;
+    justify-self: stretch;
+    max-width: none;
+    order: 2;
+    position: static;
+    margin-top: var(--space-6);
+  }
 }

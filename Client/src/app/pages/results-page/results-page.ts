@@ -510,6 +510,15 @@ export class ResultsPage implements OnInit {
     return this.providerUrls.length;
   }
 
+  /**
+   * Quantas lojas distintas já devolveram oferta. Não dá para usar
+   * searchedCount aqui: ele conta consultas, e num carrinho de N livros são N
+   * consultas por loja — com dois livros a tela dizia "de 136 sites".
+   */
+  get partialProviderCount(): number {
+    return new Set(this.partialOffers.map(o => o.providerId)).size;
+  }
+
   private get queries(): ProviderQueryDetail[] {
     return this.result?.providerQueries ?? [];
   }

@@ -131,7 +131,8 @@ public class W16Engine
         {
             // Prepara os providers a serem consultados por categoria
             // Quantas lojas o usuário está esperando — base da barra de progresso.
-            SearchProgressScope.Current?.SetTotal(requestor.SourcesToSearch.Count);
+            // Soma ao que já houver: num carrinho, cada livro passa por aqui.
+            SearchProgressScope.Current?.AddToTotal(requestor.SourcesToSearch.Count);
 
             var sourcesByCategory = GroupSourcesByCategory(requestor.SourcesToSearch);
 
