@@ -1,4 +1,4 @@
-# Plano: observar livros (login sem senha + vigia de preço)
+# Plano: observar livros (login + vigia de preço)
 
 > Escrito em 2026-10-31. Dimensionado em cima dos números já medidos em
 > [PLATAFORMA-CEDET.md](PLATAFORMA-CEDET.md) — nada aqui é estimativa nova.
@@ -21,133 +21,114 @@ Antes de desenhar qualquer coisa, o que o repo já entrega:
 
 ---
 
-## 1. Login sem senha
+## 1. Login: Google, com e-mail e senha para quem não tem
 
-### 1.1 Código de 6 dígitos, não link mágico
+> **Revisto em 2026-10-31.** A versão anterior desta seção defendia código de 6 dígitos
+> por e-mail e descartava o link mágico. **O código por e-mail saiu do plano** — não
+> porque os argumentos contra o link mágico estivessem errados, mas porque havia uma
+> terceira opção melhor que os dois, e ela resolve justamente o risco que a própria
+> seção apontava como o maior de todos.
 
-Recomendação: **código numérico de 6 dígitos**. O link mágico parece mais simples e na
-prática não é:
+### 1.1 Por que Google
 
-1. **O link abre no navegador errado.** No celular, o app de e-mail abre o link no
-   webview interno dele. A sessão nasce lá dentro e morre lá dentro — a pessoa volta
-   para o Chrome e continua deslogada. É a reclamação nº 1 de quem usa magic link.
-2. **Antivírus e filtro corporativo pré-abrem o link.** Outlook SafeLinks, Gmail,
-   Proofpoint: todos fazem GET nos links antes de entregar. Como o token é de uso
-   único, ele chega **já queimado**. Tem contorno (exigir POST na página de destino),
-   mas é complexidade que o código não tem.
-3. **O código funciona entre dispositivos.** Pediu no notebook, leu no celular, digitou
-   no notebook. O link não faz isso.
-4. **Menos superfície.** Sem token na URL, sem histórico do navegador, sem `Referer`
-   vazando, sem rota de redirect para tratar.
+O código por e-mail custava mais e entregava menos:
 
-O único preço é digitar 6 dígitos — resolvido com `inputmode="numeric"` e
-`autocomplete="one-time-code"`, que faz o iOS e o Android oferecerem o código lido do
-SMS/e-mail direto no teclado.
+| | Entrar com Google | Código por e-mail (descartado) |
+|---|---|---|
+| Backend | validar o ID token, achar ou criar o usuário | `LoginCode` + migration + 3 endpoints + hash + expiração + limite de tentativa + limite de envio |
+| Infraestrutura | um OAuth client no Google Cloud | provedor SMTP **e SPF/DKIM/DMARC**, com espera de DNS |
+| Risco de entrega | nenhum | **o código cair no spam** — era o risco nº 1 desta seção |
+| Primeiro nome | vem no token (`given_name`) | pedir numa tela extra |
+| Credencial guardada | nenhuma | o hash do código |
 
-> Se quiser os dois, o link pode ir **junto** no mesmo e-mail como atalho opcional, com
-> o código como caminho principal. Mas isso é a v2; o código sozinho resolve.
+O ponto que decide: o login por e-mail colocava a porta de entrada do site na dependência
+de entrega de e-mail, que é a coisa menos confiável de toda a arquitetura. Com o Google,
+a porta não depende disso. O remetente de e-mail continua existindo — ele é para o **aviso
+diário de queda de preço**, que é o ponto da feature de observados.
 
-### 1.2 O fluxo (cadastro e login são o mesmo fluxo)
+### 1.2 E-mail e senha fica, para quem não tem Google
+
+Google sozinho tranca para fora quem usa Outlook, iCloud ou e-mail do trabalho. Então os
+dois caminhos convivem na mesma tela, como na maioria dos sites:
 
 ```
-1. pessoa digita o e-mail           →  POST /api/auth/code
-2. sistema sempre responde "enviamos um código"   (sempre a mesma resposta)
-3. e-mail chega com 6 dígitos, validade 10 min
-4. pessoa digita o código           →  POST /api/auth/verify
-5. e-mail novo?  → responde { needsName: true } e um token temporário de cadastro
-                    pessoa informa o primeiro nome → POST /api/auth/complete
-   e-mail conhecido? → responde o JWT direto, entra
+┌─────────────────────────────┐
+│   [  Entrar com Google  ]   │   ← caminho principal
+│   ───────── ou ─────────    │
+│   E-mail                    │
+│   Senha                     │
+│   [       Entrar       ]    │
+│   Ainda não tem conta?      │
+└─────────────────────────────┘
 ```
 
-Três coisas que esse desenho resolve de graça:
+Consequência boa: **o login por senha que já existe não é jogado fora.** O
+`AuthController` com BCrypt, o `register`/`login` e a tela que já está na marca
+continuam valendo. O Google entra ao lado, não no lugar.
 
-- **Não existe enumeração de e-mail.** Como cadastrar e entrar são a mesma porta, a
-  resposta do passo 2 é idêntica para e-mail conhecido e desconhecido. Hoje o
-  `AuthController` devolve `409 Conflict` no registro e `401` no login — qualquer um
-  descobre quem tem conta no site.
-- **O nome é pedido depois do e-mail provado.** Nada de conta fantasma criada por
-  quem digitou o e-mail de outra pessoa e nunca confirmou.
-- **Uma tela a menos.** Some a `register-page`; sobra a `login-page` em dois passos.
+### 1.3 O fluxo do Google
 
-### 1.3 A entidade do código
-
-```csharp
-public class LoginCode
-{
-    public int Id { get; set; }
-    public string Email { get; set; }        // normalizado (lower/trim)
-    public string CodeHash { get; set; }     // BCrypt — é credencial, não se guarda em claro
-    public DateTime ExpiresAt { get; set; }  // CreatedAt + 10 min
-    public DateTime? ConsumedAt { get; set; }// uso único
-    public int Attempts { get; set; }        // invalida em 5 erros
-    public string? RequestIp { get; set; }   // para o limite por IP, descartado em 30 dias
-    public DateTime CreatedAt { get; set; }
-}
+```
+1. pessoa clica no botão            → Google Identity Services (script no front)
+2. escolhe a conta                  → o Google devolve um ID token (JWT assinado por ele)
+3. front manda o token               → POST /api/auth/google  { credential }
+4. backend valida a assinatura       → GoogleJsonWebSignature.ValidateAsync
+5. acha o usuário por e-mail, ou cria com given_name e email
+6. devolve o NOSSO JWT de sempre     → daqui para frente nada mais muda
 ```
 
-Regras, todas obrigatórias:
+O passo 4 não é opcional e não é formalidade: sem validar a assinatura, qualquer um
+monta um JSON com o e-mail de outra pessoa e entra como ela. A validação confere a
+assinatura do Google, a expiração **e o `aud`** — o ID token tem que ter sido emitido
+para o nosso client id, senão um token legítimo obtido em qualquer outro site serve para
+entrar aqui.
 
-- **Gerar com `RandomNumberGenerator`**, nunca `Random`. `Random` é previsível a partir
-  de poucas amostras — e qualquer um coleta amostras pedindo códigos para o próprio
-  e-mail.
-- **Guardar o hash.** Um vazamento do banco não pode entregar códigos vivos.
-- **Comparar em tempo constante** (o `BCrypt.Verify` já faz).
-- **Uso único + 5 tentativas.** 6 dígitos = 1 em 1.000.000 por palpite; sem limite de
-  tentativa, 10 minutos de força bruta quebram.
-- **Ao pedir código novo, invalidar os anteriores** daquele e-mail.
+### 1.4 Juntar as duas contas pelo e-mail
 
-### 1.4 Limite de envio — isto não é opcional
+Mesma pessoa, mesmo e-mail, dois caminhos. A regra: **o e-mail é a identidade**.
 
-O rate limiter global de hoje é 100 req/min por IP. Para um endpoint que **dispara
-e-mail** isso é frouxo demais: dá para usar o site como ferramenta de inundar a caixa de
-entrada de alguém, e cada mensagem dessas queima cota e reputação do nosso domínio.
+- Entrou com Google e já existe conta com aquele e-mail → é a mesma pessoa, entra nela.
+  Não criar uma segunda.
+- Entrou com Google e não existe → cria, com `password_hash` vazio e o `given_name`.
+- Conta criada pelo Google tentando entrar por senha → não há senha; a tela diz para
+  usar o botão do Google em vez de "senha incorreta", que mandaria a pessoa tentar
+  lembrar uma senha que nunca existiu.
 
-Política dedicada em `/api/auth/code`:
+Isto é seguro **porque o Google confirma o e-mail**. O ID token traz `email_verified`, e
+o login só prossegue se for verdadeiro — sem essa conferência, alguém com uma conta
+Google de e-mail não verificado assumiria a conta de outra pessoa.
 
-| Chave | Limite |
-|---|---|
-| por e-mail | 3 códigos por hora, 10 por dia |
-| por IP | 10 códigos por hora |
-| global | teto diário alinhado à cota do provedor |
+### 1.5 O que muda no `users`
 
-Entre o 1º e o 2º pedido do mesmo e-mail, impor 60s de espera (a UI mostra o contador
-no botão "reenviar").
+```
++ first_name   varchar(100)   -- do given_name, ou pedido no cadastro por senha
++ google_id    varchar(64)?   -- o 'sub' do token: estável mesmo se a pessoa trocar de e-mail
+  password_hash                -- passa a ser opcional (conta só-Google não tem)
+- cpf                          -- segue saindo: nunca é lido (§2.3)
+```
 
-### 1.5 Envio do e-mail
+`google_id` e não só o e-mail porque o `sub` do Google é o identificador que não muda;
+e-mail de conta Google pode mudar.
 
-Não existe nada de e-mail no projeto. O que precisa:
+### 1.6 O que precisa ser feito fora do código
 
-- `IEmailSender` em `Sherlock.Business/Interfaces/`, implementação em
-  **`Sherlock.Infrastructure`** (hoje vazio — é exatamente o caso de uso dele).
-- Provedor transacional. Para o volume inicial: **Resend** (3k/mês grátis, API HTTP
-  simples) ou **Brevo** (300/dia). SES é mais barato na escala mas pede sair do sandbox.
-- **SPF + DKIM + DMARC no domínio** (ver [DOMINIO-REGISTRO-BR.md](DOMINIO-REGISTRO-BR.md)).
-  Sem isso o código de login cai no spam e a feature morre na primeira tela — é o item
-  de maior risco de todo este plano, e é configuração de DNS, não código.
-- Em desenvolvimento: implementação que só escreve o código no log, sem sair requisição.
+No Google Cloud Console, uma vez: criar um projeto, configurar a tela de consentimento
+(externa, só os escopos `email`, `profile`, `openid`) e criar um **OAuth client ID** do
+tipo *Web application*, com as origens JavaScript autorizadas:
 
-### 1.6 A sessão: o JWT de 30 minutos não serve
+```
+http://localhost:4200          (desenvolvimento)
+https://<domínio de produção>
+```
 
-Com senha, expirar em 30 min é aceitável — a pessoa redigita a senha. Sem senha, expirar
-significa **pedir um e-mail novo a cada 30 minutos**. Insuportável.
+O client id é público (vai no front). **Não existe client secret neste fluxo** — o token
+é validado por assinatura, não por segredo compartilhado.
 
-Proposta: JWT de acesso continua curto (30 min) e entra um **refresh token** opaco,
-rotativo, guardado na tabela `tokens` — que já existe no domínio e está sem uso.
-Validade 60 dias, renovado a cada uso, revogável (é o que faz o "sair de todos os
-aparelhos" funcionar). O refresh vai em cookie `HttpOnly; Secure; SameSite=Lax`, não em
-`localStorage`.
+### 1.7 A sessão
 
-> Alternativa mais simples, se quiser cortar escopo: JWT único de 30 dias em
-> `localStorage`. Funciona, mas não dá para revogar — um token roubado vale 30 dias.
-> Com o que vamos guardar (nome e e-mail), é um risco defensável. Decisão sua (§8).
-
-### 1.7 O que acontece com o login atual
-
-`users.password_hash` vira opcional e deixa de ser preenchido. `POST /auth/register` e
-`POST /auth/login` saem do ar (ou ficam só para o usuário master do `DemoMode`).
-A migration adiciona `first_name` e **remove `cpf`** — ver §2.3.
-
----
+Vale o que o §8.1 decidiu, e por Google não muda: JWT de acesso curto e refresh token
+rotativo. Entrar de novo pelo Google é mais barato que por e-mail, mas ainda é tirar a
+pessoa do que ela estava fazendo.
 
 ## 2. Segurança dos dados
 
@@ -158,9 +139,19 @@ Exige — mas o cuidado não é onde normalmente se imagina.
 ### 2.1 O ativo perigoso é o login, não o banco
 
 Nome e e-mail, em si, são dado de baixa sensibilidade. O que é perigoso é que **esse
-e-mail é a chave da conta**: quem consegue um código válido vira a pessoa. Então o
-esforço de segurança vai todo para o §1.3 e §1.4 (hash do código, uso único, limite de
-tentativa, limite de envio), não para criptografar a coluna `email`.
+e-mail é a chave da conta**: quem consegue entrar como ele vira a pessoa. Então o esforço
+de segurança vai para a porta, não para criptografar a coluna `email`.
+
+Com os dois caminhos do §1, a porta tem duas fechaduras — e elas não custam o mesmo:
+
+| | Quem guarda a credencial | O que temos de fazer |
+|---|---|---|
+| **Google** | o Google | validar assinatura, `aud` e `email_verified` (§1.3, §1.4). Nada guardado aqui. |
+| **E-mail e senha** | nós | BCrypt com work factor, mínimo de 8 caracteres, e **limite de tentativa de login** |
+
+O limite de tentativa é o que falta hoje: o `POST /auth/login` só tem o rate limiter
+global por IP (100/min), que é folgado demais para força bruta distribuída em uma senha.
+Entra junto com o Google — travar por e-mail depois de N falhas, com espera crescente.
 
 ### 2.2 O que **não** fazer
 
@@ -456,9 +447,11 @@ public class WatchedBook
 Índices: `(user_id, active)` para a tela, `(isbn)` para o `DISTINCT` do worker,
 único em `(user_id, isbn)` para não duplicar.
 
-`LoginCode` conforme §1.3, índice em `(email, created_at)`.
+Não há tabela de credencial nova: o Google não guarda nada aqui e a senha continua
+no `users.password_hash` que já existe.
 
-Em `users`: `+ first_name varchar(100)`, `password_hash` passa a nullable, **`- cpf`**.
+Em `users`: `+ first_name varchar(100)`, `+ google_id varchar(64)` (nulo para quem entra
+por senha), `password_hash` passa a nullable (nulo para quem entra pelo Google), **`- cpf`**.
 
 **Histórico de preço não precisa de tabela.** A varredura cria `Transaction` + `Query`
 como qualquer busca, e a série fica em `queries` — é de lá que sai o menor-30-dias.
@@ -468,10 +461,10 @@ como qualquer busca, e a série fica em `queries` — é de lá que sai o menor-
 ## 6. Endpoints
 
 ```
-POST   /api/auth/code        { email }                      → 200 sempre, resposta idêntica
-POST   /api/auth/verify      { email, code }                → { token } ou { needsName, setupToken }
-POST   /api/auth/complete    { setupToken, firstName }      → { token }
-POST   /api/auth/refresh                                    → { token }        (cookie)
+POST   /api/auth/google      { credential }                 → { token }   ID token do Google
+POST   /api/auth/login       { email, password }            → { token }   continua existindo
+POST   /api/auth/register    { email, password, firstName } → { token }   continua existindo
+POST   /api/auth/refresh                                    → { token }   (cookie)
 POST   /api/auth/logout
 
 GET    /api/Watched                                         → lista da pessoa
@@ -491,10 +484,11 @@ Cada fatia é mergeável sozinha.
 
 1. ~~**`IEmailSender` + implementação** em `Sherlock.Infrastructure`, com a versão de
    desenvolvimento que só loga.~~ **Feito** — ver §9.
-2. **SPF/DKIM/DMARC no domínio.** Em paralelo, porque depende de propagação de DNS e é
-   o maior risco do plano.
-3. **Login por código**: `LoginCode`, migration, endpoints, rate limit dedicado,
-   `login-page` em dois passos, `first_name`, drop do `cpf`, tirar e-mail dos logs.
+2. **Entrar com Google**: OAuth client no Google Cloud, `POST /api/auth/google`,
+   validação do ID token, `first_name` e `google_id`, drop do `cpf`, botão na
+   `login-page` ao lado do formulário de senha, e tirar o e-mail dos logs.
+3. **SPF/DKIM/DMARC no domínio.** Deixou de ser o maior risco do plano quando o login
+   saiu do e-mail, mas o aviso diário de preço ainda depende disso.
 4. **Refresh token** sobre a tabela `tokens`.
 5. **`WatchedBook` + CRUD**, e o `watched-service.ts` sai do `localStorage` para HTTP.
    A tela praticamente não muda.
