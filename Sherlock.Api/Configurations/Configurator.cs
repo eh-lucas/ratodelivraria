@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using Sherlock.Business;
 using Sherlock.Data;
+using Sherlock.Infrastructure;
 using Sherlock.Api.Services;
 
 namespace Sherlock.Api.Configurations;
@@ -70,6 +71,7 @@ public class Configurator
 
         builder.Services
             .AddData(builder.Configuration)
-            .AddBusiness(builder.Configuration);
+            .AddBusiness(builder.Configuration)
+            .AddInfrastructure(builder.Configuration);
     }
 }

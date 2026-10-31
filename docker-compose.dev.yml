@@ -31,6 +31,18 @@ services:
     volumes:
       - redis_data_dev:/data
 
+  # Caixa de entrada falsa para desenvolvimento: aceita qualquer SMTP na 1025 e
+  # mostra o que chegou em http://localhost:8025. Nenhuma mensagem sai da maquina.
+  #   docker compose -f docker-compose.dev.yml up -d mailpit
+  # e na API: Email__Enabled=true (host/porta ja sao o padrao do appsettings.json)
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: sherlock-mailpit-dev
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # interface web
+    restart: unless-stopped
+
 volumes:
   postgres_data_dev:
   redis_data_dev:

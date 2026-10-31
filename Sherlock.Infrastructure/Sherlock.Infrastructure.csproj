@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="MailKit" Version="4.18.2" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Sherlock.Business\Sherlock.Business.csproj" />
     <ProjectReference Include="..\Sherlock.Data\Sherlock.Data.csproj" />
   </ItemGroup>
