@@ -109,17 +109,21 @@
           <tbody>
             @for (w of items; track w.id) {
               <tr [class.paused]="!w.active">
-                <td class="book">
-                  @if (w.imageUrl) {
-                    <img class="cover" [src]="w.imageUrl" alt="" loading="lazy" />
-                  } @else {
-                    <span class="cover cover-empty" aria-hidden="true">📘</span>
-                  }
-                  <span class="book-text">
-                    <span class="book-title">{{ w.title }}</span>
-                    @if (w.author) { <span class="book-author">{{ w.author }}</span> }
-                    <span class="book-isbn">{{ w.isbn }}</span>
-                  </span>
+                <td class="book-cell">
+                  <!-- O flex fica num div interno: display:flex direto no <td> tira
+                       a celula do layout de tabela e desalinha as colunas. -->
+                  <div class="book">
+                    @if (w.imageUrl) {
+                      <img class="cover" [src]="w.imageUrl" alt="" loading="lazy" />
+                    } @else {
+                      <span class="cover cover-empty" aria-hidden="true">📘</span>
+                    }
+                    <span class="book-text">
+                      <span class="book-title">{{ w.title }}</span>
+                      @if (w.author) { <span class="book-author">{{ w.author }}</span> }
+                      <span class="book-isbn">{{ w.isbn }}</span>
+                    </span>
+                  </div>
                 </td>
 
                 <td>{{ ruleLabel(w) }}</td>
