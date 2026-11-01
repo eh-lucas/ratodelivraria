@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Sherlock.Api.Constants;
 using Sherlock.Tests.Integration.Infrastructure;
 
 namespace Sherlock.Tests.Integration;
@@ -46,26 +47,51 @@ public class AcessoAbertoTests(SherlockApiFactory factory)
 
     // ---------- exige conta ----------
 
-    // O carrinho é a exceção da regra "comparar preço é aberto", e de propósito.
-    // Ele não é uma busca: é até 50 buscas em lote, cada uma batendo em todos os
-    // provedores. Quem compara um livro usa /api/BookSearch, que segue aberto; o
-    // front nem chama /api/Cart hoje. Deixar o lote aberto seria dar a qualquer
-    // visitante um multiplicador de carga sobre as livrarias que raspamos.
+    // O carrinho É aberto, e a premissa que fechou isto era falsa.
     //
-    // Este teste existia afirmando o contrário e nunca tinha rodado — a suíte de
-    // integração dependia de Docker, que faltava na máquina.
+    // A versão anterior deste teste exigia token, com o argumento de que o lote é
+    // um multiplicador de carga e de que "o front nem chama /api/Cart hoje". A
+    // segunda parte não era verdade: a tela de resultado busca por
+    // POST /cart/optimize-async, que é deste controller. Na prática o cadeado não
+    // limitava lote nenhum — desligava a busca para todo visitante sem conta, num
+    // site que promete "sem cadastro", e foi o que usuários relataram em
+    // 01/11/2026.
+    //
+    // A preocupação com carga continua válida, e agora mora onde resolve: o teto
+    // de MaxBooksPerOptimization, que faltava justamente no optimize-async.
     [Fact]
-    public async Task Carrinho_exige_token()
+    public async Task Carrinho_e_aberto_para_visitante()
     {
-        var response = await _client.PostAsJsonAsync("/api/Cart/optimize", new
+        var response = await _client.PostAsJsonAsync("/api/Cart/optimize-async", new
         {
-            books = Array.Empty<object>(),
+            books = new[] { new { isbn = "9788525406002", quantity = 1 } },
             strategy = 0,
             maxProviders = 0,
             includeShipping = false
         });
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Carrinho_aberto_ainda_tem_teto_de_lote()
+    {
+        // O que impede o visitante de virar multiplicador de carga sobre as
+        // livrarias. Sem este teto, abrir o endpoint seria trocar um problema
+        // por outro.
+        var demais = Enumerable.Range(0, AppConstants.Cart.MaxBooksPerOptimization + 1)
+            .Select(i => new { isbn = $"97885359{i:D5}", quantity = 1 })
+            .ToArray();
+
+        var response = await _client.PostAsJsonAsync("/api/Cart/optimize-async", new
+        {
+            books = demais,
+            strategy = 0,
+            maxProviders = 0,
+            includeShipping = false
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Theory]

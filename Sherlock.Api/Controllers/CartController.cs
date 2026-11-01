@@ -9,9 +9,22 @@ using System.Security.Claims;
 
 namespace Sherlock.Api.Controllers;
 
+/// <summary>
+/// Aberto, como o BookSearchController.
+///
+/// Esteve com [Authorize] entre 31/10 e 01/11/2026 para conter carga: o carrinho
+/// é um lote de buscas, cada uma batendo em todas as lojas. Só que a tela de
+/// resultado busca por <c>POST /cart/optimize-async</c> — então o cadeado não
+/// limitava o lote, ele desligava a busca inteira para quem não tem conta, num
+/// site que promete "sem cadastro". Visitantes relataram erro ao consultar.
+///
+/// A carga volta a ser contida onde o problema realmente estava: o
+/// <c>optimize-async</c> era o único endpoint sem o teto de
+/// <see cref="AppConstants.Cart.MaxBooksPerOptimization"/>, e agora tem.
+/// </summary>
 [Route("api/[controller]")]
 [ApiController]
-[Authorize]
+[AllowAnonymous]
 public class CartController : ControllerBase
 {
     private readonly ICartOptimizationService _cartService;
@@ -327,6 +340,14 @@ public class CartController : ControllerBase
         if (request.Books == null || !request.Books.Any())
         {
             return BadRequest(new { error = "A lista de livros não pode estar vazia." });
+        }
+
+        // O mesmo teto dos endpoints síncronos. Faltava só aqui — e é justamente
+        // este que a tela usa, então era o único lugar por onde um lote sem
+        // limite podia entrar.
+        if (request.Books.Count > AppConstants.Cart.MaxBooksPerOptimization)
+        {
+            return BadRequest(new { error = $"Máximo de {AppConstants.Cart.MaxBooksPerOptimization} livros por otimização." });
         }
 
         var userId = GetUserIdOrNull();
