@@ -19,7 +19,7 @@
 #   DIAS_RETENCAO=30 scripts/backup-db.sh
 #
 # Cron (diario as 3h):
-#   0 3 * * * /home/lucas/Desktop/Projects/Sherlock/scripts/backup-db.sh >> ~/backups/sherlock/backup.log 2>&1
+#   0 3 * * * /home/lucas/Desktop/Projects/ratodelivraria/scripts/backup-db.sh >> ~/backups/sherlock/backup.log 2>&1
 
 set -euo pipefail
 

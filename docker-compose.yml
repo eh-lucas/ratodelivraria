@@ -1,3 +1,7 @@
+# Nome do projeto fixo: sem isto o compose usa o nome da pasta, e renomear a
+# pasta criaria volumes novos e vazios (o banco de producao "sumiria").
+name: sherlock
+
 services:
   # PostgreSQL Database
   postgres:
