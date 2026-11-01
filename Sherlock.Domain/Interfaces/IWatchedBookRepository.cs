@@ -30,8 +30,36 @@ public interface IWatchedBookRepository : IRepository<WatchedBook>
     /// para a lista inteira — fazer uma por cartão seria 20 idas ao banco para
     /// desenhar uma tela.
     /// </summary>
+    /// <param name="ateOntem">
+    /// Corta o dia de hoje do conjunto.
+    ///
+    /// Para EXIBIR o "menor preço do mês" no cartão, hoje tem de entrar: se o preço
+    /// de hoje é o mais barato, é ele que a pessoa precisa ver.
+    ///
+    /// Para DECIDIR o aviso, não. A varredura das 03h grava os preços de hoje nesta
+    /// mesma tabela, e o aviso lê às 09h — então o mínimo já incluía o preço de
+    /// hoje e a regra comparava o preço consigo mesmo. Com isso `menor_30d ≤ hoje`
+    /// era sempre verdade, a porta da queda acumulada (§3.3a) nunca podia abrir, e
+    /// o guarda-corpo da porta (b) virava `hoje ≤ hoje`. Medido em 01/11/2026 num
+    /// livro real: hoje 64,95 e "menor dos 30 dias" 64,95, idênticos.
+    /// </param>
     Task<IReadOnlyDictionary<string, decimal>> GetLowestPricesAsync(
+        IEnumerable<string> isbns, int days, bool ateOntem = false,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Menor preço por dia de cada ISBN, para o gráfico do cartão. Uma consulta
+    /// para a lista inteira, pelo mesmo motivo do <see cref="GetLowestPricesAsync"/>.
+    ///
+    /// O menor do dia, e não a média: é o preço que a pessoa pagaria, e é o mesmo
+    /// número que a regra de aviso usa — dois critérios diferentes fariam o
+    /// gráfico contradizer o e-mail.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, IReadOnlyList<PricePoint>>> GetPriceHistoryAsync(
         IEnumerable<string> isbns, int days, CancellationToken cancellationToken = default);
 
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }
+
+/// <summary>Um ponto da série do gráfico: o dia e o menor preço daquele dia.</summary>
+public readonly record struct PricePoint(DateOnly Day, decimal Price);

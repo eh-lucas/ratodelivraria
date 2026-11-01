@@ -293,3 +293,10 @@
   font-size: var(--fs-sm);
   color: var(--accent-strong);
 }
+
+// Coluna do sparkline. Largura fixa para a linha nao esticar nem espremer
+// conforme o titulo do livro ao lado; o resto da tabela se acomoda.
+.spark-col {
+  width: 190px;
+  min-width: 150px;
+}

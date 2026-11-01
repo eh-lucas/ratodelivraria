@@ -100,6 +100,7 @@
               <th class="num">{{ 'Preço hoje' | t }}</th>
               <th class="num">{{ 'Desde ontem' | t }}</th>
               <th class="num">{{ 'Melhor em 30 dias' | t }}</th>
+              <th class="spark-col">{{ 'Histórico' | t }}</th>
               <th>{{ 'Última consulta' | t }}</th>
               <th>{{ 'Status' | t }}</th>
               <th class="actions">{{ 'Ações' | t }}</th>
@@ -147,6 +148,10 @@
                 </td>
 
                 <td class="num">{{ formatPrice(w.lowestPrice30d) }}</td>
+
+                <td class="spark-col">
+                  <app-price-chart [points]="serieDe(w.isbn)"/>
+                </td>
 
                 <td>{{ w.lastCheckedAt ? (w.lastCheckedAt | date:'dd/MM HH:mm') : ('pendente' | t) }}</td>
 

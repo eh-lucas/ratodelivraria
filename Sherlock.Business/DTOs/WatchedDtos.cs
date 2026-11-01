@@ -102,3 +102,17 @@ public class WatchedBookRejection
     public string Isbn { get; set; } = string.Empty;
     public string Reason { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// Série de preço de um livro, para o gráfico do cartão. Nomes curtos de
+/// propósito: são 30 pontos por livro × até 30 livros numa resposta só, e
+/// "price"/"day" por extenso triplicariam o JSON sem dizer nada a mais.
+/// </summary>
+public class PricePointDto
+{
+    /// <summary>Dia, em ISO (yyyy-MM-dd).</summary>
+    public string D { get; set; } = string.Empty;
+
+    /// <summary>Menor preço daquele dia.</summary>
+    public decimal P { get; set; }
+}

@@ -91,8 +91,12 @@ public class WatchNotifyWorker : BackgroundService
             return;
         }
 
+        // `ateOntem: true` — o mínimo tem de ser o histórico CONTRA o qual o preço
+        // de hoje é comparado. Sem isso a varredura das 03h entra no próprio
+        // mínimo e a regra compara o preço de hoje consigo mesmo.
         var menores = await repositorio.GetLowestPricesAsync(
-            observados.Select(o => o.Isbn), _settings.LowestPriceWindowDays, cancellationToken);
+            observados.Select(o => o.Isbn), _settings.LowestPriceWindowDays,
+            ateOntem: true, cancellationToken: cancellationToken);
 
         var avaliador = new WatchRuleEvaluator(_settings);
         var agora = DateTime.UtcNow;

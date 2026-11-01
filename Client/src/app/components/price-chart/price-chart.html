@@ -1,0 +1,34 @@
+@if (!temSerie()) {
+  <!-- Um ponto não é uma série. Dizer isso é melhor que desenhar uma linha reta
+       que a pessoa leria como "o preço não mudou". -->
+  <span class="spark-empty" [title]="'O gráfico aparece quando houver preço de mais de um dia.' | t">—</span>
+} @else {
+  <div class="spark">
+    <svg #svg [attr.viewBox]="'0 0 ' + W + ' ' + H" role="img"
+         [attr.aria-label]="('Variação de preço entre' | t) + ' ' + formatarPreco(menor()) + ' – ' + formatarPreco(maior())"
+         (mousemove)="aoMover($event, svg)" (mouseleave)="aoSair()">
+
+      <!-- Piso e teto da faixa: hairline sólida, um passo fora da superfície.
+           Duas linhas bastam num gráfico desta altura; mais vira ruído. -->
+      <line [attr.x1]="L" [attr.x2]="W - R" [attr.y1]="T" [attr.y2]="T" class="grid"/>
+      <line [attr.x1]="L" [attr.x2]="W - R" [attr.y1]="H - B" [attr.y2]="H - B" class="grid"/>
+
+      <path [attr.d]="caminho()" class="line" fill="none"/>
+
+      @if (ativo(); as a) {
+        <line [attr.x1]="a.x" [attr.x2]="a.x" [attr.y1]="T" [attr.y2]="H - B" class="crosshair"/>
+        <circle [attr.cx]="a.x" [attr.cy]="a.y" r="3.5" class="dot"/>
+      }
+
+      <!-- Marcador da ponta com anel na cor da superfície, para não sumir onde
+           cruza a linha. -->
+      @if (ultimo(); as u) {
+        <circle [attr.cx]="u.x" [attr.cy]="u.y" r="3" class="dot"/>
+      }
+    </svg>
+
+    @if (ativo(); as a) {
+      <div class="spark-tip" [style.left]="esquerdaDoTooltip(a)">{{ rotuloDoAtivo(a) }}</div>
+    }
+  </div>
+}

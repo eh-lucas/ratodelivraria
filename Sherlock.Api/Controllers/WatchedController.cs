@@ -37,6 +37,19 @@ public class WatchedController : ControllerBase
     }
 
     /// <summary>
+    /// Histórico de preço dos livros observados, por ISBN — a série do gráfico de
+    /// cada cartão. Uma chamada para a lista inteira: 30 requisições para desenhar
+    /// uma tela seria o mesmo erro que o `GetLowestPricesAsync` já evita.
+    /// </summary>
+    [HttpGet("history")]
+    [ProducesResponseType(typeof(IDictionary<string, IEnumerable<PricePointDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> History([FromQuery] int days = 30, CancellationToken cancellationToken = default)
+    {
+        var series = await _service.HistoryAsync(GetUserId(), days, cancellationToken);
+        return Ok(series);
+    }
+
+    /// <summary>
     /// Adiciona em lote. Responde 200 mesmo com recusas parciais: o que foi aceito
     /// vem em <c>items</c>, o que não foi vem em <c>rejected</c> com o motivo. Um
     /// 400 global faria a pessoa perder os cinco livros que estavam certos por

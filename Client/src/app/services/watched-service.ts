@@ -38,6 +38,14 @@ export interface WatchedBook {
   createdAt: string;
 }
 
+/** Um ponto da série do gráfico. Nomes curtos para o JSON não triplicar. */
+export interface PricePoint {
+  /** Dia em ISO (yyyy-MM-dd). */
+  d: string;
+  /** Menor preço daquele dia. */
+  p: number;
+}
+
 export interface WatchedBookInput {
   isbn: string;
   title?: string;
@@ -70,6 +78,14 @@ export class WatchedService {
   constructor(private http: HttpClient) {}
 
   /** Recarrega do servidor. A tela chama no ngOnInit. */
+  /**
+   * Histórico de preço de todos os livros da pessoa, por ISBN. Uma chamada para a
+   * lista inteira: um pedido por cartão seriam 30 requisições para desenhar a tela.
+   */
+  history(days = 30): Observable<Record<string, PricePoint[]>> {
+    return this.http.get<Record<string, PricePoint[]>>(`${this.apiUrl}/history?days=${days}`);
+  }
+
   load(): Observable<WatchedBook[]> {
     return this.http.get<WatchedBook[]>(this.apiUrl).pipe(
       tap(items => this.subject.next(items)),

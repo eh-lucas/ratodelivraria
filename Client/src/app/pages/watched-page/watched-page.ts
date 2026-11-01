@@ -1,9 +1,10 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subject, Subscription } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
-import { WatchedService, WatchedBook, WatchRule } from '../../services/watched-service';
+import { Subject, Subscription, timer } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, takeWhile } from 'rxjs/operators';
+import { WatchedService, WatchedBook, WatchRule, PricePoint } from '../../services/watched-service';
+import { PriceChartComponent } from '../../components/price-chart/price-chart';
 import { CatalogService, CatalogSuggestion } from '../../services/catalog-service';
 import { TranslatePipe } from '../../i18n/translate-pipe';
 import { AuthRequiredComponent } from '../../components/auth-required/auth-required';
@@ -12,7 +13,7 @@ import { AuthService } from '../../services/auth-service';
 @Component({
   selector: 'app-watched-page',
   standalone: true,
-  imports: [TranslatePipe, CommonModule, FormsModule, DatePipe, AuthRequiredComponent],
+  imports: [TranslatePipe, CommonModule, FormsModule, DatePipe, AuthRequiredComponent, PriceChartComponent],
   templateUrl: './watched-page.html',
   styleUrl: './watched-page.scss',
 })
@@ -27,6 +28,9 @@ export class WatchedPage implements OnInit, OnDestroy {
   readonly Rule = WatchRule;
 
   items: WatchedBook[] = [];
+
+  /** Série do gráfico por ISBN. Vem numa chamada só, junto com a lista. */
+  historico: Record<string, PricePoint[]> = {};
   loading = false;
   loadError = '';
 
@@ -84,6 +88,13 @@ export class WatchedPage implements OnInit, OnDestroy {
   private recarregar(): void {
     this.loading = true;
     this.loadError = '';
+    this.service.history().subscribe({
+      next: series => (this.historico = series),
+      // Gráfico é complemento: sem ele o cartão continua inteiro, então a falha
+      // não vira erro de tela.
+      error: () => (this.historico = {}),
+    });
+
     this.service.load().subscribe({
       next: () => (this.loading = false),
       error: () => {
@@ -211,6 +222,7 @@ export class WatchedPage implements OnInit, OnDestroy {
           return;
         }
         this.showForm = false;
+        this.aguardarVarredura(isbn);
       },
       error: () => {
         this.saving = false;
@@ -226,6 +238,42 @@ export class WatchedPage implements OnInit, OnDestroy {
 
   togglePause(item: WatchedBook): void {
     this.service.togglePause(item).subscribe();
+  }
+
+  /**
+   * Espera a primeira varredura chegar e então redesenha a linha.
+   *
+   * O POST responde antes de a varredura terminar — é de propósito, para a pessoa
+   * não ficar ~17s parada esperando 67 lojas. Mas a lista era recarregada no mesmo
+   * instante, ou seja, sempre antes dos dados: o livro aparecia sem capa e sem
+   * preço e ficava assim até alguém recarregar a página na mão.
+   *
+   * Consulta a cada 5s por até 1 minuto. Para assim que o preço aparece, e desiste
+   * em silêncio se não vier — a varredura pode ter falhado, e nesse caso a rodada
+   * da madrugada ainda atende. Um aviso de erro aqui seria sobre algo que a pessoa
+   * não pediu e não pode resolver.
+   */
+  private aguardarVarredura(isbn: string): void {
+    const ateSeis = 12;
+
+    timer(5000, 5000)
+      .pipe(takeWhile(tentativa => tentativa < ateSeis && !this.temDados(isbn)))
+      .subscribe(() => {
+        this.service.load().subscribe({ error: () => {} });
+        this.service.history().subscribe({
+          next: series => (this.historico = series),
+          error: () => {},
+        });
+      });
+  }
+
+  private temDados(isbn: string): boolean {
+    const livro = this.items.find(w => w.isbn === isbn);
+    return !!livro && livro.lastPrice != null;
+  }
+
+  serieDe(isbn: string): PricePoint[] {
+    return this.historico[isbn] ?? [];
   }
 
   ruleLabel(w: WatchedBook): string {

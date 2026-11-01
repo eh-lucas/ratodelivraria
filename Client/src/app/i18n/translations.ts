@@ -181,6 +181,11 @@ export const EN: Record<string, string> = {
   // Aviso da loja que ficou muda em algum livro do carrinho
   'pode sair mais barata': 'may be cheaper',
 
+  // Grafico de historico de preco ('Histórico' ja existe na navegacao)
+  'O gráfico aparece quando houver preço de mais de um dia.':
+    'The chart appears once there are prices from more than one day.',
+  'Variação de preço entre': 'Price variation between',
+
   // Observar o preco a partir da tela de resultado
   'Observar': 'Watch',
   'Observar preço': 'Watch price',

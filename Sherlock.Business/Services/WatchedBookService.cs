@@ -55,9 +55,33 @@ public class WatchedBookService : IWatchedBookService
         if (itens.Count == 0) return Array.Empty<WatchedBookDto>();
 
         var menores = await _repository.GetLowestPricesAsync(
-            itens.Select(i => i.Isbn), _settings.LowestPriceWindowDays, cancellationToken);
+            itens.Select(i => i.Isbn), _settings.LowestPriceWindowDays, cancellationToken: cancellationToken);
 
         return itens.Select(i => ParaDto(i, menores)).ToList();
+    }
+
+    public async Task<IReadOnlyDictionary<string, IReadOnlyList<PricePointDto>>> HistoryAsync(
+        int userId, int days, CancellationToken cancellationToken = default)
+    {
+        var meus = await _repository.GetByUserAsync(userId, cancellationToken);
+        if (meus.Count == 0) return new Dictionary<string, IReadOnlyList<PricePointDto>>();
+
+        // Janela limitada para a resposta não crescer sem teto, e porque o cartão
+        // mostra o mês — o mesmo recorte do "menor preço dos últimos 30 dias".
+        var janela = days is >= 7 and <= 180 ? days : _settings.LowestPriceWindowDays;
+
+        var series = await _repository.GetPriceHistoryAsync(
+            meus.Select(m => m.Isbn), janela, cancellationToken);
+
+        return series.ToDictionary(
+            par => par.Key,
+            par => (IReadOnlyList<PricePointDto>)par.Value
+                .Select(ponto => new PricePointDto
+                {
+                    D = ponto.Day.ToString("yyyy-MM-dd"),
+                    P = decimal.Round(ponto.Price, 2),
+                })
+                .ToList());
     }
 
     public async Task<WatchedBookBatchResult> AddAsync(
@@ -131,7 +155,7 @@ public class WatchedBookService : IWatchedBookService
         if (tocados.Count > 0)
         {
             var menores = await _repository.GetLowestPricesAsync(
-                tocados.Select(n => n.Isbn), _settings.LowestPriceWindowDays, cancellationToken);
+                tocados.Select(n => n.Isbn), _settings.LowestPriceWindowDays, cancellationToken: cancellationToken);
 
             // A referência é o menor preço conhecido na hora da adição. Faltando
             // histórico ela fica nula e a primeira varredura estabelece.
@@ -178,7 +202,7 @@ public class WatchedBookService : IWatchedBookService
         await _repository.SaveChangesAsync(cancellationToken);
 
         var menores = await _repository.GetLowestPricesAsync(
-            new[] { livro.Isbn }, _settings.LowestPriceWindowDays, cancellationToken);
+            new[] { livro.Isbn }, _settings.LowestPriceWindowDays, cancellationToken: cancellationToken);
 
         return ParaDto(livro, menores);
     }
