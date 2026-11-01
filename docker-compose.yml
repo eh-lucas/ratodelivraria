@@ -54,9 +54,6 @@ services:
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${APP_DB_USER};Password=${APP_DB_PASSWORD}"
       ConnectionStrings__SherlockDb: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${APP_DB_USER};Password=${APP_DB_PASSWORD}"
       JwtSettings__SecretKey: ${JWT_SECRET}
-      # Branch de demonstração: acesso aberto, toda requisição processada como o usuário master.
-      # NÃO deve ir para a main (produção mantém login por usuário).
-      DemoMode__Enabled: "true"
       # Medido em 2026-08-18 com a busca via JSON: 67 lojas em 17,0s com 10 por vez
       # e 14,3s com 20, enquanto a latência por loja sobe de 2,5s para 3,7s. Acima
       # disso a curva achata e só pressiona o servidor — são 67 domínios em 2 IPs.
