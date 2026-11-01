@@ -8,6 +8,7 @@ using Sherlock.Business.Core.Prefetch;
 using Sherlock.Business.Core.Progress;
 using Sherlock.Business.Core.Resilience;
 using Sherlock.Business.Core.Scrapers.Amazon;
+using Sherlock.Business.Core.Watch;
 using Sherlock.Business.Interfaces;
 using Sherlock.Business.Services;
 
@@ -77,6 +78,12 @@ public static class ServiceCollectionExtensions
 
         // Mantém os livros mais procurados quentes no cache
         services.AddHostedService<PopularBooksPrefetcher>();
+
+        // O vigia de preço: varre de madrugada, avisa de manhã. Os dois nascem
+        // desligados (Watch:SweepEnabled / Watch:NotifyEnabled) — ligar isso manda
+        // requisição para as lojas e e-mail para gente de verdade.
+        services.AddHostedService<WatchSweepWorker>();
+        services.AddHostedService<WatchNotifyWorker>();
 
         return services;
     }

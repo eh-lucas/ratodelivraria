@@ -64,6 +64,11 @@ services:
       GoogleAuth__ClientId: ${GOOGLE_CLIENT_ID:-}
       # Envio de e-mail. Com EMAIL_ENABLED=false a API nao abre conexao nenhuma e
       # escreve as mensagens no proprio log — ver .env.example.
+      # O vigia de preco. Desligado por padrao: ligar manda requisicao para as
+      # livrarias (Sweep) e e-mail para gente de verdade (Notify) -- ver
+      # docs/PLANO-OBSERVADOS.md §11.
+      Watch__SweepEnabled: ${WATCH_SWEEP_ENABLED:-false}
+      Watch__NotifyEnabled: ${WATCH_NOTIFY_ENABLED:-false}
       Email__Enabled: ${EMAIL_ENABLED:-false}
       Email__Host: ${EMAIL_HOST:-localhost}
       Email__Port: ${EMAIL_PORT:-1025}
