@@ -54,13 +54,26 @@ services:
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${APP_DB_USER};Password=${APP_DB_PASSWORD}"
       ConnectionStrings__SherlockDb: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${APP_DB_USER};Password=${APP_DB_PASSWORD}"
       JwtSettings__SecretKey: ${JWT_SECRET}
-      # Branch de demonstração: acesso aberto, toda requisição processada como o usuário master.
-      # NÃO deve ir para a main (produção mantém login por usuário).
-      DemoMode__Enabled: "true"
       # Medido em 2026-08-18 com a busca via JSON: 67 lojas em 17,0s com 10 por vez
       # e 14,3s com 20, enquanto a latência por loja sobe de 2,5s para 3,7s. Acima
       # disso a curva achata e só pressiona o servidor — são 67 domínios em 2 IPs.
       Search__MaxDegreeOfParallelism: "20"
+      GoogleAuth__ClientId: ${GOOGLE_CLIENT_ID:-}
+      # Envio de e-mail. Com EMAIL_ENABLED=false a API nao abre conexao nenhuma e
+      # escreve as mensagens no proprio log — ver .env.example.
+      # O vigia de preco. Desligado por padrao: ligar manda requisicao para as
+      # livrarias (Sweep) e e-mail para gente de verdade (Notify) -- ver
+      # docs/PLANO-OBSERVADOS.md §11.
+      Watch__SweepEnabled: ${WATCH_SWEEP_ENABLED:-false}
+      Watch__NotifyEnabled: ${WATCH_NOTIFY_ENABLED:-false}
+      Email__Enabled: ${EMAIL_ENABLED:-false}
+      Email__Host: ${EMAIL_HOST:-localhost}
+      Email__Port: ${EMAIL_PORT:-1025}
+      Email__UseStartTls: ${EMAIL_USE_STARTTLS:-false}
+      Email__Username: ${EMAIL_USERNAME:-}
+      Email__Password: ${EMAIL_PASSWORD:-}
+      Email__FromAddress: ${EMAIL_FROM_ADDRESS:-nao-responda@ratodelivraria.com.br}
+      Email__FromName: ${EMAIL_FROM_NAME:-ratodelivraria}
     ports:
       - "5177:8080"
     depends_on:

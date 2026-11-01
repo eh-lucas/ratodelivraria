@@ -21,6 +21,7 @@ public class SherlockDbContext : DbContext
     // Entidades de suporte
     public DbSet<TransactionResult> TransactionResults => Set<TransactionResult>();
     public DbSet<Token> Tokens => Set<Token>();
+    public DbSet<WatchedBook> WatchedBooks => Set<WatchedBook>();
     public DbSet<Scraper> Scrapers => Set<Scraper>();
 
     // Entidades de créditos
@@ -142,10 +143,24 @@ public class SherlockDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Email).HasMaxLength(200);
+            entity.Property(e => e.FirstName).HasMaxLength(100);
+            entity.Property(e => e.Email).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.GoogleId).HasMaxLength(64);
             entity.Property(e => e.AvailableCredits).HasDefaultValue(100);
             entity.Property(e => e.TotalCreditsUsed).HasDefaultValue(0);
             entity.HasIndex(e => e.Username).IsUnique();
+
+            // O e-mail é a identidade: é por ele que as duas portas de entrada se
+            // encontram (§1.4 do docs/PLANO-OBSERVADOS.md). Até aqui a unicidade era
+            // só uma consulta no AuthController antes do insert — duas requisições
+            // simultâneas com o mesmo e-mail passavam as duas pela conferência e
+            // criavam duas contas. Entrar pelo Google torna isso mais provável, porque
+            // achar-ou-criar roda em todo login, não só no cadastro.
+            entity.HasIndex(e => e.Email).IsUnique();
+
+            // Nulo para conta criada por senha. No Postgres vários NULL convivem num
+            // índice único, então isto restringe só quem veio do Google.
+            entity.HasIndex(e => e.GoogleId).IsUnique();
 
             entity.HasMany(e => e.Transactions)
                 .WithOne(e => e.User)
@@ -208,6 +223,63 @@ public class SherlockDbContext : DbContext
                 new TransactionResult { Id = 3, Name = "NoResults", Description = "Nenhum resultado encontrado", IsSuccess = false, IsBillable = false },
                 new TransactionResult { Id = 4, Name = "AllFailed", Description = "Todos os providers falharam", IsSuccess = false, IsBillable = false }
             );
+        });
+
+        // Token — refresh tokens (§8.1). A tabela existia desde o InitialCreate e
+        // nunca tinha sido usada; agora ela guarda a sessão longa.
+        modelBuilder.Entity<Token>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.ReplacedByHash).HasMaxLength(64);
+
+            entity.Ignore(e => e.Ativo);
+
+            // O refresh chega com o valor, não com o id: esta é a única busca que
+            // acontece no caminho quente, e ela precisa ser única — dois tokens
+            // com o mesmo hash seria colisão de sessão.
+            entity.HasIndex(e => e.TokenHash).IsUnique();
+
+            // "Sair de todos os aparelhos" e a limpeza do que expirou.
+            entity.HasIndex(e => new { e.UserId, e.RevokedAt });
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // WatchedBook — os livros que cada pessoa pediu para vigiar
+        modelBuilder.Entity<WatchedBook>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Isbn).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Author).HasMaxLength(300);
+            entity.Property(e => e.ImageUrl).HasMaxLength(1000);
+            entity.Property(e => e.LastProviderName).HasMaxLength(200);
+            entity.Property(e => e.LastProductUrl).HasMaxLength(1000);
+            entity.Property(e => e.DropPercent).HasDefaultValue(15);
+            entity.Property(e => e.Active).HasDefaultValue(true);
+
+            // A tela de uma pessoa
+            entity.HasIndex(e => new { e.UserId, e.Active });
+
+            // O `SELECT DISTINCT isbn ... WHERE active` do vigia noturno. É a
+            // consulta que define o custo da feature inteira (§4.1).
+            entity.HasIndex(e => e.Isbn);
+
+            // Pedir o mesmo livro duas vezes não cria duas linhas — a segunda
+            // chamada vira edição da regra. Sem isto, varrer um ISBN duplicado
+            // seria trabalho repetido para a mesma pessoa.
+            entity.HasIndex(e => new { e.UserId, e.Isbn }).IsUnique();
+
+            // Apagar a conta leva a lista junto: ela não significa nada sem o dono,
+            // e é o que a exclusão de conta da LGPD (§2.4) precisa que aconteça.
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

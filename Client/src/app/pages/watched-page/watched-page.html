@@ -1,11 +1,9 @@
 <section class="watched">
-  @if (!available) {
-    <div class="unavailable">
-      <img src="/assets/rato.png" alt="" class="unavailable-icon" aria-hidden="true" />
-      <h1 class="unavailable-title">{{ 'Seu rato ainda não tem a capacidade de observar livros.' | t }}</h1>
-      <p class="unavailable-text">{{ 'Aguarde a nova versão em desenvolvimento.' | t }}</p>
-      <a routerLink="/search" class="unavailable-action">{{ 'Pesquisar livros' | t }}</a>
-    </div>
+  @if (!isAuthenticated) {
+    <app-auth-required
+      title="Entre para observar livros"
+      text="A lista de observados é sua, e o aviso de queda de preço vai para o seu e-mail."
+    ></app-auth-required>
   } @else {
 
     <div class="page-header">
@@ -15,7 +13,7 @@
       }
     </div>
 
-    <p class="hint"> {{ 'Cadastre livros para que o sistema consulte periodicamente. Quando o preço atingir o alvo, você receberá um aviso por e-mail.' | t }} </p>
+    <p class="hint">{{ 'O rato confere o preço desses livros todo dia de madrugada. Quando valer a pena, ele te avisa por e-mail — um aviso por dia, com tudo que caiu.' | t }}</p>
 
     <!-- Formulário inline -->
     @if (showForm) {
@@ -25,41 +23,63 @@
             <label for="watched-isbn">ISBN</label>
             <input id="watched-isbn" type="text" [(ngModel)]="newIsbn" name="isbn" placeholder="ex: 9788535914849" autocomplete="off" />
           </div>
+
           <div class="field">
-            <label for="watched-target">{{ 'Preço-alvo (R$)' | t }}</label>
-            <input id="watched-target" type="number" min="0" step="0.01" [(ngModel)]="newTargetPrice" name="target" placeholder="0,00" />
-          </div>
-          <div class="field">
-            <label for="watched-freq">{{ 'Frequência' | t }}</label>
-            <select id="watched-freq" [(ngModel)]="newFrequency" name="freq">
-              @for (f of frequencies; track f.value) {
-                <option [value]="f.value">{{ f.label | t }}</option>
-              }
+            <label for="watched-rule">{{ 'Avisar quando' | t }}</label>
+            <select id="watched-rule" [(ngModel)]="newRule" name="rule">
+              <option [ngValue]="Rule.PercentDrop">{{ 'o preço cair bastante' | t }}</option>
+              <option [ngValue]="Rule.TargetPrice">{{ 'chegar a um preço que eu escolher' | t }}</option>
             </select>
           </div>
+
+          @if (newRule === Rule.TargetPrice) {
+            <div class="field">
+              <label for="watched-target">{{ 'Preço-alvo (R$)' | t }}</label>
+              <input id="watched-target" type="number" min="0" step="0.01" [(ngModel)]="newTargetPrice" name="target" placeholder="0,00" />
+            </div>
+          } @else {
+            <div class="field">
+              <label for="watched-drop">{{ 'Queda de (%)' | t }}</label>
+              <input id="watched-drop" type="number" min="1" max="90" step="1" [(ngModel)]="newDropPercent" name="drop" />
+            </div>
+          }
         </div>
+
+        @if (newRule === Rule.PercentDrop) {
+          <!-- Sem isto a regra parece "caiu X% desde ontem", que é justamente o que
+               ela não é: 98,8% dos produtos dessas lojas vivem em promoção, então
+               queda diária sozinha avisaria sobre preço que não é oportunidade. -->
+          <p class="rule-note">{{ 'O aviso só sai se o preço de hoje também for o melhor dos últimos 30 dias — assim você não compra caro por causa de uma promoção que subiu antes de cair.' | t }}</p>
+        }
 
         @if (formError) { <p class="form-error">{{ formError | t }}</p> }
 
         <div class="form-actions">
           <button type="button" class="btn-ghost" (click)="cancelForm()">{{ 'Cancelar' | t }}</button>
-          <button type="submit" class="btn-primary">{{ 'Adicionar' | t }}</button>
+          <button type="submit" class="btn-primary" [disabled]="saving">
+            {{ (saving ? 'Salvando…' : 'Adicionar') | t }}
+          </button>
         </div>
       </form>
     }
 
+    @if (loadError) { <p class="form-error">{{ loadError | t }}</p> }
+
     <!-- Lista -->
-    @if (items.length === 0 && !showForm) {
+    @if (loading && items.length === 0) {
+      <p class="placeholder-text">{{ 'Carregando…' | t }}</p>
+    } @else if (items.length === 0 && !showForm) {
       <p class="placeholder-text">{{ 'Nenhum livro observado ainda.' | t }}</p>
     } @else if (items.length > 0) {
       <div class="table-wrap">
         <table class="watched-table">
           <thead>
             <tr>
-              <th>ISBN</th>
-              <th class="num">{{ 'Preço alvo' | t }}</th>
-              <th>{{ 'Frequência' | t }}</th>
-              <th class="num">{{ 'Último preço' | t }}</th>
+              <th>{{ 'Livro' | t }}</th>
+              <th>{{ 'Avisar quando' | t }}</th>
+              <th class="num">{{ 'Preço hoje' | t }}</th>
+              <th class="num">{{ 'Desde ontem' | t }}</th>
+              <th class="num">{{ 'Melhor em 30 dias' | t }}</th>
               <th>{{ 'Última consulta' | t }}</th>
               <th>{{ 'Status' | t }}</th>
               <th class="actions">{{ 'Ações' | t }}</th>
@@ -67,35 +87,66 @@
           </thead>
           <tbody>
             @for (w of items; track w.id) {
-              <tr [class.paused]="w.paused">
-                <td class="isbn">{{ w.isbn }}</td>
-                <td class="num">{{ formatPrice(w.targetPrice) }}</td>
-                <td>{{ frequencyLabel(w.frequency) | t }}</td>
-                <td class="num">
-                  @if (w.lastPrice != null) {
-                    <span [class.below]="w.lastPrice <= w.targetPrice">{{ formatPrice(w.lastPrice) }}</span>
-                  } @else { — }
-                </td>
-                <td>{{ w.lastCheckedAt ? (w.lastCheckedAt | date:'dd/MM HH:mm') : 'pendente' }}</td>
-                <td>
-                  <span class="tag" [class.tag-active]="!w.paused" [class.tag-paused]="w.paused">
-                    {{ w.paused ? 'Pausado' : 'Ativo' }}
+              <tr [class.paused]="!w.active">
+                <td class="book">
+                  @if (w.imageUrl) {
+                    <img class="cover" [src]="w.imageUrl" alt="" loading="lazy" />
+                  } @else {
+                    <span class="cover cover-empty" aria-hidden="true">📘</span>
+                  }
+                  <span class="book-text">
+                    <span class="book-title">{{ w.title }}</span>
+                    @if (w.author) { <span class="book-author">{{ w.author }}</span> }
+                    <span class="book-isbn">{{ w.isbn }}</span>
                   </span>
                 </td>
+
+                <td>{{ ruleLabel(w) }}</td>
+
+                <td class="num">
+                  @if (w.lastProductUrl && w.lastPrice != null) {
+                    <a [href]="w.lastProductUrl" target="_blank" rel="noopener" [class.below]="isMelhorDoMes(w)">
+                      {{ formatPrice(w.lastPrice) }}
+                    </a>
+                    @if (w.lastProviderName) { <span class="provider">{{ w.lastProviderName }}</span> }
+                  } @else {
+                    <span [class.below]="isMelhorDoMes(w)">{{ formatPrice(w.lastPrice) }}</span>
+                  }
+                </td>
+
+                <td class="num">
+                  @if (delta(w) === null) {
+                    <span class="delta-none">—</span>
+                  } @else if (delta(w)! < 0) {
+                    <span class="delta-down">▼ {{ formatPrice(-delta(w)!) }}</span>
+                  } @else if (delta(w)! > 0) {
+                    <span class="delta-up">▲ {{ formatPrice(delta(w)!) }}</span>
+                  } @else {
+                    <span class="delta-none">{{ 'sem mudança' | t }}</span>
+                  }
+                </td>
+
+                <td class="num">{{ formatPrice(w.lowestPrice30d) }}</td>
+
+                <td>{{ w.lastCheckedAt ? (w.lastCheckedAt | date:'dd/MM HH:mm') : ('pendente' | t) }}</td>
+
+                <td>
+                  <span class="tag" [class.tag-active]="w.active" [class.tag-paused]="!w.active">
+                    {{ (w.active ? 'Ativo' : 'Pausado') | t }}
+                  </span>
+                </td>
+
                 <td class="actions">
-                  <button type="button" class="btn-icon" (click)="togglePause(w.id)" [title]="w.paused ? 'Retomar' : 'Pausar'">
-                    {{ w.paused ? '▶' : '⏸' }}
+                  <button type="button" class="btn-icon" (click)="togglePause(w)" [title]="(w.active ? 'Pausar' : 'Retomar') | t">
+                    {{ w.active ? '⏸' : '▶' }}
                   </button>
-                  <button type="button" class="btn-icon danger" (click)="remove(w.id)" [title]="'Remover' | t">×</button>
+                  <button type="button" class="btn-icon danger" (click)="remove(w)" [title]="'Remover' | t">×</button>
                 </td>
               </tr>
             }
           </tbody>
         </table>
       </div>
-
-      <p class="footer-note">
-        <strong>{{ 'Em construção:' | t }}</strong> {{ 'ainda estamos finalizando o agendador no servidor. Por enquanto os itens ficam salvos apenas no seu navegador.' | t }} </p>
     }
   }
 </section>

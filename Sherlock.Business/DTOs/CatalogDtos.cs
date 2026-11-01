@@ -18,4 +18,12 @@ public class ResolveIsbnResultDto
     public string? Isbn { get; set; }
     public string? Title { get; set; }
     public string? Error { get; set; }
+
+    // A página do produto já está aberta para achar o ISBN. Ler capa, autor e
+    // editora na mesma passada não custa requisição nenhuma — e é de onde sai a
+    // capa do cartão de observado quando o livro é novo para o banco
+    // (docs/PLANO-OBSERVADOS.md §3.2).
+    public string? Author { get; set; }
+    public string? Publisher { get; set; }
+    public string? ImageUrl { get; set; }
 }

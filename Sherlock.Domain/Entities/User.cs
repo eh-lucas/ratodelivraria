@@ -4,9 +4,30 @@ public class User
 {
     public int Id { get; set; }
     public string Username { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Como chamar a pessoa nas telas ("Bom dia, Fulano"). Vem do `given_name` do
+    /// Google, ou do cadastro por senha.
+    /// </summary>
+    public string? FirstName { get; set; }
+
     public required string Email { get; set; }
-    public long Cpf { get; set; }
-    public string PasswordHash { get; set; } = string.Empty;
+
+    /// <summary>
+    /// O `sub` do token do Google — o identificador que não muda. Nulo para conta
+    /// criada por e-mail e senha.
+    ///
+    /// Guardado além do e-mail porque e-mail de conta Google pode mudar, e aí só o
+    /// `sub` continua apontando para a mesma pessoa.
+    /// </summary>
+    public string? GoogleId { get; set; }
+
+    /// <summary>
+    /// Nulo para quem entra pelo Google: essa conta nunca teve senha. É o que permite
+    /// dizer "entre pelo Google" em vez de "senha incorreta" — ver §1.4 do
+    /// docs/PLANO-OBSERVADOS.md.
+    /// </summary>
+    public string? PasswordHash { get; set; }
     public bool Active { get; set; }
     public required string Role { get; set; }
 

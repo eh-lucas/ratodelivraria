@@ -79,10 +79,10 @@ public class W16Engine
     /// Executa uma transação de busca de preços.
     /// </summary>
     /// <param name="requestor">Dados da requisição (parâmetros de busca e providers)</param>
-    /// <param name="userId">ID do usuário que está realizando a busca</param>
+    /// <param name="userId">Quem buscou, ou null quando foi um visitante sem conta</param>
     /// <param name="cancellationToken">Token de cancelamento</param>
     /// <returns>Resultado da busca com preços e métricas</returns>
-    public async Task<SearchResult> ExecuteTransaction(Requestor requestor, int userId, CancellationToken cancellationToken = default)
+    public async Task<SearchResult> ExecuteTransaction(Requestor requestor, int? userId, CancellationToken cancellationToken = default)
     {
         // Inicia contador
         var stopwatch = Stopwatch.StartNew();
@@ -281,7 +281,7 @@ public class W16Engine
     private async Task PersistTransactionAsync(
         SearchResult result,
         SearchParameter searchParameter,
-        int userId,
+        int? userId,
         CancellationToken cancellationToken)
     {
         if (_persistenceService == null)

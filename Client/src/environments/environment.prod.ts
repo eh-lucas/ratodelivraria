@@ -10,4 +10,8 @@ export const environment = {
   },
   // Branch de demonstração: acesso aberto, sem login (backend usa usuário master).
   demoMode: true,
+  // Cobrança por busca. Desligado: buscar é de graça para todo mundo, então o
+  // cabeçalho não mostra saldo — um número caindo sozinho anuncia um limite que
+  // não existe. Precisa casar com `Credits:Enabled` do backend.
+  creditsEnabled: false,
 };

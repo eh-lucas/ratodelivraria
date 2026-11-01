@@ -13,6 +13,6 @@ public interface ISingleBookSearchService
     /// <returns>Resultado com melhor opção e alternativas</returns>
     Task<SingleBookSearchResult> SearchAsync(
         SingleBookSearchRequest request,
-        int userId,
+        int? userId,
         CancellationToken cancellationToken = default);
 }

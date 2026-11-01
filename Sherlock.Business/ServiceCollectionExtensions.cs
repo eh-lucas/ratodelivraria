@@ -8,6 +8,7 @@ using Sherlock.Business.Core.Prefetch;
 using Sherlock.Business.Core.Progress;
 using Sherlock.Business.Core.Resilience;
 using Sherlock.Business.Core.Scrapers.Amazon;
+using Sherlock.Business.Core.Watch;
 using Sherlock.Business.Interfaces;
 using Sherlock.Business.Services;
 
@@ -32,6 +33,8 @@ public static class ServiceCollectionExtensions
             configuration.GetSection(RankingSettings.SectionName));
         services.Configure<CartRequerySettings>(
             configuration.GetSection(CartRequerySettings.SectionName));
+        services.Configure<WatchSettings>(
+            configuration.GetSection(WatchSettings.SectionName));
         // Services
         services.AddScoped<IBookService, BookService>();
         services.AddScoped<IBookPriceService, BookPriceService>();
@@ -41,6 +44,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITransactionPersistenceService, TransactionPersistenceService>();
         services.AddScoped<ICreditService, CreditService>();
         services.AddScoped<ICatalogService, CatalogService>();
+        services.AddScoped<IWatchedBookService, WatchedBookService>();
 
         // Crawler do catálogo
         services.AddScoped<CatalogCrawler>();
@@ -74,6 +78,12 @@ public static class ServiceCollectionExtensions
 
         // Mantém os livros mais procurados quentes no cache
         services.AddHostedService<PopularBooksPrefetcher>();
+
+        // O vigia de preço: varre de madrugada, avisa de manhã. Os dois nascem
+        // desligados (Watch:SweepEnabled / Watch:NotifyEnabled) — ligar isso manda
+        // requisição para as lojas e e-mail para gente de verdade.
+        services.AddHostedService<WatchSweepWorker>();
+        services.AddHostedService<WatchNotifyWorker>();
 
         return services;
     }

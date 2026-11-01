@@ -52,9 +52,6 @@
         <circle cx="12" cy="12" r="3" stroke-width="1.5"/>
       </svg>
       <h2>{{ 'Meus livros observados' | t }}</h2>
-      @if (!watchedAvailable) {
-        <span class="card-badge">{{ 'em breve' | t }}</span>
-      }
     </a>
 
     <a routerLink="/history" class="card">

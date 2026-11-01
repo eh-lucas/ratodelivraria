@@ -244,4 +244,51 @@ public class QueryRepository : RepositoryBase<Query>, IQueryRepository
             .OrderByDescending(q => q.QueriedAt)
             .FirstOrDefaultAsync();
     }
+
+    /// <summary>
+    /// Metadados do ISBN a partir do histórico. Pega a consulta bem-sucedida mais
+    /// recente que tenha capa; não havendo nenhuma com capa, a mais recente que
+    /// deu certo — assim o título vem mesmo quando a loja não mandou imagem.
+    /// </summary>
+    public async Task<BookMetadata?> GetMetadataByIsbnAsync(
+        string isbn, CancellationToken cancellationToken = default)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+
+        var baseQuery = context.Set<Query>()
+            .Where(q => q.SearchIsbn == isbn && q.Success);
+
+        var comCapa = await baseQuery
+            .Where(q => q.ImageUrl != null && q.ImageUrl != "")
+            .OrderByDescending(q => q.QueriedAt)
+            .Select(q => new { q.Title, q.Author, q.ImageUrl })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (comCapa != null)
+            return new BookMetadata(comCapa.Title, comCapa.Author, comCapa.ImageUrl);
+
+        var semCapa = await baseQuery
+            .OrderByDescending(q => q.QueriedAt)
+            .Select(q => new { q.Title, q.Author })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return semCapa == null ? null : new BookMetadata(semCapa.Title, semCapa.Author, null);
+    }
+
+    public async Task<IReadOnlyList<int>> GetProvidersWithResultsAsync(
+        string isbn, int days, CancellationToken cancellationToken = default)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var desde = DateTime.UtcNow.AddDays(-days);
+
+        return await context.Set<Query>()
+            .Where(q => q.SearchIsbn == isbn
+                        && q.Success
+                        && q.Price != null
+                        && q.Price > 0
+                        && q.QueriedAt >= desde)
+            .Select(q => q.ProviderId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+    }
 }

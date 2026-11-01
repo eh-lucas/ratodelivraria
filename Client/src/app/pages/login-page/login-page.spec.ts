@@ -30,7 +30,9 @@ describe('Login', () => {
     }).compileComponents();
 
     mockRouter = TestBed.inject(Router);
-    spyOn(mockRouter, 'navigate');
+    // A tela usa navigateByUrl, não navigate: o destino pode vir de um
+    // ?redirectTo=, então é uma URL e não um array de segmentos.
+    spyOn(mockRouter, 'navigateByUrl');
 
     fixture = TestBed.createComponent(LoginPage);
     component = fixture.componentInstance;
@@ -76,7 +78,7 @@ describe('Login', () => {
     expect(mockAuthService.login).toHaveBeenCalledWith('test@example.com', 'password123');
   });
 
-  it('should navigate to search page on successful login', () => {
+  it('should navigate to home on successful login', () => {
     mockAuthService.login.and.returnValue(of({ token: 'test-token' }));
 
     component.loginForm.setValue({
@@ -86,12 +88,15 @@ describe('Login', () => {
     component.onSubmit();
 
     expect(mockAuthService.setToken).toHaveBeenCalledWith('test-token');
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/home']);
+    expect(mockRouter.navigateByUrl).toHaveBeenCalledWith('/home');
   });
 
-  it('should handle login error', () => {
-    const consoleSpy = spyOn(console, 'error');
-    mockAuthService.login.and.returnValue(throwError(() => new Error('Login failed')));
+  it('should show a message when login fails', () => {
+    // A falha vira texto na tela, não console.error: quem errou a senha precisa
+    // ler o motivo, e o console não é lugar de falar com ninguém. 401 é
+    // credencial errada; qualquer outro status vira "tente de novo", porque
+    // acusar a senha quando a API caiu manda procurar erro onde não tem.
+    mockAuthService.login.and.returnValue(throwError(() => ({ status: 401 })));
 
     component.loginForm.setValue({
       email: 'test@example.com',
@@ -99,6 +104,23 @@ describe('Login', () => {
     });
     component.onSubmit();
 
-    expect(consoleSpy).toHaveBeenCalled();
+    expect(component.errorMessage).toBe('E-mail ou senha incorretos.');
+    expect(component.loading).toBeFalse();
+  });
+
+  it('should suggest Google for an account that has no password', () => {
+    // Conta nascida do Google nunca teve senha. Dizer "senha incorreta" mandaria
+    // a pessoa tentar lembrar uma que não existe.
+    mockAuthService.login.and.returnValue(throwError(() => ({
+      error: { useGoogle: true, message: 'Esta conta entra pelo Google.' }
+    })));
+
+    component.loginForm.setValue({
+      email: 'test@example.com',
+      password: 'qualquercoisa'
+    });
+    component.onSubmit();
+
+    expect(component.suggestGoogle).toBeTrue();
   });
 });

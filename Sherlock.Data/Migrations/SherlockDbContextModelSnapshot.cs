@@ -271,7 +271,7 @@ namespace Sherlock.Data.Migrations
                         {
                             Id = 1,
                             BonusCredits = 0,
-                            CreatedAt = new DateTime(2026, 8, 18, 19, 9, 24, 302, DateTimeKind.Utc).AddTicks(1735),
+                            CreatedAt = new DateTime(2026, 10, 31, 21, 55, 4, 588, DateTimeKind.Utc).AddTicks(7177),
                             Credits = 50,
                             Description = "Ideal para testar o serviço",
                             DisplayOrder = 1,
@@ -284,7 +284,7 @@ namespace Sherlock.Data.Migrations
                         {
                             Id = 2,
                             BonusCredits = 10,
-                            CreatedAt = new DateTime(2026, 8, 18, 19, 9, 24, 302, DateTimeKind.Utc).AddTicks(3431),
+                            CreatedAt = new DateTime(2026, 10, 31, 21, 55, 4, 589, DateTimeKind.Utc).AddTicks(816),
                             Credits = 100,
                             Description = "Para uso casual",
                             DisplayOrder = 2,
@@ -297,7 +297,7 @@ namespace Sherlock.Data.Migrations
                         {
                             Id = 3,
                             BonusCredits = 50,
-                            CreatedAt = new DateTime(2026, 8, 18, 19, 9, 24, 302, DateTimeKind.Utc).AddTicks(3450),
+                            CreatedAt = new DateTime(2026, 10, 31, 21, 55, 4, 589, DateTimeKind.Utc).AddTicks(826),
                             Credits = 300,
                             Description = "Melhor custo-benefício",
                             DisplayOrder = 3,
@@ -310,7 +310,7 @@ namespace Sherlock.Data.Migrations
                         {
                             Id = 4,
                             BonusCredits = 200,
-                            CreatedAt = new DateTime(2026, 8, 18, 19, 9, 24, 302, DateTimeKind.Utc).AddTicks(3465),
+                            CreatedAt = new DateTime(2026, 10, 31, 21, 55, 4, 589, DateTimeKind.Utc).AddTicks(830),
                             Credits = 1000,
                             Description = "Para usuários frequentes",
                             DisplayOrder = 4,
@@ -1186,18 +1186,24 @@ namespace Sherlock.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<DateTime>("DeletedAt")
+                    b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
+                        .HasColumnName("expires_at");
 
-                    b.Property<string>("TokenUid")
+                    b.Property<string>("ReplacedByHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("replaced_by_hash");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("TokenHash")
                         .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("token_uid");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
 
                     b.Property<int>("UserId")
                         .HasColumnType("integer")
@@ -1205,6 +1211,13 @@ namespace Sherlock.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_tokens");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tokens_token_hash");
+
+                    b.HasIndex("UserId", "RevokedAt")
+                        .HasDatabaseName("ix_tokens_user_id_revoked_at");
 
                     b.ToTable("tokens", (string)null);
                 });
@@ -1372,10 +1385,6 @@ namespace Sherlock.Data.Migrations
                         .HasDefaultValue(100)
                         .HasColumnName("available_credits");
 
-                    b.Property<long>("Cpf")
-                        .HasColumnType("bigint")
-                        .HasColumnName("cpf");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -1390,8 +1399,17 @@ namespace Sherlock.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("email");
 
+                    b.Property<string>("FirstName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("first_name");
+
+                    b.Property<string>("GoogleId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("google_id");
+
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
 
@@ -1419,11 +1437,132 @@ namespace Sherlock.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_users");
 
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_email");
+
+                    b.HasIndex("GoogleId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_google_id");
+
                     b.HasIndex("Username")
                         .IsUnique()
                         .HasDatabaseName("ix_users_username");
 
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("Sherlock.Domain.Entities.WatchedBook", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Active")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("active");
+
+                    b.Property<string>("Author")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("author");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("DropPercent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(15)
+                        .HasColumnName("drop_percent");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("image_url");
+
+                    b.Property<string>("Isbn")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("isbn");
+
+                    b.Property<DateTime?>("LastCheckedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_checked_at");
+
+                    b.Property<DateTime?>("LastNotifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_notified_at");
+
+                    b.Property<decimal?>("LastNotifiedPrice")
+                        .HasColumnType("numeric")
+                        .HasColumnName("last_notified_price");
+
+                    b.Property<decimal?>("LastPrice")
+                        .HasColumnType("numeric")
+                        .HasColumnName("last_price");
+
+                    b.Property<string>("LastProductUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("last_product_url");
+
+                    b.Property<string>("LastProviderName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("last_provider_name");
+
+                    b.Property<decimal?>("PreviousPrice")
+                        .HasColumnType("numeric")
+                        .HasColumnName("previous_price");
+
+                    b.Property<decimal?>("ReferencePrice")
+                        .HasColumnType("numeric")
+                        .HasColumnName("reference_price");
+
+                    b.Property<DateTime?>("ReferencePriceAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reference_price_at");
+
+                    b.Property<int>("Rule")
+                        .HasColumnType("integer")
+                        .HasColumnName("rule");
+
+                    b.Property<decimal?>("TargetPrice")
+                        .HasColumnType("numeric")
+                        .HasColumnName("target_price");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_watched_books");
+
+                    b.HasIndex("Isbn")
+                        .HasDatabaseName("ix_watched_books_isbn");
+
+                    b.HasIndex("UserId", "Active")
+                        .HasDatabaseName("ix_watched_books_user_id_active");
+
+                    b.HasIndex("UserId", "Isbn")
+                        .IsUnique()
+                        .HasDatabaseName("ix_watched_books_user_id_isbn");
+
+                    b.ToTable("watched_books", (string)null);
                 });
 
             modelBuilder.Entity("Sherlock.Domain.Entities.CreditTransaction", b =>
@@ -1483,6 +1622,18 @@ namespace Sherlock.Data.Migrations
                     b.Navigation("Transaction");
                 });
 
+            modelBuilder.Entity("Sherlock.Domain.Entities.Token", b =>
+                {
+                    b.HasOne("Sherlock.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tokens_users_user_id");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Sherlock.Domain.Entities.Transaction", b =>
                 {
                     b.HasOne("Sherlock.Domain.Entities.Query", "BestQuery")
@@ -1507,6 +1658,18 @@ namespace Sherlock.Data.Migrations
                     b.Navigation("BestQuery");
 
                     b.Navigation("TransactionResult");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Sherlock.Domain.Entities.WatchedBook", b =>
+                {
+                    b.HasOne("Sherlock.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_watched_books_users_user_id");
 
                     b.Navigation("User");
                 });

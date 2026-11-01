@@ -13,6 +13,6 @@ public interface ICartOptimizationService
     /// <returns>Resultado da otimização com distribuição de compras</returns>
     Task<CartOptimizationResult> OptimizeCartAsync(
         CartOptimizationRequest request,
-        int userId,
+        int? userId,
         CancellationToken cancellationToken = default);
 }

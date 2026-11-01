@@ -74,7 +74,7 @@ public class CartController : ControllerBase
             }
         }
 
-        var userId = GetUserId();
+        var userId = GetUserIdOrNull();
 
         _logger.LogInformation(
             "Requisição de otimização de carrinho: {BookCount} livros, estratégia: {Strategy}, usuário: {UserId}",
@@ -143,7 +143,7 @@ public class CartController : ControllerBase
             ProviderUrls = parsedProviderUrls
         };
 
-        var userId = GetUserId();
+        var userId = GetUserIdOrNull();
 
         try
         {
@@ -192,7 +192,7 @@ public class CartController : ControllerBase
             if (book.Quantity <= 0) book.Quantity = 1;
         }
 
-        var userId = GetUserId();
+        var userId = GetUserIdOrNull();
 
         _logger.LogInformation(
             "Requisição de melhor provider para {BookCount} livros, usuário: {UserId}",
@@ -292,17 +292,16 @@ public class CartController : ControllerBase
         return Ok(strategies);
     }
 
-    private int GetUserId()
+    /// <summary>
+    /// Quem está montando o carrinho, ou null para visitante sem conta — mesma
+    /// regra da busca: comparar preço é aberto, ver dado de uma pessoa não é.
+    /// </summary>
+    private int? GetUserIdOrNull()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? User.FindFirst("sub")?.Value;
 
-        if (int.TryParse(userIdClaim, out var userId))
-        {
-            return userId;
-        }
-
-        throw new UnauthorizedAccessException("UserId não encontrado no token");
+        return int.TryParse(userIdClaim, out var userId) ? userId : null;
     }
 
     private static string GetStrategyDescription(OptimizationStrategy strategy)
@@ -330,7 +329,7 @@ public class CartController : ControllerBase
             return BadRequest(new { error = "A lista de livros não pode estar vazia." });
         }
 
-        var userId = GetUserId();
+        var userId = GetUserIdOrNull();
         var jobId = Guid.NewGuid().ToString("N");
         var progress = _progressStore.Create(jobId);
 

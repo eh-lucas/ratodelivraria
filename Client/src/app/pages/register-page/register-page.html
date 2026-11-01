@@ -1,106 +1,131 @@
-<div class="register-card">
-  <div class="card-header">
-    <div class="title-row">
-      <img src="/assets/rato.png" alt="ratodelivraria" class="app-logo" />
-      <h1>ratodelivraria</h1>
-    </div>
-    <div class="divider"></div>
-  </div>
-  <div class="text-section">
-    <span class="title">Create Account</span>
-  </div>
-  <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
-    <div class="wrapper-input-field">
-      <input-component
-        iconSrc="assets/icons/user-icon.png"
-        placeholder="Username"
-        type="text"
-        formControlName="username"
-      ></input-component>
+<main class="login">
+  <div class="login-card">
+    <header class="brand">
+      <img src="/assets/rato.png" alt="" class="brand-mascote" aria-hidden="true" />
+      <p class="wordmark" aria-label="ratodelivraria.com.br">
+        <span class="wordmark-accent">rato</span>delivraria<span class="wordmark-accent">.</span>com<span class="wordmark-accent">.</span>br
+      </p>
+    </header>
 
-      @if (f['username'].errors && (f['username'].touched || f['username'].dirty)) {
-        <div class="error-message">
-          @if (f['username'].errors['required']) {
-            <small>Username is required.</small>
-          }
-          @if (f['username'].errors['minlength']) {
-            <small>Username must be at least 3 characters.</small>
-          }
-        </div>
-      }
+    <h1 class="title">{{ 'Criar conta' | t }}</h1>
+    <p class="subtitle">{{ 'Conta serve para observar livros e guardar seu histórico. Buscar preço continua sem cadastro.' | t }}</p>
+
+    <div class="google-slot" [hidden]="!googleAvailable">
+      <div #googleButton class="google-button"></div>
     </div>
 
-    <div class="wrapper-input-field">
-      <input-component
-        iconSrc="assets/icons/user-icon.png"
-        placeholder="Email"
-        type="email"
-        formControlName="email"
-      ></input-component>
-
-      @if (f['email'].errors && (f['email'].touched || f['email'].dirty)) {
-        <div class="error-message">
-          @if (f['email'].errors['required']) {
-            <small>Email is required.</small>
-          }
-          @if (f['email'].errors['email']) {
-            <small>Enter a valid email address.</small>
-          }
-        </div>
-      }
-    </div>
-
-    <div class="wrapper-input-field">
-      <input-component
-        iconSrc="assets/icons/password-icon.png"
-        placeholder="Password"
-        type="password"
-        formControlName="password"
-      ></input-component>
-
-      @if (f['password'].errors && (f['password'].touched || f['password'].dirty)) {
-        <div class="error-message">
-          @if (f['password'].errors['required']) {
-            <small>Password is required.</small>
-          }
-          @if (f['password'].errors['minlength']) {
-            <small>Password must be at least 8 characters.</small>
-          }
-        </div>
-      }
-    </div>
-
-    <div class="wrapper-input-field">
-      <input-component
-        iconSrc="assets/icons/password-icon.png"
-        placeholder="Confirm Password"
-        type="password"
-        formControlName="confirmPassword"
-      ></input-component>
-
-      @if (f['confirmPassword'].errors && (f['confirmPassword'].touched || f['confirmPassword'].dirty)) {
-        <div class="error-message">
-          @if (f['confirmPassword'].errors['required']) {
-            <small>Confirm your password.</small>
-          }
-          @if (f['confirmPassword'].errors['mismatch']) {
-            <small>Passwords do not match.</small>
-          }
-        </div>
-      }
-    </div>
-
-    @if (errorMessage) {
-      <div class="error-message api-error">
-        <small>{{ errorMessage }}</small>
-      </div>
+    @if (googleAvailable) {
+      <div class="divider"><span>{{ 'ou' | t }}</span></div>
     }
 
-    <div class="button-container">
-      <a routerLink="/login" class="sign-in-link">Already have an account?</a>
-      <button type="submit" class="register-button" [disabled]="loading || registerForm.invalid">
-        {{ loading ? 'Creating...' : 'Register' }}
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" novalidate>
+      <div class="field">
+        <input-component
+          iconSrc="assets/icons/user-icon.png"
+          inputId="firstName"
+          autocomplete="given-name"
+          [placeholder]="'Primeiro nome' | t"
+          type="text"
+          [ariaInvalid]="mostraErro('firstName')"
+          ariaDescribedby="erro-nome"
+          formControlName="firstName"
+        ></input-component>
+
+        @if (mostraErro('firstName')) {
+          <div class="field-error" id="erro-nome">
+            <small>{{ 'Informe seu primeiro nome.' | t }}</small>
+          </div>
+        }
+      </div>
+
+      <div class="field">
+        <input-component
+          iconSrc="assets/icons/user-icon.png"
+          inputId="email"
+          autocomplete="email"
+          [placeholder]="'E-mail' | t"
+          type="email"
+          [ariaInvalid]="mostraErro('email')"
+          ariaDescribedby="erro-email"
+          formControlName="email"
+        ></input-component>
+
+        @if (mostraErro('email')) {
+          <div class="field-error" id="erro-email">
+            @if (f['email'].errors?.['required']) {
+              <small>{{ 'Informe seu e-mail.' | t }}</small>
+            } @else if (f['email'].errors?.['email']) {
+              <small>{{ 'E-mail inválido.' | t }}</small>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="field">
+        <input-component
+          iconSrc="assets/icons/password-icon.png"
+          inputId="new-password"
+          autocomplete="new-password"
+          [placeholder]="'Senha' | t"
+          type="password"
+          [ariaInvalid]="mostraErro('password')"
+          ariaDescribedby="erro-senha"
+          formControlName="password"
+        ></input-component>
+
+        @if (mostraErro('password')) {
+          <div class="field-error" id="erro-senha">
+            <small>{{ 'A senha precisa de pelo menos 8 caracteres.' | t }}</small>
+          </div>
+        } @else {
+          <small class="field-hint">{{ 'Pelo menos 8 caracteres.' | t }}</small>
+        }
+      </div>
+
+      <div class="field">
+        <input-component
+          iconSrc="assets/icons/password-icon.png"
+          inputId="confirm-password"
+          autocomplete="new-password"
+          [placeholder]="'Repita a senha' | t"
+          type="password"
+          [ariaInvalid]="mostraErro('confirmPassword')"
+          ariaDescribedby="erro-confirma"
+          formControlName="confirmPassword"
+        ></input-component>
+
+        @if (mostraErro('confirmPassword')) {
+          <div class="field-error" id="erro-confirma">
+            @if (f['confirmPassword'].errors?.['mismatch']) {
+              <small>{{ 'As senhas não são iguais.' | t }}</small>
+            } @else {
+              <small>{{ 'Repita a senha.' | t }}</small>
+            }
+          </div>
+        }
+      </div>
+
+      @if (errorMessage) {
+        <div class="form-error" role="alert">{{ errorMessage | t }}</div>
+      }
+
+      <button type="submit" class="submit" [disabled]="loading">
+        {{ (loading ? 'Criando…' : 'Criar conta') | t }}
       </button>
-    </div>
-  </form>
-</div>
+    </form>
+
+    <p class="alt-action">
+      {{ 'Já tem conta?' | t }}
+      <a routerLink="/login">{{ 'Entrar' | t }}</a>
+    </p>
+
+    <!-- No cadastro o aceite é explícito, não só um link solto: é aqui que a
+         pessoa entrega o e-mail. Exigência do Google para publicar o login. -->
+    <p class="legal-links">
+      {{ 'Ao criar conta você concorda com os' | t }}
+      <a routerLink="/termos">{{ 'Termos de Uso' | t }}</a>
+      {{ 'e a' | t }}
+      <a routerLink="/privacidade">{{ 'Política de Privacidade' | t }}</a>.
+    </p>
+  </div>
+</main>

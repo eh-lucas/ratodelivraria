@@ -24,6 +24,7 @@
     <ProjectReference Include="..\Sherlock.Business\Sherlock.Business.csproj" />
     <ProjectReference Include="..\Sherlock.Domain\Sherlock.Domain.csproj" />
     <ProjectReference Include="..\Sherlock.Data\Sherlock.Data.csproj" />
+    <ProjectReference Include="..\Sherlock.Infrastructure\Sherlock.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

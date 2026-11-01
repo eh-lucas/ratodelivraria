@@ -1,15 +1,16 @@
 import { Component, OnInit, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { RouterLink, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { SidebarComponent } from './sidebar/sidebar';
 import { HeaderComponent } from './header/header';
+import { TranslatePipe } from '../i18n/translate-pipe';
 
 const SIDEBAR_STORAGE_KEY = 'sherlock.sidebar.collapsed';
 
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, SidebarComponent, HeaderComponent],
+  imports: [CommonModule, RouterOutlet, RouterLink, SidebarComponent, HeaderComponent, TranslatePipe],
   templateUrl: './app-layout.html',
   styleUrl: './app-layout.scss',
 })

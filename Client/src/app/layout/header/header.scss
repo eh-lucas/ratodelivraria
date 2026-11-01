@@ -109,6 +109,15 @@
   &:hover {
     background: var(--bg-hover);
   }
+
+  &.anon {
+    color: var(--text-muted);
+  }
+}
+
+.avatar-icon {
+  width: 20px;
+  height: 20px;
 }
 
 @media (max-width: 767px) {

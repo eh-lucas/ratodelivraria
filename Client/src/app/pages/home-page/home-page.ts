@@ -2,7 +2,6 @@ import { Component, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '../../i18n/translate-pipe';
 import { CartService } from '../../services/cart-service';
-import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-home-page',
@@ -22,9 +21,6 @@ export class HomePage implements OnInit {
   get providerCountRounded(): number {
     return Math.floor(this.providerCount / 10) * 10;
   }
-
-  /** Observar livros depende de conta; na release pública fica marcado como "em breve". */
-  readonly watchedAvailable = !environment.demoMode;
 
   constructor(private cartService: CartService) {}
 

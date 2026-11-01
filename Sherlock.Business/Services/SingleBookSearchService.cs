@@ -23,7 +23,7 @@ public class SingleBookSearchService : ISingleBookSearchService
 
     public async Task<SingleBookSearchResult> SearchAsync(
         SingleBookSearchRequest request,
-        int userId,
+        int? userId,
         CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();

@@ -13,12 +13,12 @@ public interface ITransactionPersistenceService
     /// </summary>
     /// <param name="searchResult">Resultado da busca do W16Engine</param>
     /// <param name="searchParameter">Parâmetros usados na busca</param>
-    /// <param name="userId">ID do usuário que realizou a busca</param>
+    /// <param name="userId">Quem buscou, ou null quando foi um visitante sem conta</param>
     /// <param name="cancellationToken">Token de cancelamento</param>
     /// <returns>A transação persistida com Id preenchido</returns>
     Task<Transaction> PersistAsync(
         SearchResult searchResult,
         SearchParameter searchParameter,
-        int userId,
+        int? userId,
         CancellationToken cancellationToken = default);
 }

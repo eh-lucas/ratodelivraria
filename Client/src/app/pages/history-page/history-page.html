@@ -1,4 +1,11 @@
 <section class="history">
+  @if (!isAuthenticated) {
+    <app-auth-required
+      title="Entre para ver seu histórico"
+      text="O histórico é só seu: mostra as buscas que você fez, com o preço de cada loja no dia da consulta."
+    ></app-auth-required>
+  } @else {
+
   <h1 class="page-title">{{ 'Meu histórico' | t }}</h1>
 
   @if (isLoading) {
@@ -116,5 +123,6 @@
         }
       </div>
     </div>
+  }
   }
 </section>

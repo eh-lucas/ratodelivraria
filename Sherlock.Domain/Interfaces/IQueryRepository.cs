@@ -28,4 +28,22 @@ public interface IQueryRepository : IRepository<Query>
     /// </param>
     Task<IReadOnlyList<PopularBook>> GetMostSearchedAsync(
         int limit, DateTime? marco = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Título, autor e capa do ISBN, tirados da consulta mais recente que deu
+    /// certo. É a primeira parada do §3.2 e custa zero requisição: livro que
+    /// alguém já buscou tem capa guardada em `queries.image_url`.
+    /// </summary>
+    Task<BookMetadata?> GetMetadataByIsbnAsync(
+        string isbn, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Ids das lojas que já devolveram este livro nos últimos N dias.
+    ///
+    /// É o que torna o "modo enxuto" possível: depois da primeira varredura
+    /// sabemos quais das 67 lojas têm o título, e consultar só essas leva a
+    /// rodada noturna de ~270 para ~1.800 ISBNs (docs/PLANO-OBSERVADOS.md §4.2).
+    /// </summary>
+    Task<IReadOnlyList<int>> GetProvidersWithResultsAsync(
+        string isbn, int days, CancellationToken cancellationToken = default);
 }

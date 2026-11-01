@@ -75,6 +75,15 @@ public class CatalogRepository : ICatalogRepository
         return await context.CatalogItems.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
     }
 
+    public async Task<CatalogItem?> GetByIsbnAsync(string isbn, CancellationToken cancellationToken = default)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.CatalogItems
+            .Where(c => c.Isbn == isbn)
+            .OrderByDescending(c => c.UpdatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<int> SetIsbnForTitleAsync(
         string normalizedName, string isbn, CancellationToken cancellationToken = default)
     {

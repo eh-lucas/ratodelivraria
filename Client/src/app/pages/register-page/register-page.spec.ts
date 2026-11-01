@@ -43,7 +43,9 @@ describe('RegisterPage', () => {
 
   it('should initialize register form with all required fields', () => {
     expect(component.registerForm).toBeDefined();
-    expect(component.registerForm.controls['username']).toBeDefined();
+    // 'username' saiu do formulário: o backend deriva um a partir do e-mail, e o
+    // que o produto quer é o primeiro nome, para cumprimentar.
+    expect(component.registerForm.controls['firstName']).toBeDefined();
     expect(component.registerForm.controls['email']).toBeDefined();
     expect(component.registerForm.controls['password']).toBeDefined();
     expect(component.registerForm.controls['confirmPassword']).toBeDefined();
@@ -63,7 +65,7 @@ describe('RegisterPage', () => {
 
   it('should validate password match', () => {
     component.registerForm.setValue({
-      username: 'testuser',
+      firstName: 'Lucas',
       email: 'test@example.com',
       password: 'password123',
       confirmPassword: 'differentpassword'
@@ -74,7 +76,7 @@ describe('RegisterPage', () => {
 
   it('should have valid form when all fields are correct', () => {
     component.registerForm.setValue({
-      username: 'testuser',
+      firstName: 'Lucas',
       email: 'test@example.com',
       password: 'password123',
       confirmPassword: 'password123'
@@ -91,7 +93,7 @@ describe('RegisterPage', () => {
     mockAuthService.register.and.returnValue(of({ token: 'test-token' }));
 
     component.registerForm.setValue({
-      username: 'testuser',
+      firstName: 'Lucas',
       email: 'test@example.com',
       password: 'password123',
       confirmPassword: 'password123'
@@ -101,11 +103,11 @@ describe('RegisterPage', () => {
     expect(mockAuthService.register).toHaveBeenCalled();
   });
 
-  it('should navigate to search page on successful registration', () => {
+  it('should navigate to home on successful registration', () => {
     mockAuthService.register.and.returnValue(of({ token: 'test-token' }));
 
     component.registerForm.setValue({
-      username: 'testuser',
+      firstName: 'Lucas',
       email: 'test@example.com',
       password: 'password123',
       confirmPassword: 'password123'
@@ -113,7 +115,9 @@ describe('RegisterPage', () => {
     component.onSubmit();
 
     expect(mockAuthService.setToken).toHaveBeenCalledWith('test-token');
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/search']);
+    // Home, e não busca: quem acabou de criar conta veio pelo que a conta
+    // oferece — observar e histórico —, e é na home que isso está.
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/home']);
   });
 
   it('should display error message on registration failure', () => {
@@ -122,7 +126,7 @@ describe('RegisterPage', () => {
     })));
 
     component.registerForm.setValue({
-      username: 'testuser',
+      firstName: 'Lucas',
       email: 'test@example.com',
       password: 'password123',
       confirmPassword: 'password123'

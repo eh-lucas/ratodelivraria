@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Sherlock.Data.Context;
+using Sherlock.Data.Locking;
 using Sherlock.Data.Repositories;
 using Sherlock.Domain.Interfaces;
 
@@ -30,6 +31,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IQueryRepository, QueryRepository>();
         services.AddScoped<ICreditRepository, CreditRepository>();
         services.AddScoped<ICatalogRepository, CatalogRepository>();
+        services.AddScoped<IWatchedBookRepository, WatchedBookRepository>();
+
+        // Trava entre instâncias para o trabalho de fundo
+        services.AddScoped<IAdvisoryLock, PostgresAdvisoryLock>();
 
         return services;
     }

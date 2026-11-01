@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +10,8 @@ using Sherlock.Data.Context;
 using Sherlock.Domain.Entities;
 using Sherlock.Api.Controllers;
 using Sherlock.Api.DTOs;
+using Microsoft.Extensions.Options;
+using Sherlock.Api.Configurations;
 using Sherlock.Api.Services;
 
 namespace Sherlock.Tests.API;
@@ -43,7 +47,34 @@ public class AuthControllerTests : IDisposable
         _tokenService = new TokenService(_configuration);
         _loggerMock = new Mock<ILogger<AuthController>>();
 
-        _controller = new AuthController(_context, _tokenService, _loggerMock.Object, _configuration);
+        var usernames = new UsernameService(_context);
+
+        // Sem ClientId o GoogleLoginService fica desligado e recusa qualquer
+        // credential — é o que estas provas querem: elas exercitam e-mail e senha.
+        var googleLogin = new GoogleLoginService(
+            _context,
+            Options.Create(new GoogleAuthSettings()),
+            usernames,
+            new Mock<ILogger<GoogleLoginService>>().Object);
+
+        var refreshTokens = new RefreshTokenService(
+            _context, new Mock<ILogger<RefreshTokenService>>().Object);
+
+        // Ambiente de desenvolvimento: o cookie de sessão sai sem `Secure`, que é
+        // o que permite testar sem HTTPS.
+        var environment = new Mock<IWebHostEnvironment>();
+        environment.SetupGet(e => e.EnvironmentName).Returns("Development");
+
+        _controller = new AuthController(
+            _context, _tokenService, googleLogin, usernames, refreshTokens,
+            _loggerMock.Object, _configuration, environment.Object);
+
+        // O controller grava o cookie de refresh na resposta; sem HttpContext a
+        // chamada a Response.Cookies estoura antes de chegar na asserção.
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext(),
+        };
     }
 
     public void Dispose()

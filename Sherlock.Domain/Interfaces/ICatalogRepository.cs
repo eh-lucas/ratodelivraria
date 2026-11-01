@@ -13,6 +13,12 @@ public interface ICatalogRepository
 
     Task<CatalogItem?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Um item qualquer do catálogo com este ISBN — serve para título e autor
+    /// quando `queries` ainda não conhece o livro. O catálogo não guarda capa.
+    /// </summary>
+    Task<CatalogItem?> GetByIsbnAsync(string isbn, CancellationToken cancellationToken = default);
+
     /// <summary>Grava o ISBN em todas as lojas que vendem o mesmo título.</summary>
     Task<int> SetIsbnForTitleAsync(
         string normalizedName, string isbn, CancellationToken cancellationToken = default);

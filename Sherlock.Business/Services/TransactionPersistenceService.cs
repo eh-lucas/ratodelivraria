@@ -35,7 +35,7 @@ public class TransactionPersistenceService : ITransactionPersistenceService
     public async Task<Transaction> PersistAsync(
         SearchResult searchResult,
         SearchParameter searchParameter,
-        int userId,
+        int? userId,
         CancellationToken cancellationToken = default)
     {
         _logger.LogDebug(
@@ -95,7 +95,7 @@ public class TransactionPersistenceService : ITransactionPersistenceService
     private Transaction CreateTransaction(
         SearchResult searchResult,
         SearchParameter searchParameter,
-        int userId)
+        int? userId)
     {
         return new Transaction
         {

@@ -16,6 +16,10 @@ public class RegisterRequestDTO
 
     [MaxLength(100, ErrorMessage = "Nome deve ter no máximo 100 caracteres")]
     public string? Username { get; set; }
+
+    /// <summary>Primeiro nome, para cumprimentar a pessoa nas telas.</summary>
+    [MaxLength(100, ErrorMessage = "Nome deve ter no máximo 100 caracteres")]
+    public string? FirstName { get; set; }
 }
 
 public class LoginRequestDTO

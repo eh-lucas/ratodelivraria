@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { TranslatePipe } from '../../i18n/translate-pipe';
+import { AuthRequiredComponent } from '../../components/auth-required/auth-required';
+import { AuthService } from '../../services/auth-service';
 import {
   TransactionService,
   TransactionHistory,
@@ -16,7 +18,7 @@ interface ParsedInput {
 @Component({
   selector: 'app-history-page',
   standalone: true,
-  imports: [TranslatePipe, CommonModule, DatePipe],
+  imports: [TranslatePipe, CommonModule, DatePipe, AuthRequiredComponent],
   templateUrl: './history-page.html',
   styleUrl: './history-page.scss',
 })
@@ -29,10 +31,19 @@ export class HistoryPage implements OnInit {
   detail: TransactionDetail | null = null;
   detailLoading = false;
 
-  constructor(private service: TransactionService) {}
+  /** Histórico é da pessoa. Sem sessão não há o que mostrar nem o que pedir. */
+  isAuthenticated = false;
+
+  constructor(private service: TransactionService, private auth: AuthService) {}
 
   ngOnInit(): void {
-    this.load();
+    this.isAuthenticated = this.auth.isAuthenticated();
+
+    // Sem a guarda, a tela abria e disparava a chamada só para levar 401 — e a
+    // pessoa via "Erro ao carregar histórico" onde devia ver um convite a entrar.
+    if (this.isAuthenticated) {
+      this.load();
+    }
   }
 
   load(): void {
