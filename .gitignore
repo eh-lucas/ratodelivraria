@@ -3,6 +3,13 @@
 
 # Segredos e credenciais — nunca commitar
 .env
+# Qualquer variante: .env.local, .env.producao e principalmente os
+# .env.backup-* que sobram de uma troca de segredos. Em 01/11/2026 um deles
+# ficou visivel ao git por horas, com JWT_SECRET e as senhas do banco dentro —
+# segredo que entra no historico nao sai mais.
+.env.*
+# ...menos o modelo sem segredo, que e justamente o que deve ser versionado.
+!.env.example
 senha.txt
 
 # User-specific files
