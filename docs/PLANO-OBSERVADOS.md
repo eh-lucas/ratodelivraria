@@ -501,23 +501,24 @@ Cada fatia é mergeável sozinha.
 
 1. ~~**`IEmailSender` + implementação** em `Sherlock.Infrastructure`, com a versão de
    desenvolvimento que só loga.~~ **Feito** — ver §9.
-2. **Entrar com Google**: OAuth client no Google Cloud, `POST /api/auth/google`,
+2. ~~**Entrar com Google**: OAuth client no Google Cloud, `POST /api/auth/google`,
    validação do ID token, `first_name` e `google_id`, drop do `cpf`, botão na
-   `login-page` ao lado do formulário de senha, e tirar o e-mail dos logs.
-3. **SPF/DKIM/DMARC no domínio.** Deixou de ser o maior risco do plano quando o login
-   saiu do e-mail, mas o aviso diário de preço ainda depende disso.
-4. **Refresh token** sobre a tabela `tokens`.
-5. **`WatchedBook` + CRUD**, e o `watched-service.ts` sai do `localStorage` para HTTP.
-   A tela praticamente não muda.
-6. **Capa e metadados** no `resolve-isbn`, com o `queries.image_url` como primeira
-   parada.
-7. **`WatchSweepWorker`** (03h, modo enxuto, advisory lock, orçamento no gate).
-8. **`WatchNotifyWorker`** (09h, digest, antifadiga, descadastro).
+   `login-page` ao lado do formulário de senha, e tirar o e-mail dos logs.~~ **Feito.**
+3. **SPF/DKIM/DMARC no domínio.** **Documentado, pendente de ação sua** — são registros
+   no painel de DNS, não código: [EMAIL-DNS.md](EMAIL-DNS.md). Deixou de ser o maior
+   risco do plano quando o login saiu do e-mail, e a 20 usuários o Gmail com App
+   Password resolve sem nenhum DNS (§8.5).
+4. ~~**Refresh token** sobre a tabela `tokens`.~~ **Feito** — ver §11.
+5. ~~**`WatchedBook` + CRUD**, e o `watched-service.ts` sai do `localStorage` para
+   HTTP.~~ **Feito** — ver §11.
+6. ~~**Capa e metadados** no `resolve-isbn`, com o `queries.image_url` como primeira
+   parada.~~ **Feito** — ver §11.
+7. ~~**`WatchSweepWorker`** (03h, modo enxuto, advisory lock, orçamento no gate).~~
+   **Feito, desligado** (`Watch:SweepEnabled`).
+8. ~~**`WatchNotifyWorker`** (09h, digest, antifadiga, descadastro).~~ **Feito,
+   desligado** (`Watch:NotifyEnabled`).
 9. ~~**`demoMode`**: busca segue aberta, login passa a ser exigido só em `/watched` e
    `/profile`.~~ **Feito** — ver §10.
-
-Entre a 5 e a 7 a feature já é usável manualmente — dá para validar a tela antes de
-escrever uma linha de worker.
 
 ---
 
@@ -764,9 +765,11 @@ docker compose -f docker-compose.dev.yml up -d mailpit   # SMTP :1025, web :8025
 # e na API:  Email__Enabled=true
 ```
 
-> **Não verifiquei o caminho do Mailpit nesta máquina** — o Docker aqui pede `sudo`. Os
-> arquivos de compose passam no `docker compose config`, e o protocolo é o mesmo que os
-> testes exercitam, mas a primeira subida do Mailpit continua por conferir.
+> **Conferido em 2026-11-01.** O Mailpit sobe limpo (o Docker aqui não pede `sudo` — o
+> usuário está no grupo `docker`), e o `SmtpEmailSender` entregou nele um resumo diário
+> montado pelo `WatchDigest` de verdade: assunto, HTML e texto puro, com a acentuação
+> correta. A ressalva anterior, de que a primeira subida continuava por conferir, não vale
+> mais.
 
 ---
 
@@ -802,6 +805,81 @@ de duas contas novas verem cada uma o próprio histórico vazio.
 
 ### Crédito deixou de barrar
 
-Os três portões de 402 saíram do `BookSearchController` (§3.4: busca é de graça). O
-`CreditService` continua registrando o consumo de quem tem conta — vira medida de quanto
-cada busca custa, e o mecanismo fica no lugar para o dia em que precisar voltar.
+Os três portões de 402 saíram do `BookSearchController` (§3.4: busca é de graça), e o
+débito também: o `RegistrarConsumoAsync` só roda com `Credits:Enabled`, hoje `false`. O
+subsistema inteiro continua no lugar para o dia em que precisar voltar — é um `true`.
+
+> A primeira versão deste parágrafo dizia que o `CreditService` seguia registrando o
+> consumo "como medida de quanto cada busca custa". **Estava errado**, e a correção está
+> no §3.4: o `ConsumeCreditsAsync` carrega a própria checagem de saldo e passava a
+> recusar sozinho ao chegar a zero, enquanto o selo no cabeçalho descia de 100 anunciando
+> um teto que o backend não aplica mais. A medida de custo que presta é
+> `transactions.cost_credits`, que cobre também quem busca sem conta.
+
+---
+
+## 11. Fatias 4 a 8: o vigia de preço
+
+Entregue em 2026-10-31, junto das fatias 5 e 6. **Os dois workers nascem desligados** —
+ligar manda requisição para as livrarias e e-mail para gente de verdade, e isso é decisão
+de implantação, não efeito colateral de um deploy.
+
+### Observar um livro (fatias 5 e 6)
+
+| Arquivo | O que é |
+|---|---|
+| `Sherlock.Domain/Entities/WatchedBook.cs` | A entidade e o enum `WatchRule` |
+| `Sherlock.Domain/Interfaces/IWatchedBookRepository.cs` | Inclusive o `SELECT DISTINCT isbn` que define o custo da feature (§4.1) |
+| `Sherlock.Business/Services/WatchedBookService.cs` | CRUD, teto de 20, e os metadados vindos do banco |
+| `Sherlock.Api/Controllers/WatchedController.cs` | `GET` / `POST` (lote) / `PATCH` / `DELETE`, com `[Authorize]` |
+| `Client/src/app/services/watched-service.ts` | Saiu do `localStorage` para HTTP |
+| `Client/src/app/pages/watched-page/` | Capa, variação desde ontem e menor preço do mês no cartão |
+
+**Adicionar não dispara busca.** O plano dizia que o `POST` dispararia a varredura para
+estabelecer a referência; na prática uma varredura leva ~17s, e um lote de 20 livros
+deixaria a pessoa esperando quase seis minutos enquanto 1.340 requisições saíam de uma
+vez. A referência sai do histórico que já existe em `queries` (custo zero — quem observa
+um livro quase sempre acabou de buscar ele), e quem não tiver histórico fica com
+referência nula até a primeira varredura, que atende esses primeiro.
+
+A capa segue a ordem do §3.2: `queries.image_url`, depois o catálogo (que tem título e
+autor, não capa), e o `resolve-isbn` passou a extrair capa, autor e editora na mesma
+leitura que já abria a página para achar o ISBN.
+
+### Varrer e avisar (fatias 7 e 8)
+
+| Arquivo | O que é |
+|---|---|
+| `Sherlock.Business/Core/Watch/WatchRuleEvaluator.cs` | A regra do §3.3, função pura e testada |
+| `Sherlock.Business/Core/Watch/WatchSweepWorker.cs` | Varredura 06h→11h UTC, modo enxuto, advisory lock |
+| `Sherlock.Business/Core/Watch/WatchNotifyWorker.cs` | Resumo diário às 12h UTC, antifadiga |
+| `Sherlock.Business/Core/Watch/WatchDigest.cs` | O e-mail, em HTML e em texto puro |
+| `Sherlock.Business/Core/Watch/DailyWindow.cs` | Aritmética de relógio, em UTC, num lugar só |
+| `Sherlock.Data/Locking/PostgresAdvisoryLock.cs` | `pg_try_advisory_lock` com conexão própria |
+
+Os horários estão em UTC no `appsettings`, como o §8.2 exige: `SweepHourUtc: 6`,
+`SweepUntilHourUtc: 11`, `NotifyHourUtc: 12` — 03h, 08h e 09h de Brasília.
+
+### Sessão (fatia 4)
+
+| Arquivo | O que é |
+|---|---|
+| `Sherlock.Domain/Entities/Token.cs` | A tabela que existia desde o `InitialCreate` e nunca tinha sido usada |
+| `Sherlock.Api/Services/RefreshTokenService.cs` | Emitir, rodar, revogar; detecção de reuso |
+| `Sherlock.Api/Controllers/AuthController.cs` | `POST /api/auth/refresh` e `POST /api/auth/logout` |
+| `Client/src/app/interceptors/auth-interceptor.ts` | Renova no 401 e repete a chamada, uma renovação por vez |
+
+O refresh token vai em cookie `HttpOnly` e o banco guarda só o SHA-256 dele. Cada uso
+emite outro e marca o anterior como gasto; apresentar um token já gasto derruba a cadeia
+inteira daquela pessoa, porque significa que existem duas cópias dele no mundo.
+
+### Ligar
+
+```
+Watch__SweepEnabled=true     # varredura noturna — manda requisição às livrarias
+Watch__NotifyEnabled=true    # resumo diário — manda e-mail para gente de verdade
+Email__Enabled=true          # sem isto o resumo só aparece no log da API
+```
+
+O e-mail ainda depende da fatia 3 ([EMAIL-DNS.md](EMAIL-DNS.md)) para chegar na caixa de
+entrada em vez da pasta de lixo eletrônico.
