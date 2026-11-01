@@ -63,8 +63,11 @@ describe('AuthService', () => {
       expect(req.request.body).toEqual({
         email: 'test@example.com',
         password: 'password123',
-        username: 'testuser'
+        username: 'testuser',
+        firstName: undefined,
       });
+      // O cookie de sessão longa só é gravado se a requisição levar credenciais.
+      expect(req.request.withCredentials).toBeTrue();
       req.flush(mockResponse);
     });
   });
@@ -83,18 +86,51 @@ describe('AuthService', () => {
     it('should remove token on logout', () => {
       localStorage.setItem('access_token', 'test-token');
       service.logout();
+
+      // Sair agora avisa o servidor: sem revogar o refresh token, o cookie
+      // continuaria valendo e a próxima visita reentraria sozinha.
+      const req = httpMock.expectOne(`${environment.apiUrl}/auth/logout`);
+      expect(req.request.method).toBe('POST');
+      req.flush(null);
+
       expect(localStorage.getItem('access_token')).toBeNull();
+      expect(service.temSessaoLonga()).toBeFalse();
     });
   });
 
   describe('isAuthenticated', () => {
-    it('should return true when token exists', () => {
-      localStorage.setItem('access_token', 'test-token');
+    /** JWT com exp em 2099 — o conteúdo não importa, só a validade. */
+    function tokenValido(): string {
+      const payload = btoa(JSON.stringify({ sub: '1', exp: 4102444800 }));
+      return `eyJhbGciOiJIUzI1NiJ9.${payload}.assinatura`;
+    }
+
+    it('should return true when token is valid', () => {
+      service.setToken(tokenValido());
       expect(service.isAuthenticated()).toBeTrue();
     });
 
     it('should return false when token does not exist', () => {
       expect(service.isAuthenticated()).toBeFalse();
+    });
+
+    it('should discard an unreadable token', () => {
+      // "test-token" não é um JWT. Antes a tela se montava como logada e cada
+      // chamada voltava 401.
+      localStorage.setItem('access_token', 'test-token');
+      expect(service.isAuthenticated()).toBeFalse();
+      expect(localStorage.getItem('access_token')).toBeNull();
+    });
+
+    it('should stay authenticated with an expired token but a live session', () => {
+      // O token de acesso dura 30 min; a sessão longa, 30 dias. Quem volta ao
+      // site depois do almoço tem o token vencido e sessão viva — o interceptor
+      // renova na primeira chamada, então a tela não pode mostrar o visitante.
+      const payload = btoa(JSON.stringify({ sub: '1', exp: 1000 }));
+      localStorage.setItem('access_token', `eyJhbGciOiJIUzI1NiJ9.${payload}.assinatura`);
+      localStorage.setItem('sherlock.session', '1');
+
+      expect(service.isAuthenticated()).toBeTrue();
     });
   });
 });

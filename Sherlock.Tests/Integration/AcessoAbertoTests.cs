@@ -44,8 +44,18 @@ public class AcessoAbertoTests(SherlockApiFactory factory)
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    // ---------- exige conta ----------
+
+    // O carrinho é a exceção da regra "comparar preço é aberto", e de propósito.
+    // Ele não é uma busca: é até 50 buscas em lote, cada uma batendo em todos os
+    // provedores. Quem compara um livro usa /api/BookSearch, que segue aberto; o
+    // front nem chama /api/Cart hoje. Deixar o lote aberto seria dar a qualquer
+    // visitante um multiplicador de carga sobre as livrarias que raspamos.
+    //
+    // Este teste existia afirmando o contrário e nunca tinha rodado — a suíte de
+    // integração dependia de Docker, que faltava na máquina.
     [Fact]
-    public async Task Carrinho_sem_token_nao_devolve_401()
+    public async Task Carrinho_exige_token()
     {
         var response = await _client.PostAsJsonAsync("/api/Cart/optimize", new
         {
@@ -55,10 +65,8 @@ public class AcessoAbertoTests(SherlockApiFactory factory)
             includeShipping = false
         });
 
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
-
-    // ---------- exige conta ----------
 
     [Theory]
     [InlineData("/api/Transactions")]      // histórico: as buscas de UMA pessoa

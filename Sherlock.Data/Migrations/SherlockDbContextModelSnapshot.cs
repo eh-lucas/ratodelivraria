@@ -271,7 +271,7 @@ namespace Sherlock.Data.Migrations
                         {
                             Id = 1,
                             BonusCredits = 0,
-                            CreatedAt = new DateTime(2026, 10, 31, 20, 37, 28, 450, DateTimeKind.Utc).AddTicks(2682),
+                            CreatedAt = new DateTime(2026, 10, 31, 21, 55, 4, 588, DateTimeKind.Utc).AddTicks(7177),
                             Credits = 50,
                             Description = "Ideal para testar o serviço",
                             DisplayOrder = 1,
@@ -284,7 +284,7 @@ namespace Sherlock.Data.Migrations
                         {
                             Id = 2,
                             BonusCredits = 10,
-                            CreatedAt = new DateTime(2026, 10, 31, 20, 37, 28, 450, DateTimeKind.Utc).AddTicks(6154),
+                            CreatedAt = new DateTime(2026, 10, 31, 21, 55, 4, 589, DateTimeKind.Utc).AddTicks(816),
                             Credits = 100,
                             Description = "Para uso casual",
                             DisplayOrder = 2,
@@ -297,7 +297,7 @@ namespace Sherlock.Data.Migrations
                         {
                             Id = 3,
                             BonusCredits = 50,
-                            CreatedAt = new DateTime(2026, 10, 31, 20, 37, 28, 450, DateTimeKind.Utc).AddTicks(6161),
+                            CreatedAt = new DateTime(2026, 10, 31, 21, 55, 4, 589, DateTimeKind.Utc).AddTicks(826),
                             Credits = 300,
                             Description = "Melhor custo-benefício",
                             DisplayOrder = 3,
@@ -310,7 +310,7 @@ namespace Sherlock.Data.Migrations
                         {
                             Id = 4,
                             BonusCredits = 200,
-                            CreatedAt = new DateTime(2026, 10, 31, 20, 37, 28, 450, DateTimeKind.Utc).AddTicks(6166),
+                            CreatedAt = new DateTime(2026, 10, 31, 21, 55, 4, 589, DateTimeKind.Utc).AddTicks(830),
                             Credits = 1000,
                             Description = "Para usuários frequentes",
                             DisplayOrder = 4,
@@ -1186,18 +1186,24 @@ namespace Sherlock.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<DateTime>("DeletedAt")
+                    b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
+                        .HasColumnName("expires_at");
 
-                    b.Property<string>("TokenUid")
+                    b.Property<string>("ReplacedByHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("replaced_by_hash");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("TokenHash")
                         .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("token_uid");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
 
                     b.Property<int>("UserId")
                         .HasColumnType("integer")
@@ -1205,6 +1211,13 @@ namespace Sherlock.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_tokens");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tokens_token_hash");
+
+                    b.HasIndex("UserId", "RevokedAt")
+                        .HasDatabaseName("ix_tokens_user_id_revoked_at");
 
                     b.ToTable("tokens", (string)null);
                 });
@@ -1607,6 +1620,18 @@ namespace Sherlock.Data.Migrations
                     b.Navigation("Provider");
 
                     b.Navigation("Transaction");
+                });
+
+            modelBuilder.Entity("Sherlock.Domain.Entities.Token", b =>
+                {
+                    b.HasOne("Sherlock.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tokens_users_user_id");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Sherlock.Domain.Entities.Transaction", b =>

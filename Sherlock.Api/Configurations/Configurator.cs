@@ -73,6 +73,7 @@ public class Configurator
             builder.Configuration.GetSection(GoogleAuthSettings.SectionName));
         builder.Services.AddScoped<UsernameService>();
         builder.Services.AddScoped<GoogleLoginService>();
+        builder.Services.AddScoped<RefreshTokenService>();
 
         builder.Services
             .AddData(builder.Configuration)

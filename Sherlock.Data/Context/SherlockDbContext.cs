@@ -225,6 +225,30 @@ public class SherlockDbContext : DbContext
             );
         });
 
+        // Token — refresh tokens (§8.1). A tabela existia desde o InitialCreate e
+        // nunca tinha sido usada; agora ela guarda a sessão longa.
+        modelBuilder.Entity<Token>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.ReplacedByHash).HasMaxLength(64);
+
+            entity.Ignore(e => e.Ativo);
+
+            // O refresh chega com o valor, não com o id: esta é a única busca que
+            // acontece no caminho quente, e ela precisa ser única — dois tokens
+            // com o mesmo hash seria colisão de sessão.
+            entity.HasIndex(e => e.TokenHash).IsUnique();
+
+            // "Sair de todos os aparelhos" e a limpeza do que expirou.
+            entity.HasIndex(e => new { e.UserId, e.RevokedAt });
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         // WatchedBook — os livros que cada pessoa pediu para vigiar
         modelBuilder.Entity<WatchedBook>(entity =>
         {

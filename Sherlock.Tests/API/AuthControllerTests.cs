@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -55,8 +57,24 @@ public class AuthControllerTests : IDisposable
             usernames,
             new Mock<ILogger<GoogleLoginService>>().Object);
 
+        var refreshTokens = new RefreshTokenService(
+            _context, new Mock<ILogger<RefreshTokenService>>().Object);
+
+        // Ambiente de desenvolvimento: o cookie de sessão sai sem `Secure`, que é
+        // o que permite testar sem HTTPS.
+        var environment = new Mock<IWebHostEnvironment>();
+        environment.SetupGet(e => e.EnvironmentName).Returns("Development");
+
         _controller = new AuthController(
-            _context, _tokenService, googleLogin, usernames, _loggerMock.Object, _configuration);
+            _context, _tokenService, googleLogin, usernames, refreshTokens,
+            _loggerMock.Object, _configuration, environment.Object);
+
+        // O controller grava o cookie de refresh na resposta; sem HttpContext a
+        // chamada a Response.Cookies estoura antes de chegar na asserção.
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext(),
+        };
     }
 
     public void Dispose()

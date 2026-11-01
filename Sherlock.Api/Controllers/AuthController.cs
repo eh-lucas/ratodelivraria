@@ -16,21 +16,27 @@ public class AuthController : ControllerBase
     private readonly TokenService _tokenService;
     private readonly GoogleLoginService _googleLogin;
     private readonly UsernameService _usernames;
+    private readonly RefreshTokenService _refreshTokens;
     private readonly ILogger<AuthController> _logger;
     private readonly IConfiguration _configuration;
+    private readonly bool _ambienteDeDesenvolvimento;
 
     public AuthController(
         SherlockDbContext context,
         TokenService tokenService,
         GoogleLoginService googleLogin,
         UsernameService usernames,
+        RefreshTokenService refreshTokens,
         ILogger<AuthController> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IWebHostEnvironment environment)
     {
+        _ambienteDeDesenvolvimento = environment.IsDevelopment();
         _context = context;
         _tokenService = tokenService;
         _googleLogin = googleLogin;
         _usernames = usernames;
+        _refreshTokens = refreshTokens;
         _logger = logger;
         _configuration = configuration;
     }
@@ -83,6 +89,8 @@ public class AuthController : ControllerBase
 
             var token = _tokenService.GenerateToken(user.Id.ToString(), user.Role);
             var expiryMinutes = int.Parse(_configuration["JwtSettings:ExpiryInMinutes"] ?? AppConstants.Auth.DefaultTokenExpiryMinutes.ToString());
+
+            await EmitirSessaoLongaAsync(user.Id, HttpContext.RequestAborted);
 
             return CreatedAtAction(nameof(Register), new LoginResponseDTO
             {
@@ -149,6 +157,8 @@ public class AuthController : ControllerBase
         var token = _tokenService.GenerateToken(user.Id.ToString(), user.Role);
         var expiryMinutes = int.Parse(_configuration["JwtSettings:ExpiryInMinutes"] ?? "30");
 
+        await EmitirSessaoLongaAsync(user.Id, HttpContext.RequestAborted);
+
         _logger.LogInformation("Login bem-sucedido para usuário: {UserId}", user.Id);
 
         return Ok(new LoginResponseDTO
@@ -184,6 +194,8 @@ public class AuthController : ControllerBase
         var expiryMinutes = int.Parse(
             _configuration["JwtSettings:ExpiryInMinutes"] ?? AppConstants.Auth.DefaultTokenExpiryMinutes.ToString());
 
+        await EmitirSessaoLongaAsync(user.Id, cancellationToken);
+
         return Ok(new LoginResponseDTO
         {
             Token = token,
@@ -206,6 +218,62 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Troca o refresh token do cookie por um token de acesso novo.
+    ///
+    /// Aberto de propósito: quem chama aqui é justamente quem está com o token de
+    /// acesso vencido. Exigir [Authorize] tornaria o endpoint inútil.
+    /// </summary>
+    [HttpPost("refresh")]
+    [ProducesResponseType(typeof(LoginResponseDTO), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Refresh(CancellationToken cancellationToken)
+    {
+        var apresentado = Request.Cookies[RefreshTokenService.CookieName];
+
+        var outcome = await _refreshTokens.RotacionarAsync(apresentado, cancellationToken);
+
+        if (!outcome.Success || outcome.User == null)
+        {
+            // Cookie que não vale mais só atrapalha: o navegador mandaria ele em
+            // toda requisição e o front tentaria renovar de novo a cada 401.
+            ApagarCookie();
+            return Unauthorized(new { message = outcome.Error });
+        }
+
+        var user = outcome.User;
+        GravarCookie(outcome.NewToken!, outcome.NewExpiresAt!.Value);
+
+        var token = _tokenService.GenerateToken(user.Id.ToString(), user.Role);
+        var expiryMinutes = int.Parse(
+            _configuration["JwtSettings:ExpiryInMinutes"] ?? AppConstants.Auth.DefaultTokenExpiryMinutes.ToString());
+
+        return Ok(new LoginResponseDTO
+        {
+            Token = token,
+            Email = user.Email,
+            Username = user.FirstName ?? user.Username,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes),
+        });
+    }
+
+    /// <summary>
+    /// Encerra a sessão longa deste navegador.
+    ///
+    /// Responde 204 mesmo sem cookie nenhum: sair é uma operação que sempre dá
+    /// certo, e um erro aqui só confundiria quem já quis ir embora.
+    /// </summary>
+    [HttpPost("logout")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
+    {
+        await _refreshTokens.RevogarAsync(
+            Request.Cookies[RefreshTokenService.CookieName], cancellationToken);
+
+        ApagarCookie();
+        return NoContent();
+    }
+
+    /// <summary>
     /// Verifica se o token atual é válido
     /// </summary>
     [HttpGet("validate")]
@@ -216,5 +284,47 @@ public class AuthController : ControllerBase
         // Se chegou aqui com [Authorize], o token é válido
         // Mas como não temos [Authorize], apenas retornamos OK
         return Ok(new { valid = true, timestamp = DateTime.UtcNow });
+    }
+
+    private async Task EmitirSessaoLongaAsync(int userId, CancellationToken cancellationToken)
+    {
+        var (valor, expira) = await _refreshTokens.EmitirAsync(userId, cancellationToken);
+        GravarCookie(valor, expira);
+    }
+
+    /// <summary>
+    /// O refresh token vai em cookie `HttpOnly`, e não no corpo da resposta: é o
+    /// que o tira do alcance de qualquer JavaScript da página, inclusive o de um
+    /// script de terceiro que entre no site um dia. O token de acesso, de vida
+    /// curta, continua no corpo — o front precisa dele para o cabeçalho.
+    ///
+    /// `SameSite=Lax` e não `Strict`: com `Strict` o cookie não viaja quando a
+    /// pessoa chega por um link de fora, e ela abriria o site deslogada mesmo
+    /// tendo sessão.
+    /// </summary>
+    private void GravarCookie(string valor, DateTime expiraEm)
+    {
+        Response.Cookies.Append(RefreshTokenService.CookieName, valor, new CookieOptions
+        {
+            HttpOnly = true,
+            // Em desenvolvimento o front é http://localhost:4200; um cookie
+            // `Secure` simplesmente não seria gravado e o refresh nunca rodaria.
+            Secure = !_ambienteDeDesenvolvimento,
+            SameSite = SameSiteMode.Lax,
+            Expires = expiraEm,
+            Path = "/api/auth",
+            IsEssential = true,
+        });
+    }
+
+    private void ApagarCookie()
+    {
+        Response.Cookies.Delete(RefreshTokenService.CookieName, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = !_ambienteDeDesenvolvimento,
+            SameSite = SameSiteMode.Lax,
+            Path = "/api/auth",
+        });
     }
 }
