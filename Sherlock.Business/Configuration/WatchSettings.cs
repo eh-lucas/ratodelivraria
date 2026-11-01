@@ -11,8 +11,15 @@ public class WatchSettings
     /// Teto de livros observados por pessoa. É a variável que dimensiona o
     /// trabalho noturno inteiro, e o único controle que existe — observar é de
     /// graça, como buscar (§3.4).
+    ///
+    /// Subiu de 20 para 30 em 01/11/2026. O custo está no pior caso da
+    /// varredura: a janela de 5h no modo enxuto comporta ~1.800 ISBNs distintos
+    /// por noite, então sem nenhuma sobreposição entre pessoas isto cai de 90
+    /// para 60 usuários. Na prática a sobreposição é alta — o livro que uma
+    /// pessoa observa, outra também observa, e o custo marginal dele é zero
+    /// (§4.1) — e por isso o teto de usuários real fica bem acima disso.
     /// </summary>
-    public int MaxPerUser { get; set; } = 20;
+    public int MaxPerUser { get; set; } = 30;
 
     /// <summary>Janela do "menor preço do mês", em dias.</summary>
     public int LowestPriceWindowDays { get; set; } = 30;

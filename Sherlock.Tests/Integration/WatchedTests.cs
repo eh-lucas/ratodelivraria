@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Sherlock.Business.Configuration;
 using Sherlock.Business.DTOs;
 using Sherlock.Domain.Entities;
 using Sherlock.Tests.Integration.Infrastructure;
@@ -148,20 +149,26 @@ public class WatchedTests(SherlockApiFactory factory)
     }
 
     [Fact]
-    public async Task O_teto_de_vinte_e_aplicado_e_diz_o_motivo()
+    public async Task O_teto_por_pessoa_e_aplicado_e_diz_o_motivo()
     {
         // O teto é o único controle que existe — observar é de graça, como buscar
         // (§3.4). Ele precisa explicar a recusa, senão o livro some sem aviso.
+        //
+        // O número vem de WatchSettings.MaxPerUser (30 desde 01/11/2026) em vez de
+        // ficar repetido aqui: teste que fixa o valor em dois lugares quebra a cada
+        // ajuste do teto sem que nada tenha realmente regredido.
         var (client, _) = await AuthHelper.CreateAuthenticatedClientAsync(factory);
 
-        var vinteEUm = Enumerable.Range(0, 21)
-            .Select(i => Item($"978853591{i:D4}"))
+        var teto = new WatchSettings().MaxPerUser;
+
+        var umAMais = Enumerable.Range(0, teto + 1)
+            .Select(i => Item($"97885359{i:D5}"))
             .ToArray();
 
-        var resultado = await AdicionarAsync(client, vinteEUm);
+        var resultado = await AdicionarAsync(client, umAMais);
 
-        resultado.Items.Should().HaveCount(20);
+        resultado.Items.Should().HaveCount(teto);
         resultado.Rejected.Should().ContainSingle();
-        resultado.Rejected[0].Reason.Should().Contain("20");
+        resultado.Rejected[0].Reason.Should().Contain(teto.ToString());
     }
 }

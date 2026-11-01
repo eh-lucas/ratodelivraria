@@ -317,8 +317,8 @@ Para a observação isso já era o certo por outro motivo: o custo marginal de u
 outra pessoa já observa é **zero** (§4.1), então cobrar por ele seria cobrar por trabalho
 que não acontece.
 
-O controle é **teto de 20 livros observados por pessoa**. Simples de explicar, e é
-exatamente a variável que dimensiona o trabalho noturno.
+O controle é **teto de 30 livros observados por pessoa** (eram 20 até 01/11/2026).
+Simples de explicar, e é exatamente a variável que dimensiona o trabalho noturno.
 
 > **Consequência que precisa de atenção:** os créditos estavam fazendo dois trabalhos ao
 > mesmo tempo — preço *e* freio de abuso. Uma busca custa 67 requisições às lojas, e o
@@ -389,7 +389,7 @@ O modo enxuto é o que torna isso confortável: **depois da primeira varredura s
 quais lojas devolveram aquele livro**. Nas seguintes, consultar só essas — e uma
 varredura completa semanal por livro para pegar loja que passou a ter estoque.
 
-Com teto de 20 livros por pessoa e muita repetição entre pessoas, ~1.800 ISBNs/noite
+Com teto de 30 livros por pessoa e muita repetição entre pessoas, ~1.800 ISBNs/noite
 cobre uma base na casa dos milhares de usuários sem nenhuma mudança de arquitetura.
 
 ### 4.3 Separar a varredura do aviso
@@ -593,15 +593,16 @@ da pessoa. É a mesma família do falso desconto do §3.3, e merece o mesmo guar
 > **Ação à parte:** corrigir o `CLAUDE.md`. Esses três pontos estão descrevendo código
 > que não existe, e é o arquivo que orienta quem chega no repo.
 
-### 8.4 Teto de 20 e intervalo diário: confirmados, sem ação
+### 8.4 Teto por pessoa e intervalo diário: confirmados, sem ação
 
-**Decidido: 20 livros por pessoa, varredura diária, nada a fazer agora.**
+**Decidido: 30 livros por pessoa, varredura diária, nada a fazer agora.**
+*(Eram 20; subiu para 30 em 01/11/2026. O cálculo abaixo já reflete o número novo.)*
 
 Fica registrado só o número que dimensiona isso, para quando fizer falta: a janela de 5h
-no modo enxuto comporta **~1.800 ISBNs distintos por noite**, o que com 20 livros por
-pessoa e **nenhuma** sobreposição dá **90 usuários**. Na prática a sobreposição é alta —
-o repo tem ranking de mais consultados e prefetcher construídos justamente porque a
-procura é concentrada em poucos títulos.
+no modo enxuto comporta **~1.800 ISBNs distintos por noite**, o que com 30 livros por
+pessoa e **nenhuma** sobreposição dá **60 usuários** — eram 90 com o teto de 20.
+Na prática a sobreposição é alta — o repo tem ranking de mais consultados e prefetcher
+construídos justamente porque a procura é concentrada em poucos títulos.
 
 Quando apertar, os botões em ordem, antes de mexer em arquitetura:
 
@@ -830,15 +831,15 @@ de implantação, não efeito colateral de um deploy.
 |---|---|
 | `Sherlock.Domain/Entities/WatchedBook.cs` | A entidade e o enum `WatchRule` |
 | `Sherlock.Domain/Interfaces/IWatchedBookRepository.cs` | Inclusive o `SELECT DISTINCT isbn` que define o custo da feature (§4.1) |
-| `Sherlock.Business/Services/WatchedBookService.cs` | CRUD, teto de 20, e os metadados vindos do banco |
+| `Sherlock.Business/Services/WatchedBookService.cs` | CRUD, teto por pessoa, e os metadados vindos do banco |
 | `Sherlock.Api/Controllers/WatchedController.cs` | `GET` / `POST` (lote) / `PATCH` / `DELETE`, com `[Authorize]` |
 | `Client/src/app/services/watched-service.ts` | Saiu do `localStorage` para HTTP |
 | `Client/src/app/pages/watched-page/` | Capa, variação desde ontem e menor preço do mês no cartão |
 
 **Adicionar não dispara busca.** O plano dizia que o `POST` dispararia a varredura para
-estabelecer a referência; na prática uma varredura leva ~17s, e um lote de 20 livros
-deixaria a pessoa esperando quase seis minutos enquanto 1.340 requisições saíam de uma
-vez. A referência sai do histórico que já existe em `queries` (custo zero — quem observa
+estabelecer a referência; na prática uma varredura leva ~17s, e um lote no teto de 30
+livros deixaria a pessoa esperando mais de oito minutos enquanto 2.010 requisições saíam
+de uma vez. A referência sai do histórico que já existe em `queries` (custo zero — quem observa
 um livro quase sempre acabou de buscar ele), e quem não tiver histórico fica com
 referência nula até a primeira varredura, que atende esses primeiro.
 
