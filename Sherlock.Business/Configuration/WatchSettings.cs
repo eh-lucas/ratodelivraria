@@ -39,6 +39,22 @@ public class WatchSettings
     public bool SweepEnabled { get; set; } = false;
 
     /// <summary>
+    /// Varre o livro assim que alguém passa a observá-lo, em vez de deixar o
+    /// cartão sem capa, título e preço até a rodada da madrugada — que, com
+    /// SweepEnabled desligado, nunca chega.
+    ///
+    /// Ligado por padrão, e separado do SweepEnabled de propósito: a rodada
+    /// noturna é trabalho de robô e pode estar desligada por escolha de carga;
+    /// esta varredura é consequência direta de um clique de agora e custa o mesmo
+    /// que a busca que a pessoa acabou de fazer.
+    ///
+    /// Não roda na requisição: o POST responde na hora e a varredura vai para a
+    /// fila (ImmediateSweepQueue). Varrer em linha custaria ~17s por livro, e um
+    /// lote no teto de 30 seriam mais de oito minutos de espera.
+    /// </summary>
+    public bool SweepOnAddEnabled { get; set; } = true;
+
+    /// <summary>
     /// Hora UTC em que a varredura começa. 06h UTC = 03h em Brasília.
     ///
     /// UTC explícito, e não `TimeZoneInfo` em tempo de execução: o servidor roda

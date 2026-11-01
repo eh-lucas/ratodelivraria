@@ -836,12 +836,24 @@ de implantação, não efeito colateral de um deploy.
 | `Client/src/app/services/watched-service.ts` | Saiu do `localStorage` para HTTP |
 | `Client/src/app/pages/watched-page/` | Capa, variação desde ontem e menor preço do mês no cartão |
 
-**Adicionar não dispara busca.** O plano dizia que o `POST` dispararia a varredura para
-estabelecer a referência; na prática uma varredura leva ~17s, e um lote no teto de 30
-livros deixaria a pessoa esperando mais de oito minutos enquanto 2.010 requisições saíam
-de uma vez. A referência sai do histórico que já existe em `queries` (custo zero — quem observa
-um livro quase sempre acabou de buscar ele), e quem não tiver histórico fica com
-referência nula até a primeira varredura, que atende esses primeiro.
+**Adicionar não varre *na requisição*.** O plano dizia que o `POST` dispararia a
+varredura para estabelecer a referência; na prática uma varredura leva ~17s, e um lote no
+teto de 30 livros deixaria a pessoa esperando mais de oito minutos enquanto 2.010
+requisições saíam de uma vez. A referência sai do histórico que já existe em `queries`
+(custo zero — quem observa um livro quase sempre acabou de buscar ele).
+
+**Revisto em 01/11/2026: quem não tem histórico é varrido logo após o `POST`.** A versão
+anterior deixava esses livros com referência nula "até a primeira varredura" — só que com
+`Watch:SweepEnabled` desligado essa varredura nunca chega, e o cartão ficava
+indefinidamente com um ISBN de rótulo, sem capa e sem preço. Agora o `POST` responde na
+hora e enfileira (`ImmediateSweepQueue`); o `ImmediateSweepWorker` drena um ISBN por vez e
+o cartão preenche em segundos. Vale só para o que falta: livro adicionado da tela de
+resultado já chega com título, capa e referência da busca que acabou de rodar, e varrer de
+novo seria repetir 67 requisições por nada.
+
+O interruptor é o `Watch:SweepOnAddEnabled`, separado do `SweepEnabled`: a rodada noturna é
+trabalho de robô e pode estar desligada por escolha de carga; esta é consequência direta de
+um clique de agora, e custa o mesmo que a busca que a pessoa acabou de fazer.
 
 A capa segue a ordem do §3.2: `queries.image_url`, depois o catálogo (que tem título e
 autor, não capa), e o `resolve-isbn` passou a extrair capa, autor e editora na mesma

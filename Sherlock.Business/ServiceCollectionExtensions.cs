@@ -82,6 +82,16 @@ public static class ServiceCollectionExtensions
         // O vigia de preço: varre de madrugada, avisa de manhã. Os dois nascem
         // desligados (Watch:SweepEnabled / Watch:NotifyEnabled) — ligar isso manda
         // requisição para as lojas e e-mail para gente de verdade.
+        // A varredura de um ISBN serve aos dois caminhos: a rodada noturna e a
+        // primeira varredura de quem acabou de observar o livro. Singleton porque
+        // os dois consumidores sao hosted services, e porque ele so depende de
+        // singletons — o DbContext vem do escopo que ele mesmo abre por varredura.
+        services.AddSingleton<WatchSweepRunner>();
+
+        // Fila singleton: o POST escreve nela e devolve na hora; o worker drena.
+        services.AddSingleton<ImmediateSweepQueue>();
+        services.AddHostedService<ImmediateSweepWorker>();
+
         services.AddHostedService<WatchSweepWorker>();
         services.AddHostedService<WatchNotifyWorker>();
 

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Sherlock.Business.Configuration;
+using Sherlock.Business.Core.Watch;
 using Sherlock.Business.DTOs;
 using Sherlock.Business.Interfaces;
 using Sherlock.Domain.Entities;
@@ -28,6 +29,7 @@ public class WatchedBookService : IWatchedBookService
     private readonly IQueryRepository _queries;
     private readonly ICatalogRepository _catalog;
     private readonly WatchSettings _settings;
+    private readonly ImmediateSweepQueue _varreduraImediata;
     private readonly ILogger<WatchedBookService> _logger;
 
     public WatchedBookService(
@@ -35,12 +37,14 @@ public class WatchedBookService : IWatchedBookService
         IQueryRepository queries,
         ICatalogRepository catalog,
         IOptions<WatchSettings> settings,
+        ImmediateSweepQueue varreduraImediata,
         ILogger<WatchedBookService> logger)
     {
         _repository = repository;
         _queries = queries;
         _catalog = catalog;
         _settings = settings?.Value ?? new WatchSettings();
+        _varreduraImediata = varreduraImediata;
         _logger = logger;
     }
 
@@ -140,6 +144,8 @@ public class WatchedBookService : IWatchedBookService
 
             await _repository.SaveChangesAsync(cancellationToken);
             resultado.Items = tocados.Select(n => ParaDto(n, menores)).ToList();
+
+            EnfileirarVarredura(tocados);
         }
 
         _logger.LogInformation(
@@ -205,6 +211,31 @@ public class WatchedBookService : IWatchedBookService
         }
 
         livro.DropPercent = queda is >= 1 and <= 90 ? queda : 15;
+    }
+
+    /// <summary>
+    /// Pede a primeira varredura de quem ainda não tem o que mostrar.
+    ///
+    /// Só o que falta: livro adicionado da tela de resultado já chega com título,
+    /// capa e referência vindos da busca que acabou de rodar, e varrer de novo
+    /// seria repetir 67 requisições por nada. Quem entrou pelo ISBN digitado no
+    /// /watched, sem histórico, é quem precisa.
+    ///
+    /// Não espera. O POST responde na hora e a fila cuida do resto — varrer em
+    /// linha custaria ~17s por livro, e um lote no teto de 30 seriam mais de oito
+    /// minutos de espera (§11).
+    /// </summary>
+    private void EnfileirarVarredura(List<WatchedBook> tocados)
+    {
+        foreach (var livro in tocados)
+        {
+            var faltaPreco = livro.ReferencePrice == null;
+            var faltaCapa = string.IsNullOrWhiteSpace(livro.ImageUrl);
+            var faltaTitulo = string.IsNullOrWhiteSpace(livro.Title) || livro.Title == livro.Isbn;
+
+            if (faltaPreco || faltaCapa || faltaTitulo)
+                _varreduraImediata.Enfileirar(livro.Isbn);
+        }
     }
 
     /// <summary>
