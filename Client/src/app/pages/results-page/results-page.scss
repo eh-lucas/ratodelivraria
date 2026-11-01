@@ -807,3 +807,49 @@
   border-radius: 2px;
   margin-right: var(--space-2);
 }
+
+// ===== Observar daqui =====
+// O mesmo botao serve a tabela "Por livro" e ao resumo (livro unico), entao o
+// estilo e neutro quanto ao contexto: so a .summary-watch acrescenta o respiro
+// que ele precisa na barra de cima.
+.watch-btn {
+  padding: 4px var(--space-3);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--accent-strong);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--bg-muted);
+  }
+
+  // Ja observado nao e erro nem acao pendente: e confirmacao. Por isso perde a
+  // borda e o destaque, em vez de ficar parecendo um botao quebrado.
+  &.is-watched {
+    color: var(--text-subtle);
+    border-color: transparent;
+    cursor: default;
+  }
+
+  &:disabled:not(.is-watched) {
+    opacity: 0.6;
+    cursor: wait;
+  }
+}
+
+.summary-watch {
+  margin-left: var(--space-3);
+}
+
+.watch-error {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--fs-sm);
+  color: #92400e;
+  background: #fef3c7;
+  border-radius: var(--radius-sm);
+}

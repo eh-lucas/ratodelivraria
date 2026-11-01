@@ -181,6 +181,15 @@ export const EN: Record<string, string> = {
   // Aviso da loja que ficou muda em algum livro do carrinho
   'pode sair mais barata': 'may be cheaper',
 
+  // Observar o preco a partir da tela de resultado
+  'Observar': 'Watch',
+  'Observar preço': 'Watch price',
+  'observando': 'watching',
+  'salvando…': 'saving…',
+  'Já está nos observados': 'Already in your watchlist',
+  'Avisar quando o preço cair': 'Notify me when the price drops',
+  'Não foi possível adicionar aos observados.': 'Could not add to your watchlist.',
+
   // Busca por nome no formulario de observados
   'Escolha um título da lista.': 'Pick a title from the list.',
   'Nenhum título encontrado. Tente outro nome ou informe o ISBN.':

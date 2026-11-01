@@ -18,8 +18,31 @@
         <span class="summary-label">{{ 'Menor preço' | t }}</span>
         <span class="summary-price">{{ formatPrice(bestOffer.total) }}</span>
       }
+
+      <!-- Um livro so nao rende a tabela "Por livro", e e justamente o caso mais
+           comum de querer acompanhar o preco. Entao o botao vem para o resumo. -->
+      @if (!isLoading && !isMultiBook && books.length === 1 && bestOffer) {
+        <button type="button" class="watch-btn summary-watch"
+                [class.is-watched]="jaObservado(books[0].isbn)"
+                [disabled]="jaObservado(books[0].isbn) || observando === books[0].isbn"
+                (click)="observar(books[0].isbn, bookStats[0]?.title)">
+          @if (observando === books[0].isbn) {
+            {{ 'salvando…' | t }}
+          } @else if (jaObservado(books[0].isbn)) {
+            {{ 'observando' | t }}
+          } @else {
+            {{ 'Observar preço' | t }}
+          }
+        </button>
+      }
     </div>
   </header>
+
+  <!-- Recusa do servidor ao observar (teto de 20 livros, ISBN invalido). Fica
+       logo abaixo do resumo para valer aos dois lugares que tem o botao. -->
+  @if (observarErro) {
+    <p class="watch-error">{{ observarErro | t }}</p>
+  }
 
   <!-- Carregando -->
   @if (isLoading) {
@@ -308,6 +331,7 @@
                     <th class="num">{{ 'Menor' | t }}</th>
                     <th class="num">{{ 'Médio' | t }}</th>
                     <th class="num">{{ 'Maior' | t }}</th>
+                    <th class="num">{{ 'Observar' | t }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -319,6 +343,23 @@
                       <td class="num">{{ b.foundIn ? formatPrice(b.min) : '—' }}</td>
                       <td class="num">{{ b.foundIn ? formatPrice(b.avg) : '—' }}</td>
                       <td class="num">{{ b.foundIn ? formatPrice(b.max) : '—' }}</td>
+                      <td class="num">
+                        @if (b.foundIn > 0) {
+                          <button type="button" class="watch-btn"
+                                  [class.is-watched]="jaObservado(b.isbn)"
+                                  [disabled]="jaObservado(b.isbn) || observando === b.isbn"
+                                  [title]="(jaObservado(b.isbn) ? 'Já está nos observados' : 'Avisar quando o preço cair') | t"
+                                  (click)="observar(b.isbn, b.title)">
+                            @if (observando === b.isbn) {
+                              {{ 'salvando…' | t }}
+                            } @else if (jaObservado(b.isbn)) {
+                              {{ 'observando' | t }}
+                            } @else {
+                              {{ 'Observar' | t }}
+                            }
+                          </button>
+                        }
+                      </td>
                     </tr>
                   }
                 </tbody>

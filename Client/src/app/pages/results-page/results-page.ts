@@ -14,6 +14,8 @@ import {
 import { UserService } from '../../services/user-service';
 import { SearchStateService } from '../../services/search-state';
 import { TranslatePipe } from '../../i18n/translate-pipe';
+import { WatchedService, WatchRule } from '../../services/watched-service';
+import { AuthService } from '../../services/auth-service';
 import { PluralPipe } from '../../i18n/plural-pipe';
 import { CoffeeModalComponent } from '../../pix/coffee-modal';
 
@@ -93,6 +95,16 @@ export class ResultsPage implements OnInit {
   showCoffee = false;
 
   books: CartBookItem[] = [];
+
+  // ===== Observar daqui =====
+  // Antes so dava para observar indo ao /watched e digitando o ISBN de novo --
+  // logo depois de ter acabado de ve-lo nesta tela.
+  readonly Rule = WatchRule;
+  /** ISBNs ja na lista da pessoa, para o botao nascer no estado certo. */
+  observados = new Set<string>();
+  /** ISBN em gravacao, para desabilitar so o botao daquele livro. */
+  observando: string | null = null;
+  observarErro = '';
   providerUrls: string[] = [];
 
   result: CartOptimizationResult | null = null;
@@ -127,6 +139,8 @@ export class ResultsPage implements OnInit {
     private cartService: CartService,
     private userService: UserService,
     private state: SearchStateService,
+    private watched: WatchedService,
+    private auth: AuthService,
   ) {}
 
   ngOnInit(): void {
@@ -141,6 +155,77 @@ export class ResultsPage implements OnInit {
 
       this.resolveProvidersAndRun();
     });
+
+    this.carregarObservados();
+  }
+
+  // ===== Observar daqui =====
+
+  /**
+   * Visitante nao tem lista; o botao entao convida a entrar em vez de falhar na
+   * primeira tentativa. A tela inteira e aberta de proposito -- so observar e
+   * que depende de conta, porque a lista e de uma pessoa e o aviso vai para o
+   * e-mail dela.
+   */
+  private carregarObservados(): void {
+    if (!this.auth.isAuthenticated()) return;
+
+    this.watched.items$.subscribe(list => {
+      this.observados = new Set(list.map(w => w.isbn));
+    });
+    this.watched.load().subscribe({ error: () => {} });
+  }
+
+  get podeObservar(): boolean {
+    return this.auth.isAuthenticated();
+  }
+
+  jaObservado(isbn: string): boolean {
+    return this.observados.has(isbn);
+  }
+
+  /**
+   * Um clique basta: entra com a regra padrao (queda de 15%), a mesma que o
+   * formulario do /watched ja sugere. Quem quiser preco-alvo ajusta la --
+   * obrigar a escolher aqui transformaria um clique num formulario.
+   */
+  observar(isbn: string, titulo?: string): void {
+    if (!this.podeObservar) {
+      this.router.navigate(['/login'], { queryParams: { redirect: this.router.url } });
+      return;
+    }
+    if (this.jaObservado(isbn) || this.observando) return;
+
+    this.observando = isbn;
+    this.observarErro = '';
+
+    this.watched.add([{
+      isbn,
+      title: titulo && titulo !== '—' ? titulo : undefined,
+      imageUrl: this.capaDe(isbn),
+      rule: WatchRule.PercentDrop,
+      dropPercent: 15,
+    }]).subscribe({
+      next: r => {
+        this.observando = null;
+        // Recusa traz o motivo do servidor (teto de 20 atingido, ISBN invalido).
+        const recusa = r.rejected[0];
+        if (recusa) {
+          this.observarErro = recusa.reason;
+          return;
+        }
+        this.observados.add(isbn);
+      },
+      error: () => {
+        this.observando = null;
+        this.observarErro = 'Não foi possível adicionar aos observados.';
+      },
+    });
+  }
+
+  /** A capa que esta tela ja mostrou, para o cartao do observado nascer com ela. */
+  private capaDe(isbn: string): string | undefined {
+    return this.queries.find(q => q.isbn === isbn && q.imageUrl)?.imageUrl ?? undefined;
   }
 
   /** `9788594090782*2` → { isbn, quantity: 2 } */
