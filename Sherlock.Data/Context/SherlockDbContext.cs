@@ -21,6 +21,7 @@ public class SherlockDbContext : DbContext
     // Entidades de suporte
     public DbSet<TransactionResult> TransactionResults => Set<TransactionResult>();
     public DbSet<Token> Tokens => Set<Token>();
+    public DbSet<WatchedBook> WatchedBooks => Set<WatchedBook>();
     public DbSet<Scraper> Scrapers => Set<Scraper>();
 
     // Entidades de créditos
@@ -222,6 +223,39 @@ public class SherlockDbContext : DbContext
                 new TransactionResult { Id = 3, Name = "NoResults", Description = "Nenhum resultado encontrado", IsSuccess = false, IsBillable = false },
                 new TransactionResult { Id = 4, Name = "AllFailed", Description = "Todos os providers falharam", IsSuccess = false, IsBillable = false }
             );
+        });
+
+        // WatchedBook — os livros que cada pessoa pediu para vigiar
+        modelBuilder.Entity<WatchedBook>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Isbn).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Author).HasMaxLength(300);
+            entity.Property(e => e.ImageUrl).HasMaxLength(1000);
+            entity.Property(e => e.LastProviderName).HasMaxLength(200);
+            entity.Property(e => e.LastProductUrl).HasMaxLength(1000);
+            entity.Property(e => e.DropPercent).HasDefaultValue(15);
+            entity.Property(e => e.Active).HasDefaultValue(true);
+
+            // A tela de uma pessoa
+            entity.HasIndex(e => new { e.UserId, e.Active });
+
+            // O `SELECT DISTINCT isbn ... WHERE active` do vigia noturno. É a
+            // consulta que define o custo da feature inteira (§4.1).
+            entity.HasIndex(e => e.Isbn);
+
+            // Pedir o mesmo livro duas vezes não cria duas linhas — a segunda
+            // chamada vira edição da regra. Sem isto, varrer um ISBN duplicado
+            // seria trabalho repetido para a mesma pessoa.
+            entity.HasIndex(e => new { e.UserId, e.Isbn }).IsUnique();
+
+            // Apagar a conta leva a lista junto: ela não significa nada sem o dono,
+            // e é o que a exclusão de conta da LGPD (§2.4) precisa que aconteça.
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

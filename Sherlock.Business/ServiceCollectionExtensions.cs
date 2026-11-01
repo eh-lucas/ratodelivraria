@@ -32,6 +32,8 @@ public static class ServiceCollectionExtensions
             configuration.GetSection(RankingSettings.SectionName));
         services.Configure<CartRequerySettings>(
             configuration.GetSection(CartRequerySettings.SectionName));
+        services.Configure<WatchSettings>(
+            configuration.GetSection(WatchSettings.SectionName));
         // Services
         services.AddScoped<IBookService, BookService>();
         services.AddScoped<IBookPriceService, BookPriceService>();
@@ -41,6 +43,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITransactionPersistenceService, TransactionPersistenceService>();
         services.AddScoped<ICreditService, CreditService>();
         services.AddScoped<ICatalogService, CatalogService>();
+        services.AddScoped<IWatchedBookService, WatchedBookService>();
 
         // Crawler do catálogo
         services.AddScoped<CatalogCrawler>();

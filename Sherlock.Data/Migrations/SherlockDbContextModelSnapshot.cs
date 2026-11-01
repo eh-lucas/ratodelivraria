@@ -1439,6 +1439,119 @@ namespace Sherlock.Data.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("Sherlock.Domain.Entities.WatchedBook", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Active")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("active");
+
+                    b.Property<string>("Author")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("author");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("DropPercent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(15)
+                        .HasColumnName("drop_percent");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("image_url");
+
+                    b.Property<string>("Isbn")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("isbn");
+
+                    b.Property<DateTime?>("LastCheckedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_checked_at");
+
+                    b.Property<DateTime?>("LastNotifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_notified_at");
+
+                    b.Property<decimal?>("LastNotifiedPrice")
+                        .HasColumnType("numeric")
+                        .HasColumnName("last_notified_price");
+
+                    b.Property<decimal?>("LastPrice")
+                        .HasColumnType("numeric")
+                        .HasColumnName("last_price");
+
+                    b.Property<string>("LastProductUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("last_product_url");
+
+                    b.Property<string>("LastProviderName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("last_provider_name");
+
+                    b.Property<decimal?>("PreviousPrice")
+                        .HasColumnType("numeric")
+                        .HasColumnName("previous_price");
+
+                    b.Property<decimal?>("ReferencePrice")
+                        .HasColumnType("numeric")
+                        .HasColumnName("reference_price");
+
+                    b.Property<DateTime?>("ReferencePriceAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reference_price_at");
+
+                    b.Property<int>("Rule")
+                        .HasColumnType("integer")
+                        .HasColumnName("rule");
+
+                    b.Property<decimal?>("TargetPrice")
+                        .HasColumnType("numeric")
+                        .HasColumnName("target_price");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_watched_books");
+
+                    b.HasIndex("Isbn")
+                        .HasDatabaseName("ix_watched_books_isbn");
+
+                    b.HasIndex("UserId", "Active")
+                        .HasDatabaseName("ix_watched_books_user_id_active");
+
+                    b.HasIndex("UserId", "Isbn")
+                        .IsUnique()
+                        .HasDatabaseName("ix_watched_books_user_id_isbn");
+
+                    b.ToTable("watched_books", (string)null);
+                });
+
             modelBuilder.Entity("Sherlock.Domain.Entities.CreditTransaction", b =>
                 {
                     b.HasOne("Sherlock.Domain.Entities.CreditPackage", "CreditPackage")
@@ -1520,6 +1633,18 @@ namespace Sherlock.Data.Migrations
                     b.Navigation("BestQuery");
 
                     b.Navigation("TransactionResult");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Sherlock.Domain.Entities.WatchedBook", b =>
+                {
+                    b.HasOne("Sherlock.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_watched_books_users_user_id");
 
                     b.Navigation("User");
                 });

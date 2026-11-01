@@ -24,6 +24,29 @@ public class CatalogService : ICatalogService
         @"ISBN[^0-9]{0,10}((?:97[89])[-\s]?\d[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d|\d{13}|\d{10})",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    /// <summary>
+    /// Capa pelo Open Graph. É o caminho mais confiável nessas lojas: todas são
+    /// OpenCart e a og:image aponta para a imagem grande do produto, enquanto o
+    /// &lt;img&gt; da página costuma ser a miniatura já redimensionada.
+    /// </summary>
+    private static readonly Regex OgImagePattern = new(
+        @"<meta[^>]+property\s*=\s*[""']og:image[""'][^>]*content\s*=\s*[""']([^""']+)[""']"
+        + @"|<meta[^>]+content\s*=\s*[""']([^""']+)[""'][^>]*property\s*=\s*[""']og:image[""']",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    /// <summary>
+    /// Autor e editora na ficha do produto. O OpenCart renderiza isso como
+    /// "&lt;span&gt;Autor:&lt;/span&gt; Fulano" ou numa linha de tabela; o padrão
+    /// aceita as duas formas e para na primeira tag que fechar.
+    /// </summary>
+    private static readonly Regex AuthorPattern = new(
+        @"Autor(?:es)?\s*:?\s*</[a-z]+>\s*(?:<[^>]+>\s*)?([^<]{2,120})",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex PublisherPattern = new(
+        @"Editora\s*:?\s*</[a-z]+>\s*(?:<[^>]+>\s*)?([^<]{2,120})",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private const string ChromeUserAgent =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
@@ -179,9 +202,17 @@ public class CatalogService : ICatalogService
         if (item is null)
             return new ResolveIsbnResultDto { Found = false, Error = "Item não encontrado." };
 
-        // Já resolvido antes: nem toca na loja.
+        // Já resolvido antes: nem toca na loja. Sai sem capa de propósito — abrir
+        // a página só por imagem é exatamente a requisição que o §3.2 evita; quem
+        // precisa da capa tem `queries.image_url` como primeira parada.
         if (!string.IsNullOrWhiteSpace(item.Isbn))
-            return new ResolveIsbnResultDto { Found = true, Isbn = item.Isbn, Title = item.Name };
+            return new ResolveIsbnResultDto
+            {
+                Found = true,
+                Isbn = item.Isbn,
+                Title = item.Name,
+                Author = item.Authors,
+            };
 
         if (string.IsNullOrWhiteSpace(item.Href))
             return new ResolveIsbnResultDto { Found = false, Error = "Item sem link para a loja." };
@@ -213,7 +244,15 @@ public class CatalogService : ICatalogService
                 "ISBN {Isbn} resolvido para \"{Title}\" ({Count} lojas atualizadas)",
                 isbn, item.Name, updated);
 
-            return new ResolveIsbnResultDto { Found = true, Isbn = isbn, Title = item.Name };
+            return new ResolveIsbnResultDto
+            {
+                Found = true,
+                Isbn = isbn,
+                Title = item.Name,
+                Author = ExtrairAutor(html) ?? item.Authors,
+                Publisher = ExtrairEditora(html),
+                ImageUrl = ExtrairCapa(html, item.Href),
+            };
         }
         catch (Exception ex)
         {
@@ -224,5 +263,52 @@ public class CatalogService : ICatalogService
                 Error = "Não foi possível abrir a página do produto.",
             };
         }
+    }
+
+    internal static string? ExtrairAutor(string html) => ExtrairTexto(AuthorPattern, html);
+
+    internal static string? ExtrairEditora(string html) => ExtrairTexto(PublisherPattern, html);
+
+    /// <summary>Primeiro grupo não vazio do padrão, já limpo de espaços e &amp;nbsp;.</summary>
+    private static string? ExtrairTexto(Regex padrao, string html)
+    {
+        var match = padrao.Match(html);
+        if (!match.Success) return null;
+
+        var valor = match.Groups
+            .Cast<Group>()
+            .Skip(1)
+            .FirstOrDefault(g => g.Success && !string.IsNullOrWhiteSpace(g.Value))
+            ?.Value;
+
+        if (valor == null) return null;
+
+        valor = System.Net.WebUtility.HtmlDecode(valor).Replace('\u00a0', ' ').Trim();
+        return string.IsNullOrWhiteSpace(valor) ? null : valor;
+    }
+
+    /// <summary>
+    /// Capa do produto. A og:image dessas lojas às vezes vem relativa; resolver
+    /// contra o endereço da página evita guardar no banco uma URL que não abre.
+    /// </summary>
+    internal static string? ExtrairCapa(string html, string? paginaUrl)
+    {
+        var bruto = ExtrairTexto(OgImagePattern, html);
+        if (bruto == null) return null;
+
+        // O esquema precisa ser conferido: no Linux, `Uri.TryCreate` aceita
+        // "/image/capa.jpg" como URI absoluta e devolve "file:///image/capa.jpg".
+        // Sem esta linha, toda capa de caminho relativo iria para o banco como um
+        // link para o sistema de arquivos do servidor.
+        if (Uri.TryCreate(bruto, UriKind.Absolute, out var absoluta)
+            && (absoluta.Scheme == Uri.UriSchemeHttp || absoluta.Scheme == Uri.UriSchemeHttps))
+            return absoluta.ToString();
+
+        if (paginaUrl != null
+            && Uri.TryCreate(paginaUrl, UriKind.Absolute, out var basePagina)
+            && Uri.TryCreate(basePagina, bruto, out var combinada))
+            return combinada.ToString();
+
+        return null;
     }
 }

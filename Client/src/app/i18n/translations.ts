@@ -100,16 +100,29 @@ export const EN: Record<string, string> = {
   // Observados
   'Meus livros observados': 'My watched books',
   'Nenhum livro observado ainda.': 'No watched books yet.',
+  'Livro': 'Book',
   'Preço alvo': 'Target price',
   'Preço-alvo (R$)': 'Target price (R$)',
-  'Frequência': 'Frequency',
+  'Preço hoje': 'Price today',
+  'Desde ontem': 'Since yesterday',
+  'Melhor em 30 dias': 'Best in 30 days',
+  'sem mudança': 'unchanged',
   'Última consulta': 'Last query',
-  'Último preço': 'Last price',
-  'Em construção:': 'Under construction:',
-  'ainda estamos finalizando o agendador no servidor. Por enquanto os itens ficam salvos apenas no seu navegador.':
-    'we are still finishing the scheduler on the server. For now items are saved only in your browser.',
-  'Cadastre livros para que o sistema consulte periodicamente. Quando o preço atingir o alvo, você receberá um aviso por e-mail.':
-    'Register books for the system to check periodically. When the price reaches your target, you will get an email alert.',
+  'Avisar quando': 'Alert me when',
+  'o preço cair bastante': 'the price drops a lot',
+  'chegar a um preço que eu escolher': 'it reaches a price I choose',
+  'Queda de (%)': 'Drop of (%)',
+  'Salvando…': 'Saving…',
+  'Carregando…': 'Loading…',
+  'pendente': 'pending',
+  'Não foi possível carregar sua lista. Tente novamente.':
+    'We could not load your list. Please try again.',
+  'Não foi possível salvar. Tente novamente.': 'We could not save it. Please try again.',
+  'Informe um ISBN de 10 ou 13 dígitos.': 'Enter a 10 or 13 digit ISBN.',
+  'O rato confere o preço desses livros todo dia de madrugada. Quando valer a pena, ele te avisa por e-mail — um aviso por dia, com tudo que caiu.':
+    'The mouse checks these prices every night. When it is worth it, you get an email — one a day, with everything that dropped.',
+  'O aviso só sai se o preço de hoje também for o melhor dos últimos 30 dias — assim você não compra caro por causa de uma promoção que subiu antes de cair.':
+    'The alert only goes out if today is also the best price in 30 days — so you do not overpay because of a sale that went up before coming down.',
 
   // Histórico
   'Carregando histórico...': 'Loading history...',
@@ -152,13 +165,7 @@ export const EN: Record<string, string> = {
   'Não foi possível carregar os dados do usuário.': 'Could not load user data.',
   'Nao foi possivel carregar os pacotes de creditos.': 'Could not load credit packages.',
   'Erro ao processar a compra. Tente novamente.': 'Could not process the purchase. Try again.',
-  'Informe o ISBN.': 'Enter the ISBN.',
   'Informe um preço-alvo válido.': 'Enter a valid target price.',
-  'Este ISBN já está sendo observado.': 'This ISBN is already being watched.',
-  '1× ao dia': 'once a day',
-  'a cada 2 dias': 'every 2 days',
-  '1× por semana': 'once a week',
-  '1× por mês': 'once a month',
 
   // Substantivos contáveis (usados pelo pipe 'tp')
   'livro': 'book',
@@ -244,7 +251,6 @@ export const EN: Record<string, string> = {
   'Compare e compre': 'Compare and buy',
   'Veja o preço de cada loja e qual delas fecha o carrinho inteiro por menos.':
     'See each store price and which one closes the whole cart for less.',
-  'em breve': 'coming soon',
   'mais de': 'more than',
   'as primeiras respostas levam alguns segundos': 'the first answers take a few seconds',
 
