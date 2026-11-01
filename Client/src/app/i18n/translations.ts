@@ -180,6 +180,11 @@ export const EN: Record<string, string> = {
 
   // Aviso da loja que ficou muda em algum livro do carrinho
   'pode sair mais barata': 'may be cheaper',
+
+  // Busca por nome no formulario de observados
+  'Escolha um título da lista.': 'Pick a title from the list.',
+  'Nenhum título encontrado. Tente outro nome ou informe o ISBN.':
+    'No title found. Try another name or enter the ISBN.',
   'O total acima está incompleto e pode ser menor.': 'The total above is incomplete and may be lower.',
 
   // Fragmentos de frases com números interpolados

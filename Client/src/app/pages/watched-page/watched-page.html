@@ -19,9 +19,28 @@
     @if (showForm) {
       <form class="form-card" (ngSubmit)="submit()">
         <div class="form-row">
-          <div class="field">
-            <label for="watched-isbn">ISBN</label>
-            <input id="watched-isbn" type="text" [(ngModel)]="newIsbn" name="isbn" placeholder="ex: 9788535914849" autocomplete="off" />
+          <div class="field field-busca">
+            <label for="watched-isbn">{{ 'Livro' | t }}</label>
+            <input id="watched-isbn" type="text" [(ngModel)]="newIsbn" (ngModelChange)="onQueryChange()"
+                   name="isbn" [placeholder]="'Digite o nome do livro ou o ISBN' | t" autocomplete="off" />
+
+            <!-- Mesmo autocompletar do /search. Sem ele, observar um livro exigia
+                 sair daqui, achar o ISBN no /search, copiar e voltar. -->
+            @if (suggestionsOpen && suggestions.length > 0) {
+              <ul class="suggestions">
+                @for (s of suggestions; track s.id) {
+                  <li>
+                    <button type="button" class="suggestion-item" (click)="selectSuggestion(s)"
+                            [disabled]="resolvingSuggestionId !== null">
+                      <span class="suggestion-title">{{ s.title }}</span>
+                      @if (resolvingSuggestionId === s.id) {
+                        <span class="suggestion-status">{{ 'buscando ISBN...' | t }}</span>
+                      }
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
           </div>
 
           <div class="field">
@@ -52,6 +71,7 @@
           <p class="rule-note">{{ 'O aviso só sai se o preço de hoje também for o melhor dos últimos 30 dias — assim você não compra caro por causa de uma promoção que subiu antes de cair.' | t }}</p>
         }
 
+        @if (suggestionError) { <p class="form-error">{{ suggestionError | t }}</p> }
         @if (formError) { <p class="form-error">{{ formError | t }}</p> }
 
         <div class="form-actions">

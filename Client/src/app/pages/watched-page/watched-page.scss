@@ -244,3 +244,52 @@
 @media (max-width: 700px) {
   .form-row { grid-template-columns: 1fr; }
 }
+
+// ===== Autocompletar por nome =====
+// Copia fiel do /search: o mesmo controle tem de parecer o mesmo nas duas telas.
+// O .field-busca ancora o dropdown, que e posicionado em absoluto.
+.field-busca {
+  position: relative;
+}
+
+.suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  max-height: 320px;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  font-size: var(--fs-sm);
+  color: var(--text);
+
+  &:hover:not(:disabled) { background: var(--accent-soft); }
+  &:disabled { opacity: 0.6; cursor: default; }
+}
+
+.suggestion-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggestion-status {
+  flex-shrink: 0;
+  font-size: var(--fs-sm);
+  color: var(--accent-strong);
+}

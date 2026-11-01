@@ -1,8 +1,10 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
+import { Subject, Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { WatchedService, WatchedBook, WatchRule } from '../../services/watched-service';
+import { CatalogService, CatalogSuggestion } from '../../services/catalog-service';
 import { TranslatePipe } from '../../i18n/translate-pipe';
 import { AuthRequiredComponent } from '../../components/auth-required/auth-required';
 import { AuthService } from '../../services/auth-service';
@@ -31,6 +33,17 @@ export class WatchedPage implements OnInit, OnDestroy {
   // Form
   showForm = false;
   newIsbn = '';
+
+  // Busca por nome, o mesmo caminho do /search: um campo só serve aos dois modos.
+  // Antes daqui a pessoa tinha de sair para o /search, achar o ISBN, copiar e
+  // voltar — com 54 mil titulos no catalogo, a informacao ja estava no banco.
+  suggestions: CatalogSuggestion[] = [];
+  suggestionsOpen = false;
+  suggestionError = '';
+  resolvingSuggestionId: number | null = null;
+  /** Titulo e capa da sugestao escolhida, para o cartao nascer com rotulo. */
+  private escolhido: { title?: string; imageUrl?: string } = {};
+  private readonly nameQuery$ = new Subject<string>();
   newRule: WatchRule = WatchRule.PercentDrop;
   newTargetPrice: number | null = null;
   newDropPercent = 15;
@@ -39,11 +52,27 @@ export class WatchedPage implements OnInit, OnDestroy {
 
   private sub?: Subscription;
 
-  constructor(private service: WatchedService, private auth: AuthService) {}
+  constructor(
+    private service: WatchedService,
+    private auth: AuthService,
+    private catalog: CatalogService,
+  ) {}
 
   ngOnInit(): void {
     this.isAuthenticated = this.auth.isAuthenticated();
     this.sub = this.service.items$.subscribe(list => (this.items = list));
+
+    // Mesmo debounce do /search: espera parar de digitar antes de consultar.
+    this.nameQuery$
+      .pipe(
+        debounceTime(250),
+        distinctUntilChanged(),
+        switchMap(term => this.catalog.suggest(term)),
+      )
+      .subscribe(list => {
+        this.suggestions = list;
+        this.suggestionsOpen = list.length > 0;
+      });
 
     if (this.isAuthenticated) this.recarregar();
   }
@@ -64,9 +93,74 @@ export class WatchedPage implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Texto que parece ISBN segue direto; o resto vira busca por nome.
+   * Mesma regra do /search — duas telas com criterios diferentes para "isto e um
+   * ISBN?" seriam dois comportamentos para a mesma pergunta.
+   */
+  get isSearchingByName(): boolean {
+    const raw = this.normalizeIsbn(this.newIsbn);
+    return raw.length > 0 && !/^\d{9}[\dXx]$|^\d{13}$/.test(raw) && !/^\d+$/.test(raw);
+  }
+
+  private normalizeIsbn(raw: string): string {
+    return raw.replace(/[\s-]/g, '').trim();
+  }
+
+  onQueryChange(): void {
+    this.suggestionError = '';
+    this.formError = '';
+    // Digitou de novo: a escolha anterior nao vale mais para este texto.
+    this.escolhido = {};
+
+    if (!this.isSearchingByName) {
+      this.suggestions = [];
+      this.suggestionsOpen = false;
+      return;
+    }
+
+    this.nameQuery$.next(this.newIsbn.trim());
+  }
+
+  /**
+   * Escolheu um titulo: se o ISBN ja e conhecido, usa; senao pede ao backend que
+   * descubra na pagina do produto. Guarda titulo e capa para mandar no request —
+   * o WatchBookRequest os aceita e e assim que o cartao nasce com rotulo.
+   */
+  selectSuggestion(s: CatalogSuggestion): void {
+    this.suggestionError = '';
+
+    if (s.isbn) {
+      this.aplicarEscolha(s.isbn, s.title);
+      return;
+    }
+
+    this.resolvingSuggestionId = s.id;
+    this.catalog.resolveIsbn(s.id).subscribe(r => {
+      this.resolvingSuggestionId = null;
+
+      if (r.found && r.isbn) {
+        this.aplicarEscolha(r.isbn, r.title ?? s.title);
+      } else {
+        this.suggestionError = r.error || 'Não foi possível identificar o ISBN deste título.';
+      }
+    });
+  }
+
+  private aplicarEscolha(isbn: string, title?: string): void {
+    this.newIsbn = isbn;
+    this.escolhido = { title };
+    this.suggestions = [];
+    this.suggestionsOpen = false;
+  }
+
   openForm(): void {
     this.showForm = true;
     this.formError = '';
+    this.suggestionError = '';
+    this.suggestions = [];
+    this.suggestionsOpen = false;
+    this.escolhido = {};
     this.newIsbn = '';
     this.newRule = WatchRule.PercentDrop;
     this.newTargetPrice = null;
@@ -79,6 +173,14 @@ export class WatchedPage implements OnInit, OnDestroy {
   }
 
   submit(): void {
+    // Enter durante a busca por nome nao deve virar ISBN: o texto cru nao e um.
+    if (this.isSearchingByName) {
+      this.formError = this.suggestions.length > 0
+        ? 'Escolha um título da lista.'
+        : 'Nenhum título encontrado. Tente outro nome ou informe o ISBN.';
+      return;
+    }
+
     const isbn = this.newIsbn.replace(/\D/g, '');
 
     if (isbn.length !== 10 && isbn.length !== 13) {
@@ -93,6 +195,8 @@ export class WatchedPage implements OnInit, OnDestroy {
     this.saving = true;
     this.service.add([{
       isbn,
+      title: this.escolhido.title,
+      imageUrl: this.escolhido.imageUrl,
       rule: this.newRule,
       targetPrice: this.newRule === WatchRule.TargetPrice ? this.newTargetPrice! : undefined,
       dropPercent: this.newDropPercent,
