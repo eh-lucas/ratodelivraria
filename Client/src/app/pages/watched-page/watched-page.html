@@ -98,7 +98,6 @@
               <th>{{ 'Livro' | t }}</th>
               <th>{{ 'Avisar quando' | t }}</th>
               <th class="num">{{ 'Preço hoje' | t }}</th>
-              <th class="num">{{ 'Desde ontem' | t }}</th>
               <th class="num">{{ 'Melhor em 30 dias' | t }}</th>
               <th class="spark-col">{{ 'Histórico' | t }}</th>
               <th>{{ 'Última consulta' | t }}</th>
@@ -133,22 +132,23 @@
                     <a [href]="w.lastProductUrl" target="_blank" rel="noopener" [class.below]="isMelhorDoMes(w)">
                       {{ formatPrice(w.lastPrice) }}
                     </a>
-                    @if (w.lastProviderName) { <span class="provider">{{ w.lastProviderName }}</span> }
                   } @else {
                     <span [class.below]="isMelhorDoMes(w)">{{ formatPrice(w.lastPrice) }}</span>
                   }
-                </td>
-
-                <td class="num">
-                  @if (delta(w) === null) {
-                    <span class="delta-none">—</span>
-                  } @else if (delta(w)! < 0) {
-                    <span class="delta-down">▼ {{ formatPrice(-delta(w)!) }}</span>
-                  } @else if (delta(w)! > 0) {
-                    <span class="delta-up">▲ {{ formatPrice(delta(w)!) }}</span>
-                  } @else {
-                    <span class="delta-none">{{ 'sem mudança' | t }}</span>
-                  }
+                  <!-- A variacao mora sob o preco: uma coluna a menos e a tabela
+                       cabe num notebook de 1280px sem esconder as Acoes. -->
+                  <span class="delta" [title]="'Desde ontem' | t">
+                    @if (delta(w) === null) {
+                      <span class="delta-none">—</span>
+                    } @else if (delta(w)! < 0) {
+                      <span class="delta-down">▼ {{ formatPrice(-delta(w)!) }}</span>
+                    } @else if (delta(w)! > 0) {
+                      <span class="delta-up">▲ {{ formatPrice(delta(w)!) }}</span>
+                    } @else {
+                      <span class="delta-none">{{ 'sem mudança' | t }}</span>
+                    }
+                  </span>
+                  @if (w.lastProviderName) { <span class="provider">{{ w.lastProviderName }}</span> }
                 </td>
 
                 <td class="num">{{ formatPrice(w.lowestPrice30d) }}</td>

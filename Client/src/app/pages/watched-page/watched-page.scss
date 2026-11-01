@@ -128,7 +128,7 @@
 
 .watched-table {
   width: 100%;
-  min-width: 980px;
+  min-width: 860px;
   border-collapse: collapse;
   font-size: var(--fs-sm);
 
@@ -156,10 +156,14 @@
     text-align: right;
     white-space: nowrap;
     width: 1%;
-    // Fica por cima do sparkline/tooltip da coluna vizinha.
-    position: relative;
+    // Grudada na direita: se a tabela precisar rolar, as Acoes continuam a
+    // vista em vez de sumir atras da rolagem. O fundo opaco e o z-index cobrem
+    // o que passa por baixo (inclusive o tooltip do sparkline).
+    position: sticky;
+    right: 0;
     z-index: 6;
     background: var(--bg);
+    box-shadow: -8px 0 8px -8px rgba(0, 0, 0, 0.15);
   }
   thead .actions { background: var(--bg-muted); }
 
@@ -220,8 +224,17 @@
 
 // ===== Variação e contexto de preço =====
 
+.delta {
+  display: block;
+  font-size: 12px;
+}
+
 .provider {
   display: block;
+  max-width: 170px;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 11px;
   color: var(--text-subtle);
   font-weight: 400;
