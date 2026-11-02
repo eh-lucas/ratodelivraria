@@ -42,7 +42,7 @@ public class QueryRepository : RepositoryBase<Query>, IQueryRepository
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.Set<Query>()
-            .Where(q => q.TransactionId == transactionId && q.Success && q.Price > 0)
+            .Where(q => q.TransactionId == transactionId && q.Success && q.Available && q.Price > 0)
             .OrderBy(q => q.Price)
             .FirstOrDefaultAsync();
     }
@@ -190,7 +190,7 @@ public class QueryRepository : RepositoryBase<Query>, IQueryRepository
 
         var precos = await context.Set<Query>()
             .Where(q => q.SearchIsbn != null && isbns.Contains(q.SearchIsbn!)
-                        && q.Success && q.Price > 0)
+                        && q.Success && q.Available && q.Price > 0)
             .Select(q => new { Isbn = q.SearchIsbn!, q.ProviderId, q.Title, Price = q.Price!.Value })
             .ToListAsync(cancellationToken);
 
@@ -275,6 +275,10 @@ public class QueryRepository : RepositoryBase<Query>, IQueryRepository
         return semCapa == null ? null : new BookMetadata(semCapa.Title, semCapa.Author, null);
     }
 
+    /// <remarks>
+    /// Sem filtro de estoque de propósito: loja com o livro esgotado é exatamente a
+    /// que pode voltar a ter estoque amanhã, então continua na varredura enxuta.
+    /// </remarks>
     public async Task<IReadOnlyList<int>> GetProvidersWithResultsAsync(
         string isbn, int days, CancellationToken cancellationToken = default)
     {

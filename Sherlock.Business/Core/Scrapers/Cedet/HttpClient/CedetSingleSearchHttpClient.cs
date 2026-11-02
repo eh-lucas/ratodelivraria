@@ -89,13 +89,16 @@ public class CedetSingleSearchHttpClient : IScraper
             if (candidates.Count == 0)
                 return QueryResult.CreateNoResult(provider, stopwatch.ElapsedMilliseconds);
 
-            // Buscamos pelo próprio ISBN: confiamos no buscador do provider e usamos o primeiro candidato sem revalidar
+            // Buscamos pelo próprio ISBN: confiamos no buscador do provider e usamos o primeiro candidato sem revalidar.
+            // Esgotado volta como resultado marcado (Available = false), não como "sem resultado":
+            // a loja tem o livro, só não vende agora.
             var best = candidates[0];
             var productUrl = BuildProductUrl(best.ProductUrl, baseUrl);
 
             stopwatch.Stop();
-            _logger.LogInformation("[{Provider}] \"{Title}\" - R${Price:F2} em {ElapsedMs}ms ({Count} candidatos)",
-                provider.Name, best.Title, best.Price, stopwatch.ElapsedMilliseconds, candidates.Count);
+            _logger.LogInformation("[{Provider}] \"{Title}\" - R${Price:F2}{Estoque} em {ElapsedMs}ms ({Count} candidatos)",
+                provider.Name, best.Title, best.Price, best.Available ? "" : " (indisponível)",
+                stopwatch.ElapsedMilliseconds, candidates.Count);
 
             return QueryResult.CreateSuccess(
                 provider,
@@ -105,7 +108,8 @@ public class CedetSingleSearchHttpClient : IScraper
                 best.Discount,
                 stopwatch.ElapsedMilliseconds,
                 productUrl,
-                best.ImageUrl);
+                best.ImageUrl,
+                best.Available);
         }
         catch (TaskCanceledException)
         {

@@ -13,4 +13,10 @@ internal class BookCandidate
     /// static.cedet.com.br — não custa requisição nenhuma a mais.
     /// </summary>
     public string? ImageUrl { get; set; }
+
+    /// <summary>
+    /// A loja lista o livro mas não vende agora ("Indisponível" / "Avise-me!").
+    /// Padrão <c>true</c>: só marcamos indisponível quando a loja diz isso.
+    /// </summary>
+    public bool Available { get; set; } = true;
 }

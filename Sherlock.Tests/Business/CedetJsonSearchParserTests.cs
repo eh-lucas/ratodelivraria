@@ -171,4 +171,58 @@ public class CedetJsonSearchParserTests
         candidates![0].Price.Should().Be(15.00m);
         candidates[0].Discount.Should().Be(0);
     }
+    // Recorte real de livrariacatolicosdeverdade.com.br em 2026-11-02: o box aparece na
+    // busca com preço normal, mas a página do produto mostra "Indisponível" e "Avise-me!".
+    // https://livrariacatolicosdeverdade.com.br/box-historia-da-literatura-ocidental-7s
+    private const string PayloadEsgotado = """
+    {
+      "products": [
+        {
+          "product_id": "19672",
+          "thumb": "https://static.cedet.com.br/produtos_imagem_principal_grid/19672-150x226.jpg?v=1750275945",
+          "name": "Box - História da literatura ocidental (3 volumes)",
+          "quantity": 0,
+          "ondemand": "0",
+          "date_published": 0,
+          "price": "R$ 649,90",
+          "variants": [],
+          "first_variant_type": "",
+          "special": " 259,96",
+          "special_percent": "-60",
+          "authors": [ { "author_id": "923", "author_name": "Otto Maria Carpeaux" } ],
+          "href": "https://livrariacatolicosdeverdade.com.br/box-historia-da-literatura-ocidental-7s?search=literatura ocidental&page=1&limit=20"
+        }
+      ]
+    }
+    """;
+
+    [Fact]
+    public void TryParse_EstoqueZerado_MarcaIndisponivelMasMantemOPreco()
+    {
+        var candidates = CedetJsonSearchParser.TryParse(PayloadEsgotado);
+
+        candidates!.Should().ContainSingle();
+        candidates[0].Available.Should().BeFalse();
+        candidates[0].Price.Should().Be(259.96m);
+        candidates[0].Title.Should().Be("Box - História da literatura ocidental (3 volumes)");
+    }
+
+    [Fact]
+    public void TryParse_ComEstoque_MarcaDisponivel()
+    {
+        CedetJsonSearchParser.TryParse(PayloadComPromocao)![0].Available.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("""{"name": "L", "price": "R$ 10,00", "quantity": 0, "ondemand": "1"}""", true)]  // sob encomenda
+    [InlineData("""{"name": "L", "price": "R$ 10,00", "quantity": -3, "ondemand": "0"}""", false)] // estoque negativo
+    [InlineData("""{"name": "L", "price": "R$ 10,00", "quantity": "0"}""", false)]                // número como texto
+    [InlineData("""{"name": "L", "price": "R$ 10,00", "quantity": "5"}""", true)]
+    [InlineData("""{"name": "L", "price": "R$ 10,00"}""", true)]                                  // sem o campo: não afirma nada
+    public void TryParse_LeOEstoqueEmFormatosVariados(string produto, bool disponivel)
+    {
+        var candidates = CedetJsonSearchParser.TryParse($$"""{"products": [{{produto}}]}""");
+
+        candidates![0].Available.Should().Be(disponivel);
+    }
 }

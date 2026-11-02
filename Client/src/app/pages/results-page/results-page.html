@@ -409,6 +409,7 @@
                         <td>
                           @switch (queryStatus(q)) {
                             @case ('ok') { <span class="status ok">{{ '✓ encontrado' | t }}</span> }
+                            @case ('unavailable') { <span class="status unavailable">{{ '⊘ indisponível' | t }}</span> }
                             @case ('empty') { <span class="status empty">{{ '— sem resultado' | t }}</span> }
                             @case ('fail') {
                               <span class="status fail" [title]="q.errorMessage || ''">

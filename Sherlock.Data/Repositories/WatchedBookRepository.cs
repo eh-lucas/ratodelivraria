@@ -68,6 +68,7 @@ public class WatchedBookRepository : RepositoryBase<WatchedBook>, IWatchedBookRe
             .Where(q => q.SearchIsbn != null
                         && lista.Contains(q.SearchIsbn)
                         && q.Success
+                        && q.Available
                         && q.Price != null
                         && q.Price > 0
                         && q.QueriedAt >= desde
@@ -93,6 +94,7 @@ public class WatchedBookRepository : RepositoryBase<WatchedBook>, IWatchedBookRe
             .Where(q => q.SearchIsbn != null
                         && lista.Contains(q.SearchIsbn)
                         && q.Success
+                        && q.Available
                         && q.Price != null
                         && q.Price > 0
                         && q.QueriedAt >= desde)
