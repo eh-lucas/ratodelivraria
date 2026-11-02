@@ -89,6 +89,7 @@ public class CartOptimizationService : ICartOptimizationService
                     ProviderUrl = q.ProviderUrl,
                     Success = q.Success,
                     HasResult = q.HasValidResult,
+                    Unavailable = q.IsUnavailable,
                     Title = q.Title,
                     Author = q.Author,
                     Price = q.Price > 0 ? q.Price : null,
@@ -328,6 +329,7 @@ public class CartOptimizationService : ICartOptimizationService
             {
                 detalhe.Success = true;
                 detalhe.HasResult = true;
+                detalhe.Unavailable = false;
                 detalhe.Title = resultado.Title;
                 detalhe.Author = resultado.Author;
                 detalhe.Price = resultado.Price > 0 ? resultado.Price : null;

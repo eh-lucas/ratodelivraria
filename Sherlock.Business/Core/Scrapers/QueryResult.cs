@@ -64,6 +64,12 @@ public class QueryResult
     public string? ImageUrl { get; set; }
 
     /// <summary>
+    /// A loja tem o livro mas está sem estoque. Padrão <c>true</c>: scraper que não
+    /// sabe ler estoque não derruba ninguém.
+    /// </summary>
+    public bool Available { get; set; } = true;
+
+    /// <summary>
     /// Mensagem de erro (se houve falha)
     /// </summary>
     public string? ErrorMessage { get; set; }
@@ -89,9 +95,21 @@ public class QueryResult
     public bool FromCache { get; set; }
 
     /// <summary>
-    /// Verifica se o resultado é válido (tem título e preço > 0)
+    /// A loja achou o livro (título e preço), esteja ele à venda ou não.
     /// </summary>
-    public bool HasValidResult => Success && !string.IsNullOrEmpty(Title) && Price > 0;
+    public bool FoundBook => Success && !string.IsNullOrEmpty(Title) && Price > 0;
+
+    /// <summary>
+    /// Oferta comprável: achou o livro e ele está em estoque. É o critério de tudo que
+    /// compara preço — melhor oferta, carrinho, observados, cache Redis. Livro
+    /// esgotado com preço na vitrine não pode virar "menor preço".
+    /// </summary>
+    public bool HasValidResult => FoundBook && Available;
+
+    /// <summary>
+    /// A loja lista o livro, mas sem estoque. Vai para a tela como "Indisponível".
+    /// </summary>
+    public bool IsUnavailable => FoundBook && !Available;
 
     /// <summary>
     /// Cria um QueryResult de sucesso
@@ -104,7 +122,8 @@ public class QueryResult
         int discount,
         long responseTimeMs,
         string? productUrl = null,
-        string? imageUrl = null)
+        string? imageUrl = null,
+        bool available = true)
     {
         return new QueryResult
         {
@@ -118,6 +137,7 @@ public class QueryResult
             Discount = discount,
             ProductUrl = productUrl,
             ImageUrl = imageUrl,
+            Available = available,
             ResponseTimeMs = responseTimeMs,
             QueriedAt = DateTime.UtcNow
         };
@@ -183,6 +203,7 @@ public class QueryResult
             Discount = Discount > 0 ? Discount : null,
             ProductUrl = ProductUrl,
             ImageUrl = ImageUrl,
+            Available = Available,
             ErrorMessage = ErrorMessage,
             SearchIsbn = searchIsbn,
             FromCache = FromCache

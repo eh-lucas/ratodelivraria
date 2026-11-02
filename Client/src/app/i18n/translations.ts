@@ -94,6 +94,7 @@ export const EN: Record<string, string> = {
   'Com sucesso': 'Successful',
   'Esta consulta': 'This query',
   '— sem resultado': '— no result',
+  '⊘ indisponível': '⊘ out of stock',
   '✓ encontrado': '✓ found',
   'Resultado desta sessão, sem custo adicional.': 'Result from this session, at no extra cost.',
 

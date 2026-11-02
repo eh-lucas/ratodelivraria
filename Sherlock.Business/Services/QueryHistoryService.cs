@@ -99,7 +99,7 @@ public class QueryHistoryService : IQueryHistoryService
     private static TransactionHistoryDto MapToHistoryDto(Transaction transaction)
     {
         var bestQuery = transaction.Queries
-            .Where(q => q.Success && q.Price > 0)
+            .Where(q => q.Success && q.Available && q.Price > 0)
             .OrderBy(q => q.Price)
             .FirstOrDefault();
 
@@ -145,11 +145,12 @@ public class QueryHistoryService : IQueryHistoryService
                 Price = q.Price,
                 Discount = q.Discount,
                 ErrorMessage = q.ErrorMessage,
-                FromCache = q.FromCache
+                FromCache = q.FromCache,
+                Available = q.Available
             }).OrderBy(q => q.Price ?? decimal.MaxValue).ToList()
         };
 
-        var bestQuery = dto.Queries.FirstOrDefault(q => q.Success && q.Price > 0);
+        var bestQuery = dto.Queries.FirstOrDefault(q => q.Success && q.Available && q.Price > 0);
         dto.BestTitle = bestQuery?.Title;
         dto.BestPrice = bestQuery?.Price;
         dto.BestProvider = bestQuery?.ProviderName;

@@ -232,4 +232,26 @@ public class QueryResultTests
         // Assert
         result.ErrorType.Should().Be(errorType);
     }
+    [Fact]
+    public void Indisponivel_NaoEOfertaMasContinuaVisivel()
+    {
+        var result = QueryResult.CreateSuccess(
+            _testProvider, "Box", null, 259.96m, 60, 100, available: false);
+
+        result.HasValidResult.Should().BeFalse();
+        result.IsUnavailable.Should().BeTrue();
+        result.FoundBook.Should().BeTrue();
+        result.ToEntity(1).Available.Should().BeFalse();
+        result.ToEntity(1).Price.Should().Be(259.96m);
+    }
+
+    [Fact]
+    public void Disponivel_PorPadrao()
+    {
+        var result = QueryResult.CreateSuccess(_testProvider, "Book", null, 19.99m, 0, 100);
+
+        result.Available.Should().BeTrue();
+        result.IsUnavailable.Should().BeFalse();
+        result.ToEntity(1).Available.Should().BeTrue();
+    }
 }

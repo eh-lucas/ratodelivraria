@@ -81,7 +81,7 @@ public class WatchSweepRunner
         }
 
         var melhor = resultado.AllQueryResults
-            .Where(q => q.Success && q.Price > 0)
+            .Where(q => q.HasValidResult)
             .OrderBy(q => q.Price)
             .FirstOrDefault();
 

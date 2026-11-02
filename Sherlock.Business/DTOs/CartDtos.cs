@@ -150,6 +150,11 @@ public class ProviderQueryDetail
     /// </summary>
     public bool HasResult { get; set; }
 
+    /// <summary>
+    /// A loja tem o livro, mas sem estoque (HasResult fica falso)
+    /// </summary>
+    public bool Unavailable { get; set; }
+
     public string? Title { get; set; }
     public string? Author { get; set; }
 

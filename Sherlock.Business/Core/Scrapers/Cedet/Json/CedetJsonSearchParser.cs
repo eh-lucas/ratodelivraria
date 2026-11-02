@@ -84,6 +84,46 @@ internal static class CedetJsonSearchParser
             Discount = discount,
             ImageUrl = ReadString(product, "thumb"),
             ProductUrl = ReadProductUrl(product),
+            Available = ReadAvailable(product),
+        };
+    }
+
+    /// <summary>
+    /// Livro esgotado continua aparecendo na busca da loja, com preço e tudo; só o
+    /// estoque denuncia. Conferido em 2026-11-02 em livrariacatolicosdeverdade:
+    /// <c>quantity: 0</c> casa com a página do produto mostrando "Indisponível",
+    /// <c>schema.org/OutOfStock</c> e o botão "Avise-me!" no lugar de "Comprar"
+    /// (148 de 1.772 produtos amostrados). <c>ondemand: "1"</c> é venda sob
+    /// encomenda — sem estoque, mas compra — e por isso conta como disponível.
+    ///
+    /// Sem o campo <c>quantity</c> não há o que afirmar: fica disponível.
+    /// </summary>
+    internal static bool ReadAvailable(JsonElement product)
+    {
+        if (!product.TryGetProperty("quantity", out var quantity)) return true;
+
+        int? estoque = quantity.ValueKind switch
+        {
+            JsonValueKind.Number when quantity.TryGetInt32(out var n) => n,
+            JsonValueKind.String when int.TryParse(quantity.GetString(), out var n) => n,
+            _ => null,
+        };
+
+        if (estoque is null or > 0) return true;
+
+        return ReadFlag(product, "ondemand");
+    }
+
+    private static bool ReadFlag(JsonElement product, string field)
+    {
+        if (!product.TryGetProperty(field, out var value)) return false;
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.Number => value.TryGetInt32(out var n) && n != 0,
+            JsonValueKind.String => value.GetString() is { } s && s.Trim() is not ("" or "0" or "false"),
+            _ => false,
         };
     }
 

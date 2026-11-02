@@ -688,8 +688,9 @@ export class ResultsPage implements OnInit {
     this.diagnosticsOpen = !this.diagnosticsOpen;
   }
 
-  queryStatus(q: ProviderQueryDetail): 'ok' | 'empty' | 'fail' {
+  queryStatus(q: ProviderQueryDetail): 'ok' | 'unavailable' | 'empty' | 'fail' {
     if (q.hasResult) return 'ok';
+    if (q.unavailable) return 'unavailable';
     return q.success ? 'empty' : 'fail';
   }
 

@@ -587,6 +587,7 @@
 
   &.ok { color: #047857; }
   &.empty { color: var(--text-subtle); }
+  &.unavailable { color: var(--warning, #b45309); }
   &.fail { color: var(--danger); }
 }
 

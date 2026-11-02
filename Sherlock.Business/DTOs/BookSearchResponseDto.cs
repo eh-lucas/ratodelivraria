@@ -54,7 +54,7 @@ public class BookSearchResponseDto
     {
         var allResults = result.AllQueryResults
             .Select(QueryResultItemDto.FromQueryResult)
-            .OrderBy(r => r.Success ? 0 : 1)  // Sucesso primeiro
+            .OrderBy(r => r.Success ? 0 : r.Unavailable ? 1 : 2)  // Ofertas, depois esgotados
             .ThenBy(r => r.Price ?? decimal.MaxValue)  // Menor preço
             .ToList();
 
@@ -133,6 +133,12 @@ public class QueryResultItemDto
     public bool Success { get; set; }
 
     /// <summary>
+    /// A loja tem o livro, mas sem estoque. Vem com título e preço e <c>Success = false</c>
+    /// (não é oferta comprável).
+    /// </summary>
+    public bool Unavailable { get; set; }
+
+    /// <summary>
     /// Mensagem de erro (se houve falha)
     /// </summary>
     public string? ErrorMessage { get; set; }
@@ -169,6 +175,7 @@ public class QueryResultItemDto
             ProductUrl = query.ProductUrl,
             ImageUrl = query.ImageUrl,
             Success = query.Success && query.HasValidResult,
+            Unavailable = query.IsUnavailable,
             ErrorMessage = query.ErrorMessage,
             ErrorType = query.ErrorType?.ToString(),
             ResponseTimeMs = query.ResponseTimeMs,

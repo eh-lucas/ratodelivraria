@@ -80,4 +80,5 @@ public class QueryDetailDto
     public float? Discount { get; set; }
     public string? ErrorMessage { get; set; }
     public bool FromCache { get; set; }
+    public bool Available { get; set; } = true;
 }

@@ -122,6 +122,8 @@ export interface ProviderQueryDetail {
   providerUrl: string;
   success: boolean;
   hasResult: boolean;
+  /** A loja tem o livro, mas sem estoque (hasResult vem falso). */
+  unavailable: boolean;
   title: string | null;
   author: string | null;
   price: number | null;
@@ -181,6 +183,8 @@ export interface QueryResultItem {
   discount: number | null;
   productUrl: string | null;
   success: boolean;
+  /** A loja tem o livro, mas sem estoque (success vem falso). */
+  unavailable: boolean;
   errorMessage: string | null;
   errorType: string | null;
   responseTimeMs: number;

@@ -180,7 +180,11 @@ public class W16Engine
 
             var cachedResult = ConvertQueryToQueryResult(cachedQuery, source);
             queryResults.Add(cachedResult);
-            Interlocked.Increment(ref metrics.SuccessCount);
+            // Cache de loja esgotada é resposta legítima, mas não é oferta.
+            if (cachedResult.HasValidResult)
+                Interlocked.Increment(ref metrics.SuccessCount);
+            else
+                Interlocked.Increment(ref metrics.NoResultCount);
             PublicarOferta(cachedResult);
             SearchProgressScope.Current?.Increment();
             return true;
@@ -574,6 +578,7 @@ public class W16Engine
             Discount = (int)(query.Discount ?? 0),
             ProductUrl = query.ProductUrl,
             ImageUrl = query.ImageUrl,
+            Available = query.Available,
             ResponseTimeMs = 0, // Cache hit - tempo de resposta não aplicável
             QueriedAt = query.QueriedAt,
             FromCache = true

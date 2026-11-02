@@ -75,6 +75,13 @@ public class Query
     public string? ImageUrl { get; set; }
 
     /// <summary>
+    /// A loja tem o livro em estoque. Falso quando ela lista o livro (com preço) mas
+    /// marca "Indisponível" — o preço fica guardado, mas não entra em menor preço,
+    /// histórico nem observados.
+    /// </summary>
+    public bool Available { get; set; } = true;
+
+    /// <summary>
     /// Mensagem de erro (se houve falha)
     /// </summary>
     public string? ErrorMessage { get; set; }
