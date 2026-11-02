@@ -18,6 +18,13 @@ interface RecentSearch {
   at: number;
 }
 
+/**
+ * Sugestões por termo. 25 é o teto da API; medido em 2026-11-02: 5–17 ms e ~4,4 KB
+ * de JSON, contra 6–14 ms e ~1,4 KB com 8. O custo real são as capas (~7–13 KB cada,
+ * em paralelo pelo HTTP/2 do CDN).
+ */
+const SUGGESTION_LIMIT = 25;
+
 @Component({
   selector: 'search-page',
   standalone: true,
@@ -48,6 +55,12 @@ export class SearchPage implements OnInit {
   suggestionsOpen = false;
   /** Capas que deram erro: no lugar fica o bloco cinza, sem ícone quebrado. */
   readonly brokenThumbs = new Set<number>();
+
+  /**
+   * Quantas sugestões cabem na lista sem rolar (420 px / 64 px por linha). As capas
+   * dessas vão com prioridade alta; as de baixo também baixam na hora, mas depois.
+   */
+  readonly visibleSuggestions = 7;
   resolvingSuggestionId: number | null = null;
   suggestionError = '';
   private readonly nameQuery$ = new Subject<string>();
@@ -71,7 +84,7 @@ export class SearchPage implements OnInit {
       .pipe(
         debounceTime(250),
         distinctUntilChanged(),
-        switchMap(term => this.catalogService.suggest(term)),
+        switchMap(term => this.catalogService.suggest(term, SUGGESTION_LIMIT)),
       )
       .subscribe(list => {
         this.suggestions = list;
