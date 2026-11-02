@@ -722,6 +722,9 @@ export class ResultsPage implements OnInit {
     this.sortKey = 'price';
   }
 
+  /** Filtros abertos no celular. No desktop o rail ignora isto e fica sempre aberto. */
+  filtersOpen = false;
+
   get hasActiveFilters(): boolean {
     return this.onlyComplete || this.providerFilter.trim().length > 0 || this.priceCeiling != null;
   }

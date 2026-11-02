@@ -27,6 +27,8 @@ export const EN: Record<string, string> = {
   '+ Adicionar': '+ Add',
   'Limpar': 'Clear',
   'Limpar filtros': 'Clear filters',
+  'Filtros': 'Filters',
+  'filtros ativos': 'filters active',
   'Nova busca': 'New search',
   'Consultar de novo': 'Search again',
   'Tentar de novo': 'Try again',

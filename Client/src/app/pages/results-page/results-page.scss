@@ -204,6 +204,11 @@
 
 // ===== Filtros =====
 
+// So existe no celular (ver Responsivo).
+.filters-toggle {
+  display: none;
+}
+
 .filters {
   position: sticky;
   top: 72px;
@@ -639,11 +644,50 @@
     gap: var(--space-4);
   }
 
+  // Recolhido por padrao: aberto, o rail empurrava as ofertas para baixo da
+  // primeira tela. O botao mostra quantas ofertas ha e se algum filtro esta ativo.
+  .filters-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+
+    svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .chevron { transition: transform 0.15s ease; }
+    &.open .chevron { transform: rotate(180deg); }
+  }
+
+  .filters-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .filters-toggle-meta {
+    margin-left: auto;
+    color: var(--text-subtle);
+    font-weight: 400;
+  }
+
   .filters {
     position: static;
-    display: grid;
+    display: none;
     grid-template-columns: repeat(2, 1fr);
     gap: var(--space-4);
+    padding: var(--space-4);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+
+    &.open { display: grid; }
   }
 
   .meta-group { grid-column: 1 / -1; }
@@ -654,6 +698,23 @@
   .offer-side { align-items: stretch; min-width: 0; }
   .btn-store { text-align: center; }
   .summary-query { display: none; }
+  // Sem isto o botao "Observar preco" saia cortado da tela (360-400 px).
+  .summary-bar { gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+  .summary-right { margin-left: auto; }
+  .summary-right > .summary-label { display: none; }
+
+  // Menor/Medio/Mediana/Maior numa linha so: em duas, a faixa empurrava a primeira
+  // oferta mais ~110 px para baixo. A economia, quando ha, ocupa a linha de baixo.
+  .context-bar {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
+  .context-item.savings { grid-column: 1 / -1; flex-direction: row; gap: var(--space-2); align-items: baseline; }
+  .context-label { font-size: 10px; letter-spacing: 0.3px; }
+  .context-value { font-size: var(--fs-sm); white-space: nowrap; }
+  .summary-watch { margin-left: var(--space-1); }
   .filters { grid-template-columns: 1fr; }
 }
 

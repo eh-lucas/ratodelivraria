@@ -138,8 +138,29 @@
   <!-- Resultado -->
   @else if (result) {
     <div class="layout">
+      <!-- No celular os filtros ficam recolhidos atrás deste botão: abertos, eles
+           ocupavam a primeira tela inteira e a pessoa precisava rolar para ver
+           qualquer oferta. No desktop o botão some e o rail fica sempre visível. -->
+      <button type="button" class="filters-toggle"
+              [class.open]="filtersOpen"
+              [attr.aria-expanded]="filtersOpen"
+              aria-controls="results-filters"
+              (click)="filtersOpen = !filtersOpen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M4 6h16M7 12h10M10 18h4" stroke-linecap="round"/>
+        </svg>
+        <span>{{ 'Filtros' | t }}</span>
+        @if (hasActiveFilters) {
+          <span class="filters-dot" [attr.aria-label]="'filtros ativos' | t"></span>
+        }
+        <span class="filters-toggle-meta">{{ offers.length }} {{ 'oferta|ofertas' | tp:offers.length }}</span>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
       <!-- Rail de filtros -->
-      <aside class="filters">
+      <aside class="filters" id="results-filters" [class.open]="filtersOpen">
         <div class="filter-group">
           <h3 class="filter-title">{{ 'Ordenar' | t }}</h3>
           <label class="radio"><input type="radio" name="sort" value="price" [(ngModel)]="sortKey"/><span>{{ 'Menor preço' | t }}</span></label>
