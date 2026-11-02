@@ -1070,6 +1070,10 @@ namespace Sherlock.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("Available")
+                        .HasColumnType("boolean")
+                        .HasColumnName("available");
+
                     b.Property<string>("Author")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)")
