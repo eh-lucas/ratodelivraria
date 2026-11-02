@@ -700,6 +700,17 @@ public class Provider
     };
 
 
+    // Removida em 4bf6500 com NXDOMAIN; de volta ao ar em 2026-11-02 (listada em
+    // cedet.com.br/livrarias-virtuais, JSON e busca por ISBN conferidos). Mantém o
+    // Id 90: a linha continua em `providers` e as consultas antigas apontam para ela.
+    public static Provider LivrariaSensoIncomum = new()
+    {
+        Id = 90,
+        Name = "Livraria Senso Incomum",
+        ProviderCategoryEnum = ProviderCategoryEnum.Cedet,
+        Url = "https://livraria.sensoincomum.org/",
+    };
+
     public static Provider Kirion = new()
     {
         Id = 91,
@@ -822,6 +833,7 @@ public class Provider
         // LivrariaTeAtualizei, // Inativo: dominio estacionado (301 -> cedet)
         // LivrariaAlam, // Inativo: dominio estacionado (301 -> cedet)
         BibliotecaDoLuiz,
+        LivrariaSensoIncomum,
         Kirion,
         VideEditorial,
         EditoraSetimoSelo,
