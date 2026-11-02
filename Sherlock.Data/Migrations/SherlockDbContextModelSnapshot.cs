@@ -141,6 +141,11 @@ namespace Sherlock.Data.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("authors");
 
+                    b.Property<string>("AuthorsNormalized")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("authors_normalized");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -181,6 +186,11 @@ namespace Sherlock.Data.Migrations
                     b.Property<int>("ProviderId")
                         .HasColumnType("integer")
                         .HasColumnName("provider_id");
+
+                    b.Property<string>("ThumbUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("thumb_url");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")

@@ -307,13 +307,19 @@ public class CatalogCrawler
             if (string.IsNullOrWhiteSpace(productId) || string.IsNullOrWhiteSpace(name))
                 continue;
 
+            var authors = ReadAuthors(product);
+
             items.Add(new CatalogItem
             {
                 ProviderId = providerId,
                 ProductId = productId,
                 Name = name.Trim(),
                 NameNormalized = Normalize(name),
-                Authors = ReadAuthors(product),
+                Authors = authors,
+                AuthorsNormalized = authors == null ? null : Normalize(authors),
+                ThumbUrl = product.TryGetProperty("thumb", out var thumbElement)
+                    ? ReadThumbUrl(thumbElement)
+                    : null,
                 Price = ReadPrice(product),
                 Href = product.TryGetProperty("href", out var hrefElement)
                     ? ReadString(hrefElement)
@@ -322,6 +328,21 @@ public class CatalogCrawler
         }
 
         return (items, pages);
+    }
+
+    /// <summary>
+    /// Miniatura da capa. Só aceita http(s) absoluto: a URL vai parar num &lt;img&gt;
+    /// no navegador, e um valor relativo ou estranho viraria imagem quebrada.
+    /// </summary>
+    internal static string? ReadThumbUrl(JsonElement thumb)
+    {
+        var raw = ReadString(thumb)?.Trim();
+        if (string.IsNullOrEmpty(raw) || raw.Length > 1000) return null;
+
+        return Uri.TryCreate(raw, UriKind.Absolute, out var uri)
+               && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp)
+            ? uri.ToString()
+            : null;
     }
 
     private static string? ReadAuthors(JsonElement product)

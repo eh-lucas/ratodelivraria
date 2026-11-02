@@ -25,7 +25,7 @@ Chamá-las a cada tecla seria lento e abusivo.
 | Limites | `Sherlock.Business/Core/Crawling/CatalogCrawlSettings.cs` |
 | Orquestração | `Sherlock.Business/Services/CatalogService.cs` |
 | API | `Sherlock.Api/Controllers/CatalogController.cs` |
-| Migration | `20260818110755_AddCatalogItems` (inclui `pg_trgm` + índice GIN) |
+| Migrations | `20260818110755_AddCatalogItems`; `20261102232041_AddCatalogSearchFields` (autor normalizado, `thumb_url`, `pg_trgm` + índices GIN de título e autor) |
 
 Endpoints:
 - `GET /api/catalog/suggest?q={termo}` — autocomplete (índice trigram)
@@ -39,7 +39,7 @@ loja inteira. **[Corrigido]** O spec original planejava BFS por 104 categorias +
 requisição por página de produto (~8.000 requisições por loja). O endpoint JSON reduz isso
 para **~13 requisições por loja** com `limit=500`.
 
-O JSON traz `product_id`, nome, autores, preço e href — **mas não o ISBN**. O ISBN mora na
+O JSON traz `product_id`, nome, autores, preço, href e `thumb` (miniatura 150x226 da capa) — **mas não o ISBN**. O ISBN mora na
 página do produto e por isso é resolvido **sob demanda**, quando o usuário escolhe um título
 que ainda não tem ISBN gravado (é a origem da mensagem "buscando ISBN...").
 
@@ -47,6 +47,25 @@ Detalhes que custaram tempo para descobrir:
 - `pagination_total` é o número de **páginas**, não de produtos.
 - `product_id` é **global na plataforma Cedet**, não por loja — serve para deduplicar entre lojas.
 - Ordenar por `&sort=p.date_added&order=DESC` coloca os produtos novos primeiro.
+
+## Caixa de busca: capa e autor (2026-11-02)
+
+A partir do 3º caractere a sugestão mostra miniatura da capa, título e autor, e também
+busca pelo autor ("carpeaux", "platão").
+
+- **Capa:** só a URL vai para o banco (`thumb_url`, do campo `thumb` do JSON). O navegador
+  baixa a imagem direto do CDN `static.cedet.com.br` (150x226, ~13 KB; é o único tamanho
+  servido). Itens coletados antes da coluna existir usam a URL derivada do `product_id`
+  (`CatalogService.CedetThumbUrl`) — conferido: 40/40 product_ids e 20/20 itens de uma
+  coleta real batem com o padrão.
+- **Autor:** `authors_normalized` (mesma normalização do título) com índice GIN trigram.
+  Títulos que casam vêm primeiro; quem casa só pelo autor vem depois.
+- **Índices:** `ix_catalog_items_name_trgm` existia só no banco, criado à mão; agora está na
+  migration `AddCatalogSearchFields`. O repositório usa `LIKE` explícito porque o
+  `Contains` do Npgsql vira `strpos()`, que não usa o índice (15 ms contra 0,7 ms).
+- **Medido** (54 mil itens): API 10–40 ms; texto ~230 ms após parar de digitar (debounce de
+  250 ms); capas em 0,9–1,4 s na primeira vez e instantâneas quando já vistas. Índice
+  trigram de autor: 3,3 MB.
 
 ## Números medidos
 

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Sherlock.Business.Core.Crawling;
 using Sherlock.Business.DTOs;
 using Sherlock.Business.Interfaces;
+using Sherlock.Domain.Entities;
 using Sherlock.Domain.Interfaces;
 
 namespace Sherlock.Business.Services;
@@ -181,18 +182,51 @@ public class CatalogService : ICatalogService
             {
                 // Prefere a linha que já tem ISBN: poupa uma ida à loja depois.
                 var best = g.FirstOrDefault(x => x.Isbn != null) ?? g.First();
-                return new CatalogSuggestionDto
-                {
-                    Id = best.Id,
-                    Title = best.Name,
-                    Isbn = best.Isbn,
-                };
+                return (
+                    Rank: Rank(best, normalized),
+                    Dto: new CatalogSuggestionDto
+                    {
+                        Id = best.Id,
+                        Title = best.Name,
+                        Author = string.IsNullOrWhiteSpace(best.Authors) ? null : best.Authors,
+                        ThumbUrl = g.Select(x => x.ThumbUrl).FirstOrDefault(t => t != null)
+                                   ?? CedetThumbUrl(best.ProductId),
+                        Isbn = best.Isbn,
+                    });
             })
-            .OrderBy(s => !s.Title.StartsWith(query, StringComparison.OrdinalIgnoreCase))
-            .ThenBy(s => s.Title.Length)
+            .OrderBy(s => s.Rank)
+            .ThenBy(s => s.Dto.Title.Length)
             .Take(limit)
+            .Select(s => s.Dto)
             .ToList();
     }
+
+    /// <summary>
+    /// 0 = título começa com o termo, 1 = título contém, 2 = só o autor casa.
+    /// Compara contra os campos normalizados: "historia" precisa ranquear
+    /// "História da..." como prefixo.
+    /// </summary>
+    internal static int Rank(CatalogItem item, string normalizedQuery)
+    {
+        if (item.NameNormalized.StartsWith(normalizedQuery, StringComparison.Ordinal)) return 0;
+        if (item.NameNormalized.Contains(normalizedQuery, StringComparison.Ordinal)) return 1;
+        return 2;
+    }
+
+    /// <summary>
+    /// Capa pequena derivada do product_id, para itens coletados antes de o crawler
+    /// gravar <c>thumb_url</c>. A coleta é a fonte preferida; isto é o plano B.
+    ///
+    /// Funciona porque o catálogo só tem lojas Cedet, e elas compartilham o mesmo
+    /// product_id e o mesmo CDN. Conferido em 2026-11-02: 40 de 40 product_ids
+    /// sorteados de catalog_items devolveram 200 (média 12,8 KB). 150x226 é o único
+    /// tamanho servido — 75x113, 50x75 e afins dão 403. O <c>?v=</c> que a loja
+    /// manda é só cache-busting e não é obrigatório.
+    /// </summary>
+    internal static string? CedetThumbUrl(string? productId) =>
+        !string.IsNullOrEmpty(productId) && productId.All(char.IsAsciiDigit)
+            ? $"https://static.cedet.com.br/produtos_imagem_principal_grid/{productId}-150x226.jpg"
+            : null;
 
     public async Task<ResolveIsbnResultDto> ResolveIsbnAsync(
         int catalogItemId, CancellationToken cancellationToken = default)

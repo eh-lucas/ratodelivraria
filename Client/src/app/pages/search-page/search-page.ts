@@ -46,6 +46,8 @@ export class SearchPage implements OnInit {
   // Sugestões por nome (catálogo local)
   suggestions: CatalogSuggestion[] = [];
   suggestionsOpen = false;
+  /** Capas que deram erro: no lugar fica o bloco cinza, sem ícone quebrado. */
+  readonly brokenThumbs = new Set<number>();
   resolvingSuggestionId: number | null = null;
   suggestionError = '';
   private readonly nameQuery$ = new Subject<string>();

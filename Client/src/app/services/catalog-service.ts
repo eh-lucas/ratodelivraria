@@ -7,6 +7,9 @@ import { environment } from '../../environments/environment';
 export interface CatalogSuggestion {
   id: number;
   title: string;
+  author: string | null;
+  /** Miniatura 150x226 no CDN da loja; o navegador baixa direto de lá. */
+  thumbUrl: string | null;
   /** Só vem preenchido quando o ISBN já foi resolvido antes. */
   isbn: string | null;
 }

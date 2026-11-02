@@ -25,11 +25,20 @@ public class CatalogItem
     /// <summary>Autores concatenados, como a loja devolve.</summary>
     public string? Authors { get; set; }
 
+    /// <summary>Autores normalizados como <see cref="NameNormalized"/> — permite buscar pelo autor.</summary>
+    public string? AuthorsNormalized { get; set; }
+
     /// <summary>Preço no momento da coleta. Referência interna, não exibir como preço atual.</summary>
     public decimal? Price { get; set; }
 
     /// <summary>URL da página do produto — usada para resolver o ISBN sob demanda.</summary>
     public string? Href { get; set; }
+
+    /// <summary>
+    /// Miniatura da capa (campo <c>thumb</c> do JSON da loja, ~150x226). Só a URL:
+    /// a imagem é carregada pelo navegador direto do CDN da loja.
+    /// </summary>
+    public string? ThumbUrl { get; set; }
 
     /// <summary>ISBN, preenchido sob demanda ao abrir a página do produto.</summary>
     public string? Isbn { get; set; }

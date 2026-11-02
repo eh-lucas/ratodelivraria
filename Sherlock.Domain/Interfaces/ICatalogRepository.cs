@@ -7,7 +7,10 @@ public interface ICatalogRepository
     /// <summary>Insere os itens novos e atualiza os já conhecidos, por (loja, produto).</summary>
     Task<int> UpsertAsync(IEnumerable<CatalogItem> items, CancellationToken cancellationToken = default);
 
-    /// <summary>Busca por trecho do título normalizado.</summary>
+    /// <summary>
+    /// Busca por trecho do título normalizado e, em seguida, do autor. Os itens que
+    /// casam pelo título vêm primeiro; até <paramref name="take"/> de cada grupo.
+    /// </summary>
     Task<List<CatalogItem>> SearchByNameAsync(
         string normalizedQuery, int take, CancellationToken cancellationToken = default);
 
@@ -15,7 +18,8 @@ public interface ICatalogRepository
 
     /// <summary>
     /// Um item qualquer do catálogo com este ISBN — serve para título e autor
-    /// quando `queries` ainda não conhece o livro. O catálogo não guarda capa.
+    /// quando `queries` ainda não conhece o livro. A capa do catálogo é só a
+    /// miniatura de ~150px (<see cref="CatalogItem.ThumbUrl"/>).
     /// </summary>
     Task<CatalogItem?> GetByIsbnAsync(string isbn, CancellationToken cancellationToken = default);
 
