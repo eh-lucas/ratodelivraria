@@ -8,6 +8,16 @@ public class CatalogSuggestionDto
 
     public string Title { get; set; } = string.Empty;
 
+    /// <summary>Autores como a loja devolve (já coletados pelo crawler).</summary>
+    public string? Author { get; set; }
+
+    /// <summary>
+    /// Miniatura 150x226 no CDN da loja. O navegador baixa direto de lá; a API só
+    /// manda o endereço — o que a coleta gravou ou, para itens antigos, o derivado
+    /// do product_id.
+    /// </summary>
+    public string? ThumbUrl { get; set; }
+
     /// <summary>Só vem preenchido se o ISBN já tiver sido resolvido antes.</summary>
     public string? Isbn { get; set; }
 }

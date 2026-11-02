@@ -51,7 +51,9 @@ public class SherlockDbContext : DbContext
             entity.Property(e => e.Name).IsRequired().HasMaxLength(500);
             entity.Property(e => e.NameNormalized).IsRequired().HasMaxLength(500);
             entity.Property(e => e.Authors).HasMaxLength(500);
+            entity.Property(e => e.AuthorsNormalized).HasMaxLength(500);
             entity.Property(e => e.Href).HasMaxLength(1000);
+            entity.Property(e => e.ThumbUrl).HasMaxLength(1000);
             entity.Property(e => e.Isbn).HasMaxLength(20);
             entity.Property(e => e.Price).HasPrecision(18, 2);
 
@@ -59,6 +61,10 @@ public class SherlockDbContext : DbContext
             entity.HasIndex(e => new { e.ProviderId, e.ProductId }).IsUnique();
             entity.HasIndex(e => e.NameNormalized);
             entity.HasIndex(e => e.Isbn);
+
+            // Os índices GIN trigram de name_normalized e authors_normalized (que fazem
+            // o LIKE '%termo%' da sugestão usar índice) são criados por SQL na migration
+            // 20261102190000_AddCatalogSearchFields — o EF não os modela.
         });
 
         // BookPrice

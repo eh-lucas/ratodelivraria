@@ -63,7 +63,20 @@
           <li>
             <button type="button" class="suggestion-item" (click)="selectSuggestion(s)"
                     [disabled]="resolvingSuggestionId !== null">
-              <span class="suggestion-title">{{ s.title }}</span>
+              <span class="suggestion-cover" aria-hidden="true">
+                @if (s.thumbUrl && !brokenThumbs.has(s.id)) {
+                  <img [src]="s.thumbUrl" alt="" width="32" height="48"
+                       loading="eager" fetchpriority="high" decoding="async"
+                       referrerpolicy="no-referrer"
+                       (error)="brokenThumbs.add(s.id)" />
+                }
+              </span>
+              <span class="suggestion-text">
+                <span class="suggestion-title">{{ s.title }}</span>
+                @if (s.author) {
+                  <span class="suggestion-author">{{ s.author }}</span>
+                }
+              </span>
               @if (resolvingSuggestionId === s.id) {
                 <span class="suggestion-status">{{ 'buscando ISBN...' | t }}</span>
               }
