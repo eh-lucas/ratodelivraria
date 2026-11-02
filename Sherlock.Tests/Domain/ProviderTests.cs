@@ -24,9 +24,10 @@ public class ProviderTests
         var providers = Provider.AllSources;
 
         // Assert
-        // 83 lojas declaradas no arquivo, 16 comentadas fora da lista em 4bf6500,
-        // mais a Amazon, que nao e loja Cedet e entra por navegador.
-        providers.Should().HaveCount(68);
+        // 84 lojas declaradas no arquivo, 16 comentadas fora da lista em 4bf6500,
+        // mais a Amazon, que nao e loja Cedet e entra por navegador. A Senso
+        // Incomum voltou em 2026-11-02.
+        providers.Should().HaveCount(69);
     }
 
     [Fact]

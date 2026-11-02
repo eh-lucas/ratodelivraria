@@ -1022,6 +1022,15 @@ namespace Sherlock.Data.Migrations
                         },
                         new
                         {
+                            Id = 90,
+                            IsActive = true,
+                            Name = "Livraria Senso Incomum",
+                            ProviderCategoryEnum = 100,
+                            SearchUrlTemplate = "index.php?route=product/search&search={search}",
+                            Url = "https://livraria.sensoincomum.org/"
+                        },
+                        new
+                        {
                             Id = 91,
                             IsActive = true,
                             Name = "Kirion",
