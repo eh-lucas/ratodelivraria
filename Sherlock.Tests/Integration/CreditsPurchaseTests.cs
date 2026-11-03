@@ -1,17 +1,44 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using Sherlock.Business.DTOs;
 using Sherlock.Tests.Integration.Infrastructure;
 
 namespace Sherlock.Tests.Integration;
 
 // Fluxo de compra de creditos: POST /api/Credits/purchase consome PaymentId qualquer
-// (CreditService.AddCreditsAsync nao valida o conteudo, so exige nao-vazio em
-// CreditsController.cs:94). Pacote 1 (Starter) adiciona 50 creditos.
+// (CreditService.AddCreditsAsync nao valida o conteudo, so exige nao-vazio).
+// Por isso o endpoint so funciona com Credits:AllowSimulatedPurchase=true, que a
+// SherlockApiFactory liga; em producao fica desligado e responde 501.
+// Pacote 1 (Starter) adiciona 50 creditos.
 [Collection(nameof(IntegrationTestCollection))]
 public class CreditsPurchaseTests(SherlockApiFactory factory)
 {
+    [Fact]
+    public async Task Purchase_SemCompraSimuladaLiberada_Retorna501()
+    {
+        // Sem gateway de pagamento, creditar qualquer PaymentId e dar credito de
+        // graca a quem pedir. O padrao de producao e manter o endpoint fechado.
+        using var fechado = factory.WithWebHostBuilder(b =>
+            b.ConfigureAppConfiguration((_, c) => c.AddInMemoryCollection(
+                new Dictionary<string, string?> { ["Credits:AllowSimulatedPurchase"] = "false" })));
+
+        var client = fechado.CreateClient();
+        var user = await AuthHelper.RegisterAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", user.Token);
+
+        var response = await client.PostAsJsonAsync("/api/Credits/purchase", new
+        {
+            packageId = 1,
+            paymentId = "SIMULATED"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotImplemented);
+    }
+
     [Fact]
     public async Task Purchase_ValidPackage_IncreasesBalance()
     {

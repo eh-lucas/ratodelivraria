@@ -41,7 +41,14 @@ curl -o /dev/null -w "%{http_code}\n" http://localhost:4200/api/Providers/active
 
 `restart: unless-stopped` em todos os serviços → sobem sozinhos após reboot/crash.
 
-Na rede local a app já fica acessível em `http://<IP-DA-MAQUINA>:4200`.
+> **Portas só no loopback (desde 02/11/2026).** Postgres (5433), Redis (6379), API
+> (5177) e o client (4200) são publicados em `127.0.0.1`: só esta máquina os alcança.
+> A entrada pública é o túnel da Cloudflare, que roda aqui mesmo e fala com
+> `localhost:4200`. Antes as quatro portas ficavam em `0.0.0.0`, abertas para toda a
+> rede local (e para a internet pelos IPv6 globais da máquina) — com o Redis sem senha.
+> Para testar de outro aparelho da rede, use a URL pública ou um túnel SSH
+> (`ssh -L 4200:localhost:4200 ...`). O Redis agora exige a senha `REDIS_PASSWORD`
+> do `.env`.
 
 ---
 

@@ -22,6 +22,8 @@ export interface TransactionHistory {
   imageUrl?: string;
   /** Lojas com o livro disponível e com preço. */
   offersCount: number;
+  /** Lojas que conhecem o livro mas estavam sem estoque. */
+  unavailableCount: number;
 }
 
 export interface QueryDetail {

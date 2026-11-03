@@ -236,11 +236,16 @@ public class QueryRepository : RepositoryBase<Query>, IQueryRepository
         // Usa factory para criar DbContext separado, permitindo chamadas concorrentes
         await using var context = await _contextFactory.CreateDbContextAsync();
 
+        // Só consultas feitas de verdade na loja (FromCache = false). Um acerto de
+        // cache também é gravado como linha nova, com a hora de agora; se ele
+        // contasse, cada busca renovaria o prazo e um livro procurado a cada hora
+        // nunca mais teria o preço conferido na loja.
         return await context.Set<Query>()
             .Where(q => q.SearchIsbn == isbn
                 && q.ProviderId == providerId
                 && q.QueriedAt >= cacheThreshold
-                && q.Success)
+                && q.Success
+                && !q.FromCache)
             .OrderByDescending(q => q.QueriedAt)
             .FirstOrDefaultAsync();
     }

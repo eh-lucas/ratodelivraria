@@ -59,7 +59,11 @@ function renovarERepetir(
     return auth.tokenRenovado$.pipe(
       filter((t): t is string => t !== null),
       take(1),
-      switchMap(novo => next(req.clone({ setHeaders: { Authorization: `Bearer ${novo}` } }))),
+      // '' é o sinal de que a renovação falhou: devolve o 401 original em vez
+      // de repetir a chamada sem token.
+      switchMap(novo => novo
+        ? next(req.clone({ setHeaders: { Authorization: `Bearer ${novo}` } }))
+        : throwError(() => erroOriginal)),
     );
   }
 

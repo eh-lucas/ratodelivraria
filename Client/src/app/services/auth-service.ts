@@ -78,6 +78,9 @@ export class AuthService {
           error: () => {
             this.renovando = false;
             this.encerrarSessaoLocal();
+            // Quem estava esperando o token novo precisa saber que não vem:
+            // sem este aviso as chamadas ficavam penduradas para sempre.
+            this.tokenRenovado.next('');
           },
         }),
       );

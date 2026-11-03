@@ -62,8 +62,10 @@ try
         // Política por usuário autenticado
         options.AddPolicy("authenticated", context =>
         {
-            var userId = context.User?.FindFirst("sub")?.Value
-                ?? context.User?.FindFirst("nameid")?.Value
+            // O mapeamento padrão do JwtBearer renomeia "sub" para NameIdentifier;
+            // procurar "sub" cru nunca achava nada e a política virava por IP.
+            var userId = context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? context.User?.FindFirst("sub")?.Value
                 ?? context.Connection.RemoteIpAddress?.ToString()
                 ?? "anonymous";
 
@@ -76,6 +78,22 @@ try
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
             });
         });
+
+        // Login, cadastro e Google: cada tentativa custa um bcrypt (~250 ms de CPU)
+        // e é o alvo natural de adivinhação de senha. 10 por minuto por IP dá
+        // para errar a senha algumas vezes; não dá para varrer uma lista.
+        // Configurável porque os testes de integração fazem dezenas de logins do
+        // mesmo IP em segundos.
+        var authPerMinute = builder.Configuration.GetValue("RateLimiting:AuthPerMinute", 10);
+        options.AddPolicy("auth", context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = authPerMinute,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                }));
 
         // Política global (fallback)
         options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
@@ -164,10 +182,12 @@ try
 
     app.UseCors("AllowAngular");
 
-    app.UseRateLimiter();
-
+    // Autenticação antes do limitador: a política "authenticated" particiona
+    // por usuário, e antes de UseAuthentication o User ainda está vazio.
     app.UseAuthentication();
     app.UseAuthorization();
+
+    app.UseRateLimiter();
 
     app.MapControllers();
     app.MapHealthChecks("/health");

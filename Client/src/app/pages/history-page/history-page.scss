@@ -228,6 +228,8 @@ button.cover { cursor: pointer; }
 .no-offer {
   font-size: var(--fs-sm);
   color: var(--text-subtle);
+
+  &.unavailable { color: #b45309; }
 }
 
 .card-meta {

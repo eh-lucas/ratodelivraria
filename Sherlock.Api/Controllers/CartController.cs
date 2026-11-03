@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Sherlock.Business.Core.Scrapers.Common;
 using Sherlock.Business.DTOs;
 using Sherlock.Business.Core.Progress;
 using Sherlock.Business.Interfaces;
@@ -69,6 +70,11 @@ public class CartController : ControllerBase
         }
 
         // Valida cada livro
+        if (NormalizarLivros(request.Books) is { } erroIsbnLote)
+        {
+            return BadRequest(new { error = erroIsbnLote });
+        }
+
         foreach (var book in request.Books)
         {
             if (string.IsNullOrWhiteSpace(book.Isbn))
@@ -85,6 +91,11 @@ public class CartController : ControllerBase
             {
                 return BadRequest(new { error = $"Quantidade máxima de {AppConstants.Cart.MaxQuantityPerBook} unidades por livro. ISBN: {book.Isbn}" });
             }
+        }
+
+        if (NormalizarLivros(request.Books) is { } erroIsbn)
+        {
+            return BadRequest(new { error = erroIsbn });
         }
 
         var userId = GetUserIdOrNull();
@@ -127,9 +138,9 @@ public class CartController : ControllerBase
         [FromQuery] string? providerUrls = null,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(isbn))
+        if (!IsbnInput.TryNormalize(isbn, out isbn))
         {
-            return BadRequest(new { error = "O ISBN do livro é obrigatório." });
+            return BadRequest(new { error = IsbnInput.ErroFormato });
         }
 
         // Parse provider URLs se fornecido
@@ -335,6 +346,7 @@ public class CartController : ControllerBase
     /// permite ao front mostrar progresso em vez de uma espera opaca.
     /// </summary>
     [HttpPost("optimize-async")]
+    [EnableRateLimiting("authenticated")]
     public IActionResult StartOptimization([FromBody] CartOptimizationRequest request)
     {
         if (request.Books == null || !request.Books.Any())
@@ -348,6 +360,11 @@ public class CartController : ControllerBase
         if (request.Books.Count > AppConstants.Cart.MaxBooksPerOptimization)
         {
             return BadRequest(new { error = $"Máximo de {AppConstants.Cart.MaxBooksPerOptimization} livros por otimização." });
+        }
+
+        if (NormalizarLivros(request.Books) is { } erroIsbnAsync)
+        {
+            return BadRequest(new { error = erroIsbnAsync });
         }
 
         var userId = GetUserIdOrNull();
@@ -378,6 +395,27 @@ public class CartController : ControllerBase
         });
 
         return Ok(new { jobId, total = request.ProviderUrls?.Count ?? 0 });
+    }
+
+    /// <summary>
+    /// ISBN só com dígitos e quantidade entre 1 e 99, antes de qualquer loja ser
+    /// consultada. Devolve a mensagem de erro, ou null se está tudo certo.
+    /// </summary>
+    private static string? NormalizarLivros(List<CartBookItem> books)
+    {
+        foreach (var book in books)
+        {
+            if (!IsbnInput.TryNormalize(book.Isbn, out var isbn))
+                return IsbnInput.ErroFormato;
+
+            book.Isbn = isbn;
+            book.Quantity = Math.Clamp(book.Quantity, 1, 99);
+        }
+
+        // O mesmo livro duas vezes seria consultado duas vezes
+        return books.Select(b => b.Isbn).Distinct().Count() != books.Count
+            ? "O mesmo ISBN aparece mais de uma vez na lista."
+            : null;
     }
 
     /// <summary>Andamento de uma busca iniciada por <c>optimize-async</c>.</summary>

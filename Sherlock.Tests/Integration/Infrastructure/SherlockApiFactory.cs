@@ -35,12 +35,18 @@ public class SherlockApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
                 ["ConnectionStrings:DefaultConnection"] = connectionString,
                 ["ConnectionStrings:SherlockDb"] = connectionString,
                 // Cache em memoria (Redis nao sobe nos testes)
-                ["UseRedis"] = "false"
+                ["UseRedis"] = "false",
+                // appsettings.json nao traz mais segredo nenhum (a API recusa subir sem
+                // chave). A mesma IConfiguration alimenta Configurator e TokenService,
+                // entao assinatura e validacao usam esta chave.
+                ["JwtSettings:SecretKey"] = "chave-de-teste-de-integracao-0123456789abcdef",
+                // Os testes fazem dezenas de logins do mesmo IP; o teto de producao
+                // (10/min) derrubaria a suite em 429.
+                ["RateLimiting:AuthPerMinute"] = "100000",
+                // A compra simulada de creditos fica fechada por padrao (nao ha gateway);
+                // os testes do fluxo a reabrem. O teste do 501 desliga de novo.
+                ["Credits:AllowSimulatedPurchase"] = "true",
             });
-            // Nao sobrescrevemos JwtSettings: Configurator captura SecretKey no startup
-            // (middleware imutavel) e TokenService le em runtime. Se override aplicar so
-            // a um deles, signing/validation key divergem -> 401. Default de appsettings.json
-            // e suficiente para teste.
         });
     }
 

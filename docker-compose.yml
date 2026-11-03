@@ -2,6 +2,19 @@
 # pasta criaria volumes novos e vazios (o banco de producao "sumiria").
 name: sherlock
 
+# Sem rotação, o json-file do Docker cresce para sempre — e a API loga cada
+# requisição e cada loja consultada.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+# Portas presas ao loopback: a única porta de entrada é o túnel da Cloudflare,
+# que roda nesta máquina e fala com localhost:4200. Publicar em 0.0.0.0 deixava
+# Postgres, Redis (sem senha) e a API abertos para toda a rede local — e para a
+# internet, nos IPv6 globais desta máquina.
+
 services:
   # PostgreSQL Database
   postgres:
@@ -20,7 +33,8 @@ services:
       # Script roda so na primeira init (volume vazio): cria o sherlock_app
       - ./scripts/db-init:/docker-entrypoint-initdb.d:ro
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
+    logging: *logging
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -34,12 +48,19 @@ services:
     image: redis:7-alpine
     container_name: sherlock-redis
     restart: unless-stopped
+    # Senha obrigatória e teto de memória: é cache, pode descartar o mais antigo.
+    command: >
+      sh -c 'exec redis-server --requirepass "$$REDIS_PASSWORD"
+             --maxmemory 256mb --maxmemory-policy allkeys-lru'
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
+    logging: *logging
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -57,6 +78,7 @@ services:
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${APP_DB_USER};Password=${APP_DB_PASSWORD}"
       ConnectionStrings__SherlockDb: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${APP_DB_USER};Password=${APP_DB_PASSWORD}"
+      ConnectionStrings__Redis: "redis:6379,password=${REDIS_PASSWORD}"
       JwtSettings__SecretKey: ${JWT_SECRET}
       # Medido em 2026-08-18 com a busca via JSON: 67 lojas em 17,0s com 10 por vez
       # e 14,3s com 20, enquanto a latência por loja sobe de 2,5s para 3,7s. Acima
@@ -79,7 +101,8 @@ services:
       Email__FromAddress: ${EMAIL_FROM_ADDRESS:-nao-responda@ratodelivraria.com.br}
       Email__FromName: ${EMAIL_FROM_NAME:-ratodelivraria}
     ports:
-      - "5177:8080"
+      - "127.0.0.1:5177:8080"
+    logging: *logging
     depends_on:
       postgres:
         condition: service_healthy
@@ -102,7 +125,8 @@ services:
     container_name: sherlock-client
     restart: unless-stopped
     ports:
-      - "4200:80"
+      - "127.0.0.1:4200:80"
+    logging: *logging
     depends_on:
       api:
         condition: service_healthy

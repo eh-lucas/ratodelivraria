@@ -123,11 +123,15 @@ public class QueryHistoryService : IQueryHistoryService
         FillBest(dto, offers.Count, best?.Title, best?.Author, best?.Price,
             best?.Provider?.Name, best?.ProductUrl, best?.ImageUrl,
             transaction.Queries.Select(q => (q.ImageUrl, q.Author, q.Title)));
+        dto.UnavailableCount = transaction.Queries.Count(IsUnavailable);
 
         return dto;
     }
 
     private static bool IsOffer(Query q) => q.Success && q.Available && q.Price > 0;
+
+    /// <summary>A loja achou o livro, mas sem estoque: não é oferta, mas também não é "não encontrado".</summary>
+    private static bool IsUnavailable(Query q) => q.Success && !q.Available && q.Price > 0;
 
     /// <summary>
     /// Capa e autor são do livro, não da loja: se a melhor oferta veio sem eles
@@ -203,6 +207,7 @@ public class QueryHistoryService : IQueryHistoryService
             best?.Provider?.Name ?? (best == null ? null : $"Provider #{best.ProviderId}"),
             best?.ProductUrl, best?.ImageUrl,
             transaction.Queries.Select(q => (q.ImageUrl, q.Author, q.Title)));
+        dto.UnavailableCount = transaction.Queries.Count(IsUnavailable);
 
         return dto;
     }

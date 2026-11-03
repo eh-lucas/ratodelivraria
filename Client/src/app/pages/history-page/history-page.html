@@ -67,6 +67,8 @@
                     @if (t.bestProvider) {
                       <span class="provider">{{ t.bestProvider }}</span>
                     }
+                  } @else if (t.unavailableCount > 0) {
+                    <span class="no-offer unavailable">{{ 'esgotado' | t }} {{ 'em' | t }} {{ t.unavailableCount }} {{ 'loja|lojas' | tp:t.unavailableCount }}</span>
                   } @else {
                     <span class="no-offer">{{ 'sem oferta' | t }}</span>
                   }

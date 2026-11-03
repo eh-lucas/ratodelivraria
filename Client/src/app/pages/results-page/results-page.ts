@@ -668,9 +668,23 @@ export class ResultsPage implements OnInit {
     });
   }
 
-  /** Os não encontrados pelo nome que a sessão conhece (veio da sugestão); o ISBN só se não houver nome. */
+  /**
+   * Os não encontrados pelo nome que a sessão conhece (veio da sugestão); o ISBN
+   * só se não houver nome. Livro esgotado não é "não encontrado": as lojas o
+   * conhecem, só não têm estoque — e, como o estoque é compartilhado entre as
+   * lojas Cedet, costuma faltar em todas ao mesmo tempo.
+   */
   get notFoundLabels(): string[] {
-    return this.notFoundIsbns.map(isbn => this.state.infoOf(isbn)?.title || `ISBN ${isbn}`);
+    return this.notFoundIsbns.map(isbn => {
+      const nome = this.state.infoOf(isbn)?.title || `ISBN ${isbn}`;
+      const esgotado = this.queries.filter(q => q.isbn === isbn && q.unavailable).length;
+      return esgotado > 0 ? `${nome} (esgotado em ${esgotado} ${esgotado === 1 ? 'loja' : 'lojas'})` : nome;
+    });
+  }
+
+  /** Algum livro da busca apareceu como esgotado em alguma loja. */
+  get hasUnavailable(): boolean {
+    return this.queries.some(q => q.unavailable);
   }
 
   get notFoundIsbns(): string[] {

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Sherlock.Api.Services;
 using Sherlock.Api.DTOs;
@@ -45,6 +46,7 @@ public class AuthController : ControllerBase
     /// Registra um novo usuário
     /// </summary>
     [HttpPost("register")]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(LoginResponseDTO), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -112,6 +114,7 @@ public class AuthController : ControllerBase
     /// Autentica um usuário e retorna um token JWT
     /// </summary>
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(LoginResponseDTO), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -174,6 +177,7 @@ public class AuthController : ControllerBase
     /// Entra com a conta Google. Recebe o ID token que o navegador obteve do Google.
     /// </summary>
     [HttpPost("google")]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(LoginResponseDTO), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

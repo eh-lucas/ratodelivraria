@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sherlock.Business.Core.Base;
+using Microsoft.AspNetCore.RateLimiting;
 using Sherlock.Business.Core.Scrapers;
+using Sherlock.Business.Core.Scrapers.Common;
 using Sherlock.Business.DTOs;
 using Sherlock.Business.Interfaces;
 using Sherlock.Domain.Entities;
@@ -87,6 +89,7 @@ public class BookSearchController : ControllerBase
     /// <param name="providerUrls">URLs dos providers separadas por vírgula (opcional)</param>
     /// <returns>Resultado da busca com preços de todos os providers</returns>
     [HttpGet]
+    [EnableRateLimiting("authenticated")]
     [ProducesResponseType(typeof(BookSearchResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -94,9 +97,9 @@ public class BookSearchController : ControllerBase
         [FromQuery] string isbn,
         [FromQuery] string? providerUrls)
     {
-        if (string.IsNullOrEmpty(isbn))
+        if (!IsbnInput.TryNormalize(isbn, out isbn))
         {
-            return BadRequest(new { error = "ISBN do livro é obrigatório." });
+            return BadRequest(new { error = IsbnInput.ErroFormato });
         }
 
         try
@@ -125,9 +128,11 @@ public class BookSearchController : ControllerBase
         }
         catch (Exception ex)
         {
+            // A mensagem da exceção fica no log: para fora ela revelava host do
+            // banco, porta do Redis, detalhes de loja.
             _logger.LogError(ex, "Erro ao buscar preços para ISBN {Isbn}", isbn);
             return StatusCode(StatusCodes.Status500InternalServerError,
-                new { error = $"Erro ao buscar preços: {ex.Message}" });
+                new { error = "Erro ao buscar preços." });
         }
     }
 
@@ -137,15 +142,17 @@ public class BookSearchController : ControllerBase
     /// <param name="request">Dados da busca</param>
     /// <returns>Resultado da busca com preços de todos os providers</returns>
     [HttpPost]
+    [EnableRateLimiting("authenticated")]
     [ProducesResponseType(typeof(BookSearchResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> BookSearchPost([FromBody] BookSearchRequest request)
     {
-        if (string.IsNullOrEmpty(request.Isbn))
+        if (!IsbnInput.TryNormalize(request.Isbn, out var isbnNormalizado))
         {
-            return BadRequest(new { error = "ISBN do livro é obrigatório." });
+            return BadRequest(new { error = IsbnInput.ErroFormato });
         }
+        request.Isbn = isbnNormalizado;
 
         try
         {
@@ -187,7 +194,7 @@ public class BookSearchController : ControllerBase
         {
             _logger.LogError(ex, "Erro ao buscar preços para ISBN {Isbn}", request.Isbn);
             return StatusCode(StatusCodes.Status500InternalServerError,
-                new { error = $"Erro ao buscar preços: {ex.Message}" });
+                new { error = "Erro ao buscar preços." });
         }
     }
 
@@ -197,14 +204,16 @@ public class BookSearchController : ControllerBase
     /// <param name="request">Dados da busca</param>
     /// <returns>Melhor opção e alternativas</returns>
     [HttpPost("single")]
+    [EnableRateLimiting("authenticated")]
     [ProducesResponseType(typeof(SingleBookSearchResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> SingleBookSearch([FromBody] SingleBookSearchRequest request)
     {
-        if (string.IsNullOrEmpty(request.Isbn))
+        if (!IsbnInput.TryNormalize(request.Isbn, out var isbnNormalizado))
         {
-            return BadRequest(new { error = "ISBN do livro é obrigatório." });
+            return BadRequest(new { error = IsbnInput.ErroFormato });
         }
+        request.Isbn = isbnNormalizado;
 
         var userId = GetUserIdOrNull();
 
