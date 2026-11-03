@@ -46,7 +46,10 @@ try
             options.Configuration = redisConnection;
             options.InstanceName = "Sherlock:";
         });
-        Log.Information("Cache: Redis habilitado ({Connection})", redisConnection);
+        // Só o host vai para o log: a connection string carrega a senha.
+        var redisHost = System.Text.RegularExpressions.Regex.Replace(
+            redisConnection, @"password=[^,]*", "password=***", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        Log.Information("Cache: Redis habilitado ({Connection})", redisHost);
     }
     else
     {
