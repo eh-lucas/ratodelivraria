@@ -70,6 +70,9 @@ public class TransactionHistoryDto
 
     /// <summary>Lojas que tinham o livro disponível, com preço.</summary>
     public int OffersCount { get; set; }
+
+    /// <summary>Lojas que conhecem o livro mas estavam sem estoque (esgotado).</summary>
+    public int UnavailableCount { get; set; }
 }
 
 /// <summary>

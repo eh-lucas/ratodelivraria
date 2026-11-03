@@ -11,10 +11,13 @@ namespace Sherlock.Api.Controllers;
 public class CreditsController : ControllerBase
 {
     private readonly ICreditService _creditService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<CreditsController> _logger;
 
-    public CreditsController(ICreditService creditService, ILogger<CreditsController> logger)
+    public CreditsController(ICreditService creditService, ILogger<CreditsController> logger,
+        IConfiguration configuration)
     {
+        _configuration = configuration;
         _creditService = creditService;
         _logger = logger;
     }
@@ -80,6 +83,16 @@ public class CreditsController : ControllerBase
     {
         try
         {
+            // Não existe gateway de pagamento: este endpoint creditava qualquer
+            // PaymentId que chegasse, para quem quisesse, quantas vezes quisesse.
+            // Fica fechado até haver validação de pagamento de verdade; em
+            // desenvolvimento, Credits:AllowSimulatedPurchase=true reabre.
+            if (!_configuration.GetValue("Credits:AllowSimulatedPurchase", false))
+            {
+                return StatusCode(StatusCodes.Status501NotImplemented,
+                    new { error = "Compra de créditos ainda não está disponível." });
+            }
+
             var userId = GetUserId();
 
             // Verifica se o pacote existe

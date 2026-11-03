@@ -55,6 +55,7 @@ public class QueryHistoryServiceTests
         item.BestAuthor.Should().Be("Jacques Maritain", "a Amazon não trouxe autor");
         item.ImageUrl.Should().Be("https://static.cedet.com.br/p/1.jpg", "a capa da Cedet é a mesma em todas as lojas");
         item.OffersCount.Should().Be(2, "a esgotada e a que falhou não contam");
+        item.UnavailableCount.Should().Be(1);
     }
 
     [Fact]

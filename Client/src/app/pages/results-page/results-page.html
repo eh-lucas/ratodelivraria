@@ -125,7 +125,13 @@
   <!-- Nenhuma oferta -->
   @else if (result && !hasOffers) {
     <div class="state-block">
-      <p class="state-title">{{ 'Nenhum site encontrou' | t }} {{ (isMultiBook ? 'os livros' : 'o livro') | t }}</p>
+      <p class="state-title">
+        @if (hasUnavailable) {
+          {{ (isMultiBook ? 'Os livros estão esgotados' : 'O livro está esgotado') | t }}
+        } @else {
+          {{ 'Nenhum site encontrou' | t }} {{ (isMultiBook ? 'os livros' : 'o livro') | t }}
+        }
+      </p>
       <p class="state-text">
         {{ 'Consultamos' | t }} {{ totalQueried }} {{ 'sites' | t }} {{ 'e nenhum retornou preço para' | t }}
         {{ searchLabel }}. {{ 'Confira se é o livro certo ou veja o que cada site respondeu abaixo.' | t }}
@@ -260,7 +266,7 @@
 
         @if (notFoundIsbns.length > 0) {
           <p class="warn-strip">
-            {{ 'Não encontrado em nenhum site:' | t }} {{ notFoundLabels.join(', ') }}
+            {{ (hasUnavailable ? 'Sem oferta disponível:' : 'Não encontrado em nenhum site:') | t }} {{ notFoundLabels.join(', ') }}
           </p>
         }
 
