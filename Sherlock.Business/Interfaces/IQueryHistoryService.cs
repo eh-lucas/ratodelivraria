@@ -16,7 +16,12 @@ public interface IQueryHistoryService
 
     Task<IEnumerable<TransactionHistoryDto>> GetUserHistoryAsync(int userId, int limit = 20);
     Task<IEnumerable<TransactionHistoryDto>> GetRecentTransactionsAsync(int limit = 10);
-    Task<TransactionDetailDto?> GetTransactionDetailAsync(int transactionId);
+    /// <summary>
+    /// Detalhe de uma transação. Com <paramref name="ownerUserId"/>, devolve null
+    /// quando a transação não é dessa pessoa — a conferência de posse fica aqui,
+    /// e não numa segunda leitura do histórico inteiro.
+    /// </summary>
+    Task<TransactionDetailDto?> GetTransactionDetailAsync(int transactionId, int? ownerUserId = null);
 }
 
 /// <summary>
@@ -52,8 +57,19 @@ public class TransactionHistoryDto
 
     // Melhor resultado
     public string? BestTitle { get; set; }
+    public string? BestAuthor { get; set; }
     public decimal? BestPrice { get; set; }
     public string? BestProvider { get; set; }
+    public string? BestProductUrl { get; set; }
+
+    /// <summary>
+    /// Capa para a lista. Vem da melhor oferta; se ela não tem, de qualquer loja que
+    /// tenha — a imagem é do livro, não da loja.
+    /// </summary>
+    public string? ImageUrl { get; set; }
+
+    /// <summary>Lojas que tinham o livro disponível, com preço.</summary>
+    public int OffersCount { get; set; }
 }
 
 /// <summary>
@@ -78,6 +94,7 @@ public class QueryDetailDto
     public string? Author { get; set; }
     public decimal? Price { get; set; }
     public float? Discount { get; set; }
+    public string? ProductUrl { get; set; }
     public string? ErrorMessage { get; set; }
     public bool FromCache { get; set; }
     public bool Available { get; set; } = true;

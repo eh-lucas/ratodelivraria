@@ -30,7 +30,7 @@
   <header class="hero">
     <h1 class="hero-title">{{ 'Pesquisar livros' | t }}</h1>
     <p class="hero-subtitle">
-      {{ 'Informe um ou mais ISBNs e compare o preço em' | t }}
+      {{ 'Digite o nome do livro ou do autor e compare o preço em' | t }}
       @if (providers.length) { {{ providers.length }} {{ 'livraria|livrarias' | tp:providers.length }} } @else { {{ 'dezenas de livrarias' | t }} }
       {{ 'de uma vez.' | t }}
     </p>
@@ -106,14 +106,28 @@
 
       <ul class="book-list">
         @for (b of books; track b.isbn) {
+          @let info = infoOf(b.isbn);
           <li class="book-row">
-            <span class="book-isbn">{{ b.isbn }}</span>
+            <span class="book-cover" aria-hidden="true">
+              @if (info?.thumbUrl && !brokenCovers.has(b.isbn)) {
+                <img [src]="info!.thumbUrl" alt="" loading="lazy" decoding="async"
+                     referrerpolicy="no-referrer" (error)="brokenCovers.add(b.isbn)" />
+              }
+            </span>
+            <span class="book-text">
+              <span class="book-title">{{ titleOf(b.isbn) }}</span>
+              @if (info?.author) {
+                <span class="book-author">{{ info!.author }}</span>
+              } @else if (!info?.title) {
+                <span class="book-author">{{ 'identificando o livro…' | t }}</span>
+              }
+            </span>
             <div class="qty">
               <button type="button" (click)="changeQuantity(b.isbn, -1)" [disabled]="b.quantity <= 1" [aria-label]="'Diminuir quantidade' | t">−</button>
               <span class="qty-value">{{ b.quantity }}</span>
               <button type="button" (click)="changeQuantity(b.isbn, 1)" [aria-label]="'Aumentar quantidade' | t">+</button>
             </div>
-            <button type="button" class="book-remove" (click)="removeBook(b.isbn)" [attr.aria-label]="'Remover ' + b.isbn">×</button>
+            <button type="button" class="book-remove" (click)="removeBook(b.isbn)" [attr.aria-label]="('Remover' | t) + ' ' + titleOf(b.isbn)">×</button>
           </li>
         }
       </ul>
@@ -196,7 +210,7 @@
         @for (r of recent; track r.at) {
           <li>
             <button type="button" class="recent-item" (click)="useRecent(r)">
-              <span class="recent-isbns">{{ r.isbns.join(', ') }}</span>
+              <span class="recent-isbns" [title]="recentLabel(r)">{{ recentLabel(r) }}</span>
               <span class="recent-count">{{ r.isbns.length }} {{ 'livro|livros' | tp:r.isbns.length }}</span>
             </button>
           </li>

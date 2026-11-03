@@ -87,10 +87,13 @@ public class QueryHistoryService : IQueryHistoryService
         return transactions.Select(MapToHistoryDto);
     }
 
-    public async Task<TransactionDetailDto?> GetTransactionDetailAsync(int transactionId)
+    public async Task<TransactionDetailDto?> GetTransactionDetailAsync(int transactionId, int? ownerUserId = null)
     {
         var transaction = await _transactionRepository.GetWithQueriesAsync(transactionId);
         if (transaction == null)
+            return null;
+
+        if (ownerUserId.HasValue && transaction.UserId != ownerUserId.Value)
             return null;
 
         return MapToDetailDto(transaction);
@@ -98,12 +101,7 @@ public class QueryHistoryService : IQueryHistoryService
 
     private static TransactionHistoryDto MapToHistoryDto(Transaction transaction)
     {
-        var bestQuery = transaction.Queries
-            .Where(q => q.Success && q.Available && q.Price > 0)
-            .OrderBy(q => q.Price)
-            .FirstOrDefault();
-
-        return new TransactionHistoryDto
+        var dto = new TransactionHistoryDto
         {
             Id = transaction.Id,
             StartedAt = transaction.StartedAt,
@@ -114,11 +112,54 @@ public class QueryHistoryService : IQueryHistoryService
             CostCredits = transaction.CostCredits,
             InputParameters = transaction.InputParameters,
             IsSuccess = transaction.ResultTypeId == 1 || transaction.ResultTypeId == 2, // Success ou PartialSuccess
-            BestTitle = bestQuery?.Title,
-            BestPrice = bestQuery?.Price,
-            BestProvider = bestQuery?.Provider?.Name
         };
+
+        var offers = transaction.Queries
+            .Where(IsOffer)
+            .OrderBy(q => q.Price)
+            .ToList();
+        var best = offers.FirstOrDefault();
+
+        FillBest(dto, offers.Count, best?.Title, best?.Author, best?.Price,
+            best?.Provider?.Name, best?.ProductUrl, best?.ImageUrl,
+            transaction.Queries.Select(q => (q.ImageUrl, q.Author, q.Title)));
+
+        return dto;
     }
+
+    private static bool IsOffer(Query q) => q.Success && q.Available && q.Price > 0;
+
+    /// <summary>
+    /// Capa e autor são do livro, não da loja: se a melhor oferta veio sem eles
+    /// (a Amazon, por exemplo, não traz autor), pega de qualquer outra loja que
+    /// respondeu. Entre capas, prefere a do CDN da Cedet, que é a mesma em todas
+    /// as lojas e já fica em cache no navegador pela caixa de busca.
+    /// </summary>
+    private static void FillBest(
+        TransactionHistoryDto dto, int offersCount,
+        string? title, string? author, decimal? price, string? provider, string? productUrl, string? imageUrl,
+        IEnumerable<(string? ImageUrl, string? Author, string? Title)> allQueries)
+    {
+        var all = allQueries.ToList();
+
+        dto.OffersCount = offersCount;
+        // Sem oferta, o título de qualquer loja que respondeu ainda identifica o livro
+        dto.BestTitle = FirstNonEmpty(title)
+            ?? all.Select(q => FirstNonEmpty(q.Title)).FirstOrDefault(t => t != null);
+        dto.BestPrice = price;
+        dto.BestProvider = provider;
+        dto.BestProductUrl = productUrl;
+        dto.BestAuthor = FirstNonEmpty(author)
+            ?? all.Select(q => FirstNonEmpty(q.Author)).FirstOrDefault(a => a != null);
+
+        var images = all.Select(q => FirstNonEmpty(q.ImageUrl)).Where(i => i != null).ToList();
+        dto.ImageUrl = images.FirstOrDefault(i => i!.Contains("static.cedet.com.br", StringComparison.OrdinalIgnoreCase))
+            ?? FirstNonEmpty(imageUrl)
+            ?? images.FirstOrDefault();
+    }
+
+    private static string? FirstNonEmpty(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static TransactionDetailDto MapToDetailDto(Transaction transaction)
     {
@@ -144,16 +185,24 @@ public class QueryHistoryService : IQueryHistoryService
                 Author = q.Author,
                 Price = q.Price,
                 Discount = q.Discount,
+                ProductUrl = q.ProductUrl,
                 ErrorMessage = q.ErrorMessage,
                 FromCache = q.FromCache,
                 Available = q.Available
-            }).OrderBy(q => q.Price ?? decimal.MaxValue).ToList()
+            })
+            // Ofertas por preço; depois as indisponíveis; por último quem falhou.
+            .OrderBy(q => q.Success && q.Price > 0 ? (q.Available ? 0 : 1) : 2)
+            .ThenBy(q => q.Price ?? decimal.MaxValue)
+            .ToList()
         };
 
-        var bestQuery = dto.Queries.FirstOrDefault(q => q.Success && q.Available && q.Price > 0);
-        dto.BestTitle = bestQuery?.Title;
-        dto.BestPrice = bestQuery?.Price;
-        dto.BestProvider = bestQuery?.ProviderName;
+        var offers = transaction.Queries.Where(IsOffer).OrderBy(q => q.Price).ToList();
+        var best = offers.FirstOrDefault();
+
+        FillBest(dto, offers.Count, best?.Title, best?.Author, best?.Price,
+            best?.Provider?.Name ?? (best == null ? null : $"Provider #{best.ProviderId}"),
+            best?.ProductUrl, best?.ImageUrl,
+            transaction.Queries.Select(q => (q.ImageUrl, q.Author, q.Title)));
 
         return dto;
     }

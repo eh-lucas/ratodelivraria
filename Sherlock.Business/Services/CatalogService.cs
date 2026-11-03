@@ -14,6 +14,7 @@ public class CatalogService : ICatalogService
 {
     private readonly ICatalogRepository _catalogRepository;
     private readonly IProviderRepository _providerRepository;
+    private readonly IQueryRepository _queryRepository;
     private readonly CatalogCrawler _crawler;
     private readonly CatalogCrawlSettings _settings;
     private readonly ILogger<CatalogService> _logger;
@@ -63,12 +64,14 @@ public class CatalogService : ICatalogService
     public CatalogService(
         ICatalogRepository catalogRepository,
         IProviderRepository providerRepository,
+        IQueryRepository queryRepository,
         CatalogCrawler crawler,
         IOptions<CatalogCrawlSettings> settings,
         ILogger<CatalogService> logger)
     {
         _catalogRepository = catalogRepository;
         _providerRepository = providerRepository;
+        _queryRepository = queryRepository;
         _crawler = crawler;
         _settings = settings.Value;
         _logger = logger;
@@ -227,6 +230,52 @@ public class CatalogService : ICatalogService
         !string.IsNullOrEmpty(productId) && productId.All(char.IsAsciiDigit)
             ? $"https://static.cedet.com.br/produtos_imagem_principal_grid/{productId}-150x226.jpg"
             : null;
+
+    public async Task<List<BookLookupDto>> LookupAsync(
+        IReadOnlyList<string> isbns, CancellationToken cancellationToken = default)
+    {
+        var result = new List<BookLookupDto>();
+
+        foreach (var raw in isbns.Take(20))
+        {
+            var isbn = NormalizeIsbn(raw);
+            if (isbn.Length is not (10 or 13)) continue;
+
+            // Catálogo primeiro: título limpo e capa do CDN. Senão, o que a última
+            // busca trouxe — serve para ISBN digitado à mão que nunca foi coletado.
+            var item = await _catalogRepository.GetByIsbnAsync(isbn, cancellationToken);
+            if (item != null)
+            {
+                result.Add(new BookLookupDto
+                {
+                    Isbn = isbn,
+                    Title = item.Name,
+                    Author = string.IsNullOrWhiteSpace(item.Authors) ? null : item.Authors,
+                    ThumbUrl = item.ThumbUrl ?? CedetThumbUrl(item.ProductId),
+                });
+                continue;
+            }
+
+            var meta = await _queryRepository.GetMetadataByIsbnAsync(isbn, cancellationToken);
+            if (meta != null && !string.IsNullOrWhiteSpace(meta.Title))
+            {
+                result.Add(new BookLookupDto
+                {
+                    Isbn = isbn,
+                    Title = meta.Title,
+                    Author = string.IsNullOrWhiteSpace(meta.Author) ? null : meta.Author,
+                    ThumbUrl = meta.ImageUrl,
+                });
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>Só dígitos (e o X final do ISBN-10): hífen e espaço são jeitos de escrever, não parte do número.</summary>
+    internal static string NormalizeIsbn(string raw) =>
+        new string((raw ?? string.Empty).Trim().ToUpperInvariant()
+            .Where(c => char.IsAsciiDigit(c) || c == 'X').ToArray());
 
     public async Task<ResolveIsbnResultDto> ResolveIsbnAsync(
         int catalogItemId, CancellationToken cancellationToken = default)

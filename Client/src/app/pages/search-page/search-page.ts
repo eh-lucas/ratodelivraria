@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
 import { CartService, CartBookItem, ProviderOption } from '../../services/cart-service';
-import { CatalogService, CatalogSuggestion } from '../../services/catalog-service';
+import { BookInfo, CatalogService, CatalogSuggestion } from '../../services/catalog-service';
 import { RankingService, PopularBook } from '../../services/ranking-service';
 import { SearchStateService } from '../../services/search-state';
 import { TranslatePipe } from '../../i18n/translate-pipe';
@@ -15,6 +15,8 @@ const MAX_RECENT = 5;
 
 interface RecentSearch {
   isbns: string[];
+  /** Títulos na mesma ordem dos ISBNs; vazio em registros antigos. */
+  titles?: string[];
   at: number;
 }
 
@@ -55,6 +57,8 @@ export class SearchPage implements OnInit {
   suggestionsOpen = false;
   /** Capas que deram erro: no lugar fica o bloco cinza, sem ícone quebrado. */
   readonly brokenThumbs = new Set<number>();
+  /** Idem para as capas da lista de livros, por ISBN. */
+  readonly brokenCovers = new Set<string>();
 
   /**
    * Quantas sugestões cabem na lista sem rolar (420 px / 64 px por linha). As capas
@@ -78,6 +82,7 @@ export class SearchPage implements OnInit {
 
   ngOnInit(): void {
     this.loadRecent();
+    this.state.ensureKnown(this.books.map(b => b.isbn)).subscribe();
 
     // Autocomplete por nome: espera o usuário parar de digitar antes de consultar
     this.nameQuery$
@@ -91,7 +96,10 @@ export class SearchPage implements OnInit {
         this.suggestionsOpen = list.length > 0;
       });
 
-    this.rankingService.mostSearched(10).subscribe(list => (this.popular = list));
+    this.rankingService.mostSearched(10).subscribe(list => {
+      this.popular = list;
+      list.forEach(l => this.state.remember({ isbn: l.isbn, title: l.title, author: null, thumbUrl: null }));
+    });
 
     this.cartService.getActiveProviders().subscribe({
       next: list => {
@@ -129,6 +137,18 @@ export class SearchPage implements OnInit {
     this.books.push({ isbn, quantity: 1 });
     this.newIsbn = '';
     this.isbnInput?.nativeElement.focus();
+
+    // ISBN digitado à mão: a pessoa precisa ver qual livro entrou, não o número
+    this.state.ensureKnown([isbn]).subscribe();
+  }
+
+  /** Título, autor e capa do livro, se o sistema já conhece. */
+  infoOf(isbn: string): BookInfo | null {
+    return this.state.infoOf(isbn);
+  }
+
+  titleOf(isbn: string): string {
+    return this.infoOf(isbn)?.title || `ISBN ${isbn}`;
   }
 
   // ===== Busca por nome =====
@@ -158,7 +178,11 @@ export class SearchPage implements OnInit {
   selectSuggestion(suggestion: CatalogSuggestion): void {
     this.suggestionError = '';
 
+    const remember = (isbn: string) =>
+      this.state.remember({ isbn, title: suggestion.title, author: suggestion.author, thumbUrl: suggestion.thumbUrl });
+
     if (suggestion.isbn) {
+      remember(suggestion.isbn);
       this.addIsbn(suggestion.isbn);
       return;
     }
@@ -168,6 +192,7 @@ export class SearchPage implements OnInit {
       this.resolvingSuggestionId = null;
 
       if (result.found && result.isbn) {
+        remember(result.isbn);
         this.addIsbn(result.isbn);
       } else {
         this.suggestionError = result.error || 'Não foi possível identificar o ISBN deste título.';
@@ -277,7 +302,7 @@ export class SearchPage implements OnInit {
 
     // A tela de resultado é quem dispara a consulta; aqui só passamos o contexto
     this.state.selectedProviderUrls = this.selectedProviderUrls;
-    this.saveRecent(this.books.map(b => b.isbn));
+    this.saveRecent(this.books.map(b => b.isbn), this.books.map(b => this.infoOf(b.isbn)?.title || ''));
 
     this.router.navigate(['/resultado'], {
       queryParams: { isbn: this.books.map(b => (b.quantity > 1 ? `${b.isbn}*${b.quantity}` : b.isbn)) },
@@ -289,16 +314,31 @@ export class SearchPage implements OnInit {
   private loadRecent(): void {
     try {
       const raw = localStorage.getItem(RECENT_KEY);
-      this.recent = raw ? (JSON.parse(raw) as RecentSearch[]) : [];
+      const parsed = raw ? JSON.parse(raw) : [];
+      // Registro sem ISBNs (storage mexido) derrubava a tela inteira no template
+      this.recent = Array.isArray(parsed)
+        ? parsed.filter((r: RecentSearch) => Array.isArray(r?.isbns) && r.isbns.length > 0)
+        : [];
     } catch {
       this.recent = [];
     }
+
+    // Buscas antigas, gravadas só com o número: pede os títulos uma vez
+    const semTitulo = this.recent.filter(r => !r.titles?.length).flatMap(r => r.isbns);
+    if (semTitulo.length > 0) this.state.ensureKnown(semTitulo).subscribe();
   }
 
-  private saveRecent(isbns: string[]): void {
+  /** Rótulo de uma busca recente: os títulos que conhecemos; o resto fica como ISBN. */
+  recentLabel(r: RecentSearch): string {
+    return r.isbns
+      .map((isbn, i) => r.titles?.[i] || this.infoOf(isbn)?.title || `ISBN ${isbn}`)
+      .join(' · ');
+  }
+
+  private saveRecent(isbns: string[], titles: string[]): void {
     const key = isbns.join(',');
     const next = [
-      { isbns, at: Date.now() },
+      { isbns, titles, at: Date.now() },
       ...this.recent.filter(r => r.isbns.join(',') !== key),
     ].slice(0, MAX_RECENT);
 
@@ -314,6 +354,7 @@ export class SearchPage implements OnInit {
 
   /** Um toque no ranking já busca aquele livro: é o caminho mais curto da tela. */
   buscarPopular(livro: PopularBook): void {
+    this.state.remember({ isbn: livro.isbn, title: livro.title, author: null, thumbUrl: null });
     this.books = [{ isbn: livro.isbn, quantity: 1 }];
     this.search();
   }
@@ -325,6 +366,7 @@ export class SearchPage implements OnInit {
 
   useRecent(r: RecentSearch): void {
     this.books = r.isbns.map(isbn => ({ isbn, quantity: 1 }));
+    this.state.ensureKnown(r.isbns).subscribe();
   }
 
   clearRecent(): void {

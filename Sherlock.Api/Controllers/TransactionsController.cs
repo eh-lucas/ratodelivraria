@@ -61,12 +61,10 @@ public class TransactionsController : ControllerBase
         try
         {
             var userId = GetUserId();
-            var detail = await _historyService.GetTransactionDetailAsync(id);
-            if (detail == null) return NotFound();
 
-            // Bloqueia acesso a transações de outros usuários
-            if (!await UserOwnsTransactionAsync(userId, id))
-                return NotFound();
+            // 404 também para transação de outra pessoa: não revela que o id existe.
+            var detail = await _historyService.GetTransactionDetailAsync(id, ownerUserId: userId);
+            if (detail == null) return NotFound();
 
             return Ok(detail);
         }
@@ -80,13 +78,6 @@ public class TransactionsController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new { error = "Erro ao obter detalhes da transação" });
         }
-    }
-
-    private async Task<bool> UserOwnsTransactionAsync(int userId, int transactionId)
-    {
-        // Reusa o histórico paginado para conferir posse — evita query extra
-        var history = await _historyService.GetUserHistoryAsync(userId, 200);
-        return history.Any(t => t.Id == transactionId);
     }
 
     private int GetUserId()

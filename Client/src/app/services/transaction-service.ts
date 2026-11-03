@@ -14,8 +14,14 @@ export interface TransactionHistory {
   inputParameters: string;
   isSuccess: boolean;
   bestTitle?: string;
+  bestAuthor?: string;
   bestPrice?: number;
   bestProvider?: string;
+  bestProductUrl?: string;
+  /** Capa do livro (da melhor oferta ou de qualquer loja que respondeu). */
+  imageUrl?: string;
+  /** Lojas com o livro disponível e com preço. */
+  offersCount: number;
 }
 
 export interface QueryDetail {
@@ -28,8 +34,10 @@ export interface QueryDetail {
   author?: string;
   price?: number;
   discount?: number;
+  productUrl?: string;
   errorMessage?: string;
   fromCache: boolean;
+  available: boolean;
 }
 
 export interface TransactionDetail extends TransactionHistory {

@@ -23,6 +23,8 @@ public class TransactionRepository : RepositoryBase<Transaction>, ITransactionRe
             .OrderByDescending(t => t.StartedAt)
             .Take(limit)
             .Include(t => t.Queries)
+                .ThenInclude(q => q.Provider)
+            .AsSplitQuery()
             .ToListAsync();
     }
 
@@ -32,6 +34,8 @@ public class TransactionRepository : RepositoryBase<Transaction>, ITransactionRe
             .OrderByDescending(t => t.StartedAt)
             .Take(count)
             .Include(t => t.Queries)
+                .ThenInclude(q => q.Provider)
+            .AsSplitQuery()
             .ToListAsync();
     }
 

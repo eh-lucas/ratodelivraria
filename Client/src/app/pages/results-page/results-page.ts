@@ -668,6 +668,11 @@ export class ResultsPage implements OnInit {
     });
   }
 
+  /** Os não encontrados pelo nome que a sessão conhece (veio da sugestão); o ISBN só se não houver nome. */
+  get notFoundLabels(): string[] {
+    return this.notFoundIsbns.map(isbn => this.state.infoOf(isbn)?.title || `ISBN ${isbn}`);
+  }
+
   get notFoundIsbns(): string[] {
     return this.result?.booksNotFound ?? [];
   }
@@ -741,8 +746,18 @@ export class ResultsPage implements OnInit {
     return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`;
   }
 
+  /** Os livros da busca pelo nome, não pelo número: título do resultado, da sessão, ou o ISBN como último recurso. */
   get searchLabel(): string {
-    return this.books.map(b => (b.quantity > 1 ? `${b.isbn} (${b.quantity}x)` : b.isbn)).join(' · ');
+    return this.books
+      .map(b => {
+        // bookStats usa "—" como título de livro que nenhuma loja achou
+        const found = this.bookStats.find(s => s.isbn === b.isbn)?.title;
+        const title = (found && found !== '—' ? found : null)
+          || this.state.infoOf(b.isbn)?.title
+          || `ISBN ${b.isbn}`;
+        return b.quantity > 1 ? `${title} (${b.quantity}x)` : title;
+      })
+      .join(' · ');
   }
 
   get isMultiBook(): boolean {
