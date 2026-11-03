@@ -18,6 +18,10 @@ public interface ICatalogService
     Task<List<CatalogSuggestionDto>> SuggestAsync(
         string query, int limit, CancellationToken cancellationToken = default);
 
+    /// <summary>Título, autor e capa de cada ISBN que o sistema já conhece (no máximo 20 por chamada).</summary>
+    Task<List<BookLookupDto>> LookupAsync(
+        IReadOnlyList<string> isbns, CancellationToken cancellationToken = default);
+
     /// <summary>Descobre o ISBN abrindo a página do produto na loja, e guarda o resultado.</summary>
     Task<ResolveIsbnResultDto> ResolveIsbnAsync(
         int catalogItemId, CancellationToken cancellationToken = default);

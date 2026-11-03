@@ -123,7 +123,11 @@
 @media (max-width: 767px) {
   .mobile-menu-btn { display: flex; }
 
+  // Menu | título | ações. Com o `auto` do meio herdado do desktop, o wordmark
+  // media pelo próprio conteúdo e invadia o botão de idioma em 360 px; agora
+  // ele fica na coluna elástica e recebe reticências quando não cabe.
   .header {
+    grid-template-columns: auto minmax(0, 1fr) auto;
     padding: 0 var(--space-3);
     gap: var(--space-2);
   }
@@ -131,9 +135,12 @@
   // Numa tela de 360px o wordmark inteiro não cabe junto com menu e ações.
   .title {
     font-size: var(--fs-lg);
+    max-width: 100%;
 
     .brand-icon { width: 1.5rem; }
   }
+
+  .lang-btn span { font-size: 12px; }
 
   // Alvos de toque: o dedo não acerta 26px de altura. 44px é a recomendação do iOS.
   .lang-btn,
@@ -148,6 +155,13 @@
   }
 
   .credits-icon { display: none; }
+}
+
+// Em 320–360 px o wordmark inteiro só cabe se o botão de idioma virar só o
+// ícone (o title do botão continua dizendo o que ele faz).
+@media (max-width: 360px) {
+  .lang-btn span { display: none; }
+  .title { font-size: var(--fs-base); }
 }
 
 // Abaixo disso o saldo dá lugar ao que a pessoa veio fazer: buscar livro.

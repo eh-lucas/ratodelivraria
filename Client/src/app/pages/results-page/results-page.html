@@ -7,7 +7,9 @@
       </svg> {{ 'Nova busca' | t }} </button>
 
     <div class="summary-query">
-      <span class="summary-label">{{ isMultiBook ? books.length + ' livros' : 'ISBN' }}</span>
+      @if (isMultiBook) {
+        <span class="summary-label">{{ books.length }} {{ 'livro|livros' | tp:books.length }}</span>
+      }
       <span class="summary-isbns" [title]="searchLabel">{{ searchLabel }}</span>
     </div>
 
@@ -126,7 +128,7 @@
       <p class="state-title">{{ 'Nenhum site encontrou' | t }} {{ (isMultiBook ? 'os livros' : 'o livro') | t }}</p>
       <p class="state-text">
         {{ 'Consultamos' | t }} {{ totalQueried }} {{ 'sites' | t }} {{ 'e nenhum retornou preço para' | t }}
-        {{ searchLabel }}. {{ 'Confira o ISBN ou veja o que cada site respondeu abaixo.' | t }}
+        {{ searchLabel }}. {{ 'Confira se é o livro certo ou veja o que cada site respondeu abaixo.' | t }}
       </p>
       <div class="state-actions">
         <button type="button" class="btn-primary" (click)="newSearch()">{{ 'Nova busca' | t }}</button>
@@ -258,7 +260,7 @@
 
         @if (notFoundIsbns.length > 0) {
           <p class="warn-strip">
-            {{ 'Não encontrado em nenhum site:' | t }} {{ notFoundIsbns.join(', ') }}
+            {{ 'Não encontrado em nenhum site:' | t }} {{ notFoundLabels.join(', ') }}
           </p>
         }
 

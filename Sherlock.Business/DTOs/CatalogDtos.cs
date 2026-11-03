@@ -37,3 +37,16 @@ public class ResolveIsbnResultDto
     public string? Publisher { get; set; }
     public string? ImageUrl { get; set; }
 }
+
+/// <summary>
+/// O que a tela precisa para mostrar um livro pelo ISBN sem expor o número:
+/// título, autor e capa pequena. Vem do catálogo ou, se ele não conhece o ISBN,
+/// da última consulta bem-sucedida.
+/// </summary>
+public class BookLookupDto
+{
+    public string Isbn { get; set; } = string.Empty;
+    public string? Title { get; set; }
+    public string? Author { get; set; }
+    public string? ThumbUrl { get; set; }
+}

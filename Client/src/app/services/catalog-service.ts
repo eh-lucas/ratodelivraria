@@ -14,6 +14,14 @@ export interface CatalogSuggestion {
   isbn: string | null;
 }
 
+/** O que basta para mostrar um livro sem expor o ISBN: título, autor e capa pequena. */
+export interface BookInfo {
+  isbn: string;
+  title: string | null;
+  author: string | null;
+  thumbUrl: string | null;
+}
+
 export interface ResolveIsbnResult {
   found: boolean;
   isbn?: string;
@@ -34,6 +42,15 @@ export class CatalogService {
     const params = `q=${encodeURIComponent(query)}&limit=${limit}`;
     return this.http
       .get<CatalogSuggestion[]>(`${this.apiUrl}/suggest?${params}`)
+      .pipe(catchError(() => of([])));
+  }
+
+  /** Título, autor e capa dos ISBNs que o sistema já conhece (até 20 por chamada). */
+  lookup(isbns: string[]): Observable<BookInfo[]> {
+    if (isbns.length === 0) return of([]);
+    const params = isbns.map(i => `isbn=${encodeURIComponent(i)}`).join('&');
+    return this.http
+      .get<BookInfo[]>(`${this.apiUrl}/lookup?${params}`)
       .pipe(catchError(() => of([])));
   }
 

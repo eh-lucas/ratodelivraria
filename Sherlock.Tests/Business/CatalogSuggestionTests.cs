@@ -84,6 +84,7 @@ public class CatalogSuggestionTests
         var service = new CatalogService(
             repo.Object,
             Mock.Of<IProviderRepository>(),
+            Mock.Of<IQueryRepository>(),
             new CatalogCrawler(Options.Create(new CatalogCrawlSettings()),
                 NullLogger<CatalogCrawler>.Instance),
             Options.Create(new CatalogCrawlSettings()),
@@ -100,6 +101,38 @@ public class CatalogSuggestionTests
         result[2].ThumbUrl.Should()
             .Be("https://static.cedet.com.br/produtos_imagem_principal_grid/333-150x226.jpg");
         result[2].Author.Should().Be("Machado de Assis");
+    }
+
+    [Theory]
+    [InlineData("978-85-359-1484-9", "9788535914849")]
+    [InlineData(" 85359 1484x ", "853591484X")]
+    [InlineData("ISBN 9788535914849", "9788535914849")]
+    public void NormalizeIsbn_TiraHifenEspacoERotulo(string raw, string expected)
+    {
+        CatalogService.NormalizeIsbn(raw).Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task LookupAsync_CatalogoPrimeiro_DepoisUltimaConsulta_IgnoraLixo()
+    {
+        var catalog = new Mock<ICatalogRepository>();
+        catalog.Setup(r => r.GetByIsbnAsync("9788535914849", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Item(1, "1984", "George Orwell", "777"));
+        var queries = new Mock<IQueryRepository>();
+        queries.Setup(r => r.GetMetadataByIsbnAsync("9786588732120", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new BookMetadata("O Cinéfilo", "Walter Benjamin", "https://img/x.jpg"));
+
+        var service = new CatalogService(catalog.Object, Mock.Of<IProviderRepository>(), queries.Object,
+            new CatalogCrawler(Options.Create(new CatalogCrawlSettings()), NullLogger<CatalogCrawler>.Instance),
+            Options.Create(new CatalogCrawlSettings()), NullLogger<CatalogService>.Instance);
+
+        var found = await service.LookupAsync(new[] { "978-85-359-1484-9", "9786588732120", "abc", "0000000000000" });
+
+        found.Should().HaveCount(2);
+        found[0].Title.Should().Be("1984");
+        found[0].ThumbUrl.Should().Be("https://static.cedet.com.br/produtos_imagem_principal_grid/777-150x226.jpg");
+        found[1].Title.Should().Be("O Cinéfilo");
+        found[1].Author.Should().Be("Walter Benjamin");
     }
 
     [Fact]

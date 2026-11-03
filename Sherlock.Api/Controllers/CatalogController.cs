@@ -39,6 +39,20 @@ public class CatalogController : ControllerBase
         return Ok(suggestions);
     }
 
+    /// <summary>
+    /// Título, autor e capa de ISBNs já conhecidos. A tela usa para mostrar o livro
+    /// em vez do número — numa lista de busca, numa busca recente, no resultado.
+    /// </summary>
+    [HttpGet("lookup")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Lookup(
+        [FromQuery] string[] isbn,
+        CancellationToken cancellationToken = default)
+    {
+        var found = await _catalogService.LookupAsync(isbn ?? Array.Empty<string>(), cancellationToken);
+        return Ok(found);
+    }
+
     /// <summary>Descobre o ISBN de uma sugestão abrindo a página do produto.</summary>
     [HttpPost("{id:int}/resolve-isbn")]
     [AllowAnonymous]
